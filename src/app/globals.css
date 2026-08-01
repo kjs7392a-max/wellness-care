@@ -1,0 +1,50 @@
+@import "pretendard/dist/web/variable/pretendardvariable.css";
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: #eef3f5;
+  font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #7a6bc4; text-decoration: none; }
+
+/* 웰니스 앱 폰 프레임 + 키프레임 (원본 디자인). 모바일에서는 전체화면. */
+.wc-stage {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: linear-gradient(180deg, #eef3f5 0%, #e2edf1 100%);
+}
+.wc-frame {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  border-radius: 46px;
+  background: #0e2a33;
+  padding: 11px;
+  box-shadow: 0 30px 80px rgba(45, 92, 110, 0.28);
+}
+.wc-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 36px;
+  overflow: hidden;
+  background: linear-gradient(175deg, #f2edf7 0%, #eaf1f6 46%, #edf5f2 100%);
+  display: flex;
+  flex-direction: column;
+}
+.wc-screen ::-webkit-scrollbar { width: 0; height: 0; }
+
+@keyframes wRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes wFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dotPulse { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+@media (max-width: 480px) {
+  .wc-stage { padding: 0; align-items: stretch; }
+  .wc-frame { width: 100vw; height: 100dvh; border-radius: 0; padding: 0; box-shadow: none; }
+  .wc-screen { border-radius: 0; }
+}
