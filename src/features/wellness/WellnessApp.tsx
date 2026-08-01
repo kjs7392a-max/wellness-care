@@ -492,12 +492,17 @@ export default function WellnessApp() {
     const standFlex = v.roleKey === "admin" ? 1 : v.roleKey === "care" ? 4 : 2;
     const sitFlex = v.roleKey === "admin" ? 3 : 1;
     const postureNote = v.roleKey === "admin" ? "가장 길게 앉아 있던 구간은 오후 2시–4시였어요" : "가장 길게 서 계셨던 구간은 3–4교시였어요";
-    // 걸음 반원 게이지
-    const stepDash = (213.6 * 0.515).toFixed(1) + " 213.6";
-    const bandDash = (213.6 * 0.4).toFixed(1) + " 213.6";
-    const bandOffset = (-213.6 * 0.4).toFixed(1);
-    const knobX = (80 - 68 * Math.cos(Math.PI * 0.515)).toFixed(1);
-    const knobY = (80 - 68 * Math.sin(Math.PI * 0.515)).toFixed(1);
+    // 걸음 반원 게이지 — 3단계·3색 구간(적음 0~40% · 평소 40~80% · 많음 80~100%) + 오늘 위치 노브.
+    // ⚠ 등급이 아니라 '개인 평소 범위' 대비 편차다(제안서 일상변화 관점). 라벨도 적음/평소/많음(descriptive)만 쓴다.
+    const stepFrac = 0.515; // 오늘 걸음의 게이지 위치(목업). 실데이터 연동 시 계산으로 대체.
+    const stepZones = [
+      { color: "#a9c4e8", label: "적음", dash: "72.6 260", off: "0" },      // 평소보다 적음
+      { color: "#8a7cd0", label: "평소", dash: "72.6 260", off: "-88.6" },  // 평소 범위
+      { color: "#f5a98c", label: "많음", dash: "36.3 260", off: "-177.2" }, // 평소보다 많음
+    ];
+    const stepZoneLabel = stepFrac < 0.4 ? "평소보다 적음" : stepFrac <= 0.8 ? "평소 범위 안" : "평소보다 많음";
+    const knobX = (80 - 68 * Math.cos(Math.PI * stepFrac)).toFixed(1);
+    const knobY = (80 - 68 * Math.sin(Math.PI * stepFrac)).toFixed(1);
     const sleepBars = [9, 17, 6, 22, 13, 20, 26].map((h, i) => ({ h, bg: i === 6 ? "#8a7cd0" : "#e6e2f7" }));
     const moveBars = [11, 19, 8, 24, 14, 21, 26].map((h, i) => ({ h, bg: i === 6 ? "#5bc4b8" : "#daf0ec" }));
     const hourly = [4, 9, 26, 14, 7, 31, 11, 5, 19, 23, 8, 3].map((val, i) => ({
@@ -586,17 +591,23 @@ export default function WellnessApp() {
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:5px")}>
                   <div style={sx("font-size:12px; font-weight:600; color:#8ba8b3")}>걸음</div>
                   <div style={sx("font-size:30px; font-weight:700; color:#2d5c6e; letter-spacing:-0.035em; line-height:1; font-variant-numeric:tabular-nums")}>4,120</div>
-                  <div style={sx("display:flex; align-items:center; gap:6px; padding-top:3px")}>
-                    <div style={sx("width:8px; height:8px; border-radius:50%; background:#d8dcf5; flex:none")} />
-                    <div style={sx("font-size:11.5px; color:#8ba8b3; white-space:nowrap")}>평소 3,200 – 6,400</div>
+                  <div style={sx("font-size:11.5px; color:#8ba8b3; white-space:nowrap; padding-top:1px")}>평소 3,200 – 6,400</div>
+                  <div style={sx("display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding-top:4px")}>
+                    {stepZones.map((z) => (
+                      <div key={z.label} style={sx("display:flex; align-items:center; gap:4px")}>
+                        <div style={{ ...sx("width:7px; height:7px; border-radius:50%; flex:none"), background: z.color }} />
+                        <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{z.label}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <svg viewBox="0 0 160 96" style={{ flex: "none", width: 150, height: "auto", overflow: "visible" }}>
-                  <path d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke="#edf3f5" strokeWidth="13" strokeLinecap="round" />
-                  <path d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke="#d8dcf5" strokeWidth="13" strokeDasharray={bandDash} strokeDashoffset={bandOffset} />
-                  <path d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke="#8a7cd0" strokeWidth="13" strokeLinecap="round" strokeDasharray={stepDash} />
-                  <circle cx={knobX} cy={knobY} r="9" fill="#8a7cd0" stroke="#fff" strokeWidth="3.5" />
-                  <text x="80" y="74" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="#6b8c9a">평소 범위 안</text>
+                  <path d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke="#eef2f4" strokeWidth="13" strokeLinecap="round" />
+                  {stepZones.map((z, i) => (
+                    <path key={i} d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke={z.color} strokeWidth="13" strokeLinecap="round" strokeDasharray={z.dash} strokeDashoffset={z.off} />
+                  ))}
+                  <circle cx={knobX} cy={knobY} r="9" fill="#4a3f80" stroke="#fff" strokeWidth="3.5" />
+                  <text x="80" y="74" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="#6b8c9a">{stepZoneLabel}</text>
                 </svg>
               </div>
 
