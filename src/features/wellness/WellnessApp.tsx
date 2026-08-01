@@ -219,6 +219,11 @@ export default function WellnessApp() {
     const feelsTxt = st.live ? "체감 " + st.live.feels + "도" : "체감 35도";
     const baseItem = (parqYes && role.low ? role.low : role.items)[slot];
     const item = st.program || baseItem;
+    // 주말·휴일엔 프로그램 이름의 평일 표현("퇴근 전 ")을 떼서 상황과 어긋나지 않게 한다.
+    // (직접 고른 프로그램 st.program은 사용자가 고른 원래 이름 그대로 둔다.)
+    const dow = st.now.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const itemTitle = isWeekend && !st.program ? item.title.replace(/^퇴근 전 /, "") : item.title;
     const area = st.area || "all";
     const libList = PROGRAMS
       .filter((pg) => area === "all" || pg.area === area)
@@ -227,7 +232,7 @@ export default function WellnessApp() {
     const totals = doneTotals();
     const maxByMin = Math.max(...Object.values(totals.byMin), 1);
     const answered = PROBES.filter((p) => st.answers[p.id]).length;
-    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, libList, totals, maxByMin, answered };
+    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, maxByMin, answered };
   }
 
   const nowTime = `${s.now.getHours()}:${String(s.now.getMinutes()).padStart(2, "0")}`;
@@ -445,8 +450,7 @@ export default function WellnessApp() {
     // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 맥락에 맞춰 조합한다.
     // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
     //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
-    const dow = s.now.getDay();
-    const isWeekend = dow === 0 || dow === 6;
+    const isWeekend = v.isWeekend;
     const daySolution = (() => {
       if (isWeekend) {
         const rest = "오늘은 쉬는 날이네요. 학교 일은 잠시 내려놓으셔도 돼요. 몸이 뻐근하면 그때 잠깐만 움직여도 충분해요. ";
@@ -539,7 +543,7 @@ export default function WellnessApp() {
             </div>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:10.5px; font-weight:700; color:rgba(255,255,255,0.75); letter-spacing:0.03em")}>지금 바로 시작하기</div>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#fff; text-wrap:pretty")}>{item.title}</div>
+              <div style={sx("font-size:14.5px; font-weight:700; color:#fff; text-wrap:pretty")}>{v.itemTitle}</div>
             </div>
             <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
           </div>
@@ -686,7 +690,7 @@ export default function WellnessApp() {
     const bodySolution = "이번 주는 3분짜리를 가장 자주 고르셨고, 오후 2시–4시에 앉아 계신 시간이 길었어요. 요즘처럼 더운 주에는 낮 시간대를 늘리기보다, 그 시간엔 실내에서 짧게 한 번 더 끼워 넣고 걷기는 해가 진 뒤로 옮기는 쪽이 잘 맞을 것 같아요.";
     const bodyActions = [
       { label: v.wx.prefer === "indoor" ? "낮에는 실내에서 3분 한 번 더" : "오후 3시에 3분 걷기 한 번 더", go: () => patch({ tab: "home" }) },
-      { label: "오늘 " + item.title + " 해보기", go: () => patch({ sheet: "content" }) },
+      { label: "오늘 " + v.itemTitle + " 해보기", go: () => patch({ sheet: "content" }) },
     ];
     const mindActions = [
       { label: "소연에게 이번 주 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
@@ -997,7 +1001,7 @@ export default function WellnessApp() {
         const ampm = h < 12 ? "오전" : "오후";
         const hh = h % 12 === 0 ? 12 : h % 12;
         const time = `${ampm} ${hh}:${String(now.getMinutes()).padStart(2, "0")}`;
-        patchFn((st) => ({ sheet: null, remaining: st.minutes * 60, sessions: st.sessions.concat([{ title: st.minutes + "분 " + item.title, time }]) }));
+        patchFn((st) => ({ sheet: null, remaining: st.minutes * 60, sessions: st.sessions.concat([{ title: st.minutes + "분 " + v.itemTitle, time }]) }));
         return;
       }
       if (s.running) { patch({ running: false }); return; }
@@ -1013,7 +1017,7 @@ export default function WellnessApp() {
         </div>
         <div style={sx("flex:1; display:flex; flex-direction:column; gap:24px; padding:8px 24px 32px")}>
           <div style={sx("display:flex; flex-direction:column; gap:8px")}>
-            <div style={sx("font-size:23px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{item.title}</div>
+            <div style={sx("font-size:23px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{v.itemTitle}</div>
             <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>{item.desc + " 10분을 고르셔도 1분만 채우면 오늘 몫은 다 한 거예요."}</div>
           </div>
 
