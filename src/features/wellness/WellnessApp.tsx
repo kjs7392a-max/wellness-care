@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
+import { CHARACTERS, characterOf, DEFAULT_CHARACTER, withWaGwa, type CharacterId } from "./characters";
 import { resolveSuggestion } from "./suggestion";
 import {
-  AREAS, CHAT_INTRO, CHAT_BEATS, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
+  AREAS, CHAT_BEATS, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
   NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROBES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, WEEKLY_PAST, type ContentState, type Role, type WeatherKey,
 } from "./data";
@@ -52,6 +53,10 @@ interface State {
   live: { key: WeatherKey; temp: number; feels: number } | null;
   recTab: "body" | "mind";
   riskShown: boolean;
+  /** 「마음과 대화」 상대. 바꾸면 대화가 새로 시작된다. */
+  character: CharacterId;
+  /** 캐릭터 고르기 화면(대화 시트 위에 겹침) */
+  pickingCharacter: boolean;
 }
 
 function stampAt(n: number, ref?: Date): string {
@@ -71,8 +76,9 @@ export default function WellnessApp() {
     authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     answers: {}, minutes: 3, remaining: 180, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
-    chat: CHAT_INTRO.map((t, i) => ({ role: "bot" as const, text: t, at: stampAt(i, new Date(0)) })),
+    chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", riskShown: false,
+    character: DEFAULT_CHARACTER, pickingCharacter: false,
   }));
 
   const patch = (p: Partial<State>) => setS((st) => ({ ...st, ...p }));
@@ -170,7 +176,7 @@ export default function WellnessApp() {
       const r = await fetch("/api/wellness/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ history: historyForServer, message: t }),
+        body: JSON.stringify({ history: historyForServer, message: t, character: s.character }),
       });
       const j = await r.json();
       if (j.risk && Array.isArray(j.reply)) {
@@ -702,7 +708,7 @@ export default function WellnessApp() {
       { label: "오늘 " + v.itemTitle + " 해보기", go: () => patch({ sheet: "content" }) },
     ];
     const mindActions = [
-      { label: "소연에게 이번 주 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
+      { label: "마음과 대화에 이번 주 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
       { label: "오늘의 그림으로 지금 마음 확인하기", go: () => patch({ sheet: "picture", answers: {} }) },
     ];
 
@@ -937,7 +943,7 @@ export default function WellnessApp() {
             </div>
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
-            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>소연과 대화</div>
+            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>마음과 대화</div>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>오늘의 그림</div>
           </div>
         </div>
@@ -1139,9 +1145,9 @@ export default function WellnessApp() {
           <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
             <div style={sx(`width:48px; height:48px; flex:none; border-radius:50%; overflow:hidden; background:#fbe3b4 url(${IMG}/shimpyo.png) center/contain no-repeat`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>소연과 대화</div>
-              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>하루의 이야기를 털어놓거나 마음을 정리하는 자리예요</div>
-              <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>소통할 소(疏), 인연 연(緣) — 마음이 이어지는 자리</div>
+              <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>마음과 대화</div>
+              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>스트레스, 답답함, 억울함 — 터놓고 말해도 되는 자리예요</div>
+              <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>옆반 동료 · 수석교사 · 동기 · 상담교사 중에서 상대를 고를 수 있어요</div>
             </div>
             <div style={sx("flex:none; font-size:16px; color:#b5c8d0")}>›</div>
           </div>
@@ -1164,32 +1170,50 @@ export default function WellnessApp() {
   function renderTalk() {
     const week = WEEK_TEMP.map((w) => ({ day: w.day, color: TEMP[w.temp] }));
     void week; // 주간 온도 미니바(원본 미표시)
+    const ch = characterOf(s.character);
+    // 아바타: 이미지가 오기 전까지 이름 첫 글자 + 캐릭터 색. 이미지가 생기면 characters.ts 의 avatar 에 경로만 넣으면 된다.
+    const avatar = (size: number, c = ch) => (
+      c.avatar
+        ? <div style={sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; overflow:hidden; background:url(${c.avatar}) center/cover`)} />
+        : <div style={{ ...sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e`), background: c.color, fontSize: Math.round(size * 0.42) }}>{c.name.slice(1, 2)}</div>
+    );
+    // 상대 바꾸기 = 새 대화(인사부터). 위험 안내 상태도 초기화.
+    const pickCharacter = (id: CharacterId) => {
+      const c = characterOf(id);
+      patchFn((st) => ({
+        character: id, pickingCharacter: false, beat: 0, typing: false, riskShown: false,
+        chat: [{ role: "bot", text: c.intro, at: stampAt(0, st.now) }],
+      }));
+    };
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#f6f2fc 0%,#f0f7fb 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eee9f7")}>
           <div style={sx("padding:48px 16px 10px; display:flex; align-items:center; gap:11px")}>
             <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
-            <div style={sx(`width:38px; height:38px; border-radius:50%; flex:none; overflow:hidden; background:#fbe3b4 url(${IMG}/shimpyo.png) center/contain no-repeat`)} />
+            {avatar(38)}
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 건강</div>
               <div style={sx("font-size:11px; color:#8ba8b3")}>기록은 선생님만 봅니다</div>
             </div>
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
-            <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>소연과 대화</div>
+            <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>마음과 대화</div>
             <div onClick={() => patch({ sheet: "picture", answers: {} })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>오늘의 그림</div>
           </div>
         </div>
 
         <div ref={chatRef} style={sx("flex:1; overflow-y:auto; padding:18px 14px 14px; display:flex; flex-direction:column; gap:12px")}>
           <div style={sx("align-self:center; flex:none; font-size:11px; color:#7b78a6; background:#ece7f8; padding:5px 12px; border-radius:999px; white-space:nowrap")}>{chatDateLabel}</div>
-          <div style={sx("flex:none; text-align:center; font-size:12.5px; font-weight:600; color:#5f5397; line-height:1.6; padding:2px 20px 4px; text-wrap:pretty")}>소연은 소통할 소, 인연 연. 마음이 이어지는 자리라는 뜻이에요.</div>
+          <div style={sx("flex:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:2px 20px 4px")}>
+            <div style={sx("font-size:12.5px; font-weight:600; color:#5f5397; text-wrap:pretty")}>{ch.role} {withWaGwa(ch.name)} 이야기 중</div>
+            <div onClick={() => patch({ pickingCharacter: true })} style={sx("cursor:pointer; font-size:12px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:4px 10px; white-space:nowrap")}>상대 바꾸기</div>
+          </div>
 
           {s.chat.map((m, i) => {
             const me = m.role === "me";
             return (
               <div key={i} style={{ ...sx("flex:none; display:flex; align-items:flex-start; gap:8px; animation:wRise 0.28s ease-out both"), flexDirection: me ? "row-reverse" : "row" }}>
-                {!me && <div style={sx(`width:34px; height:34px; border-radius:50%; flex:none; overflow:hidden; background:#fbe3b4 url(${IMG}/shimpyo.png) center/contain no-repeat`)} />}
+                {!me && avatar(34)}
                 <div style={{ ...sx("max-width:250px; padding:12px 15px; font-size:14.5px; line-height:1.65; white-space:pre-line; text-wrap:pretty"), borderRadius: me ? "16px 16px 5px 16px" : "16px 16px 16px 5px", background: me ? "#7a6bc4" : "#fff", color: me ? "#fff" : "#2d5c6e", boxShadow: me ? "0 2px 8px rgba(91,181,207,0.28)" : "0 1px 3px rgba(45,92,110,0.06)" }}>{m.text}</div>
                 <div style={{ ...sx("font-size:10px; color:#8ba8b3; flex:none; white-space:nowrap"), alignSelf: "flex-end" }}>{m.at}</div>
               </div>
@@ -1198,7 +1222,7 @@ export default function WellnessApp() {
 
           {s.typing && (
             <div style={sx("flex:none; display:flex; align-items:flex-start; gap:8px")}>
-              <div style={sx(`width:34px; height:34px; border-radius:50%; flex:none; overflow:hidden; background:#fbe3b4 url(${IMG}/shimpyo.png) center/contain no-repeat`)} />
+              {avatar(34)}
               <div style={sx("background:#fff; padding:13px 16px; border-radius:16px 16px 16px 5px; display:flex; gap:5px; box-shadow:0 1px 3px rgba(45,92,110,0.06)")}>
                 <span style={sx("width:6px; height:6px; border-radius:50%; background:#8ba8b3; animation:dotPulse 1.2s infinite")} />
                 <span style={sx("width:6px; height:6px; border-radius:50%; background:#8ba8b3; animation:dotPulse 1.2s infinite 0.15s")} />
@@ -1219,6 +1243,33 @@ export default function WellnessApp() {
             <div onClick={send} style={sx("cursor:pointer; width:44px; height:44px; flex:none; border-radius:50%; background:#7a6bc4; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(91,181,207,0.35)")}>↑</div>
           </div>
         </div>
+
+        {s.pickingCharacter && (
+          <div style={sx("position:absolute; inset:0; background:rgba(45,92,110,0.35); display:flex; flex-direction:column; justify-content:flex-end; animation:wFade 0.2s ease-out")}>
+            <div onClick={() => patch({ pickingCharacter: false })} style={sx("flex:1; cursor:pointer")} />
+            <div style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:22px 20px 26px; background:#fff; border-radius:24px 24px 0 0; animation:wRise 0.3s ease-out both")}>
+              <div style={sx("width:38px; height:4px; border-radius:999px; background:#e0eff3; align-self:center")} />
+              <div style={sx("font-size:19px; font-weight:800; color:#2d5c6e; letter-spacing:-0.02em")}>누구와 이야기할까요</div>
+              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>상대를 바꾸면 대화가 새로 시작돼요. 기록은 선생님만 봅니다.</div>
+              {CHARACTERS.map((c) => {
+                const on = c.id === s.character;
+                return (
+                  <div key={c.id} onClick={() => pickCharacter(c.id)} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:13px 14px; border-radius:16px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#7a6bc4" : "#e3eef1" }}>
+                    {avatar(44, c)}
+                    <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
+                      <div style={sx("display:flex; align-items:baseline; gap:6px")}>
+                        <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{c.role}</div>
+                        <div style={sx("font-size:12px; color:#8ba8b3")}>{c.name} · {c.title}</div>
+                      </div>
+                      <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{c.blurb}</div>
+                    </div>
+                    {on && <div style={sx("flex:none; font-size:12px; font-weight:700; color:#7a6bc4")}>지금</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {s.consultOpen && (
           <div style={sx("position:absolute; inset:0; background:rgba(45,92,110,0.35); display:flex; flex-direction:column; justify-content:flex-end; animation:wFade 0.2s ease-out")}>

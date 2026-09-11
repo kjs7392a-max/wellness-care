@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { riskLevel, RISK_REPLY, SYSTEM, seasonLine } from "@/features/wellness/risk";
+import { riskLevel, RISK_REPLY } from "@/features/wellness/risk";
+import { systemPromptFor } from "@/features/wellness/characters";
 
 export const runtime = "nodejs";
 
 /**
- * 챗봇 '소연' 서버 중계.
+ * 「마음과 대화」 서버 중계. 캐릭터(character)는 허용 목록으로만 받고 모르면 기본 캐릭터.
  * - API 키는 서버 환경변수(ANTHROPIC_API_KEY)에서만 읽는다. 클라이언트에 노출하지 않는다.
  * - 위험어 판정을 서버에서도 다시 수행한다(클라 단독 판정은 우회 가능하므로 신뢰 불가).
  *   L2면 LLM을 건너뛰고 고정 응답만 반환한다.
@@ -18,6 +19,13 @@ interface Turn {
   text: string;
 }
 
+interface ChatBody {
+  history?: Turn[];
+  message?: string;
+  /** 캐릭터 id — 서버가 허용 목록으로 검증한다(characterOf). 없거나 모르면 기본 캐릭터. */
+  character?: string;
+}
+
 function client(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("no-key");
@@ -25,7 +33,7 @@ function client(): Anthropic {
 }
 
 export async function POST(req: Request) {
-  let body: { history?: Turn[]; message?: string };
+  let body: ChatBody;
   try {
     body = await req.json();
   } catch {
@@ -42,7 +50,7 @@ export async function POST(req: Request) {
 
   const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
   const month = new Date().getMonth() + 1;
-  const system = SYSTEM + "\n" + seasonLine(month);
+  const system = systemPromptFor(body.character, month);
 
   // 대화 이력을 messages 형태로 — 연속 같은 role은 없다는 전제(교대 대화). 방어적으로 병합.
   const messages: Anthropic.MessageParam[] = [];
@@ -57,7 +65,7 @@ export async function POST(req: Request) {
       messages.push({ role, content: text });
     }
   }
-  // 첫 발화는 반드시 user여야 한다(소연의 인사가 맨 앞이면 제거).
+  // 첫 발화는 반드시 user여야 한다(캐릭터의 인사가 맨 앞이면 제거).
   while (messages.length && messages[0].role === "assistant") messages.shift();
   if (!messages.length) return NextResponse.json({ fallback: true });
 

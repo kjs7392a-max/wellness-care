@@ -277,9 +277,7 @@ export const OB: ObStep[] = [
   { kicker: "권한", title: "이제 거의 다 왔어요", body: "권한을 허용하지 않아도 나머지는 그대로 동작하지만 허용하시면 더 정확한 결과를 얻을 수 있습니다.", btn: "시작하기" },
 ];
 
-export const CHAT_INTRO = [
-  "안녕하세요 선생님. 저는 소연이라고 해요. 정리해서 말하지 않아도 괜찮아요. 오늘 어떤 하루였는지 그냥 적어주세요.",
-];
+// 대화 첫 인사는 캐릭터마다 다르다 → characters.ts 의 intro.
 
 // LLM 미가동/실패 시 폴백 시나리오 응답. 순차 진행.
 export const CHAT_BEATS: string[][] = [
