@@ -357,7 +357,6 @@ export default function WellnessApp() {
             <div style={sx("display:flex; flex-direction:column; gap:11px")}>
               {[
                 { title: "수집·이용 동의 (필수)", desc: "걸음·움직인 시간·앱에서 함께한 몸풀기 기록을 이 기기 안에서만 처리합니다." },
-                { title: "민감정보 별도 동의 (선택)", desc: "「오늘의 그림」 선택 이력. 동의하지 않으셔도 나머지 기능은 그대로예요." },
               ].map((c, i) => {
                 const on = s.consent[i];
                 return (
