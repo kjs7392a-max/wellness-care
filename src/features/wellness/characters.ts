@@ -1,4 +1,4 @@
-import { SYSTEM_CORE, seasonLine } from "./risk";
+import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
 
 /**
  * 「마음과 대화」 캐릭터 4명 (남2·여2 — 2026-09-12 사용자 확정).
@@ -106,5 +106,5 @@ export function characterOf(id: unknown): Character {
 /** 서버가 쓰는 시스템 프롬프트 = 공통 규칙 + 인물 설정 + 계절 */
 export function systemPromptFor(id: unknown, month: number): string {
   const c = characterOf(id);
-  return [SYSTEM_CORE, "", "## 당신의 인물 설정", c.persona, "", seasonLine(month)].join("\n");
+  return [SYSTEM_CORE, "", "## 당신의 인물 설정", c.persona, "", SYSTEM_EXAMPLES, "", seasonLine(month)].join("\n");
 }

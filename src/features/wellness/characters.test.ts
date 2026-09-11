@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, isCharacterId, systemPromptFor } from "./characters";
-import { SYSTEM_CORE } from "./risk";
+import { SYSTEM_CORE, SYSTEM_EXAMPLES } from "./risk";
 
 describe("CHARACTERS", () => {
   it("4명, 남2·여2, id 중복 없음", () => {
@@ -40,6 +40,7 @@ describe("characterOf / systemPromptFor", () => {
       const p = systemPromptFor(c.id, 9);
       expect(p).toContain(SYSTEM_CORE);
       expect(p).toContain(c.persona);
+      expect(p).toContain(SYSTEM_EXAMPLES);
       expect(p).toContain("가을");
       expect(p).not.toContain("소연");
     }
@@ -50,3 +51,13 @@ describe("characterOf / systemPromptFor", () => {
   });
 });
 
+describe("SYSTEM_EXAMPLES — 좋은 답 예시", () => {
+  it("선생님/답 쌍 7개, 임상 용어·이모지 없음, 질문으로 끝나지 않는 답도 있다", () => {
+    const body = SYSTEM_EXAMPLES.split("## 좋은 답")[1] ?? "";
+    const answers = SYSTEM_EXAMPLES.split("\n").filter((l) => l.startsWith("답: "));
+    expect(answers).toHaveLength(7);
+    for (const w of ["우울증", "진단", "심리검사", "치료", "스트레스 지수", "인지 재구성", "반영"]) expect(body, w).not.toContain(w);
+    expect(/\p{Extended_Pictographic}/u.test(SYSTEM_EXAMPLES)).toBe(false);
+    expect(answers.some((l) => !l.trim().endsWith("?"))).toBe(true);
+  });
+});
