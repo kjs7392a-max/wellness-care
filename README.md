@@ -18,11 +18,12 @@ npm test         # 위험어 판정 회귀 테스트
 
 로그인 → 온보딩 6단계(5대 원칙 · 수집 고지 · 동의 분리 · 직군 · PAR-Q+ 7문항 · 권한) →
 홈(AI 제안 · 날씨 · 2단 타일 · 오늘의 기록) / 기록(몸·마음) / 설정,
-그리고 시트: 신체건강 라이브러리 · 타이머 · 마음건강 · 소연 대화 · 오늘의 그림.
+그리고 시트: 신체건강 라이브러리 · 타이머/가이드 영상 · 마음건강 · 마음과 대화 · 오늘의 그림.
 
-## 챗봇 '소연'
+## 「마음과 대화」 챗봇
 
-- `POST /api/wellness/chat` `{ history, message }` → `{ reply }` | `{ risk, reply }` | `{ fallback: true }`
+- `POST /api/wellness/chat` `{ history, message, character }` → `{ reply }` | `{ risk, reply }` | `{ fallback: true }`
+- 캐릭터 4명(옆반 동료·수석교사·동기·상담교사, `src/features/wellness/characters.ts`). 공통 규칙 `SYSTEM_CORE` + 인물 설정으로 프롬프트를 조합. 서버가 `character` 를 허용 목록으로 검증.
 - **API 키는 서버 환경변수 `ANTHROPIC_API_KEY`에서만 읽습니다.** 클라이언트 미노출. 대화 미저장.
 - 위험어 판정을 **클라이언트·서버 양쪽**에서 수행. L2(위험)이면 LLM 미호출, 고정 안내 문구만 반환.
 - 키 미설정/실패 시 시나리오 응답으로 폴백(앱은 그대로 동작).
@@ -53,7 +54,8 @@ src/features/wellness/
   risk.ts                     위험어 판정·고정 응답·시스템 프롬프트(클라/서버 공용)
   risk.test.ts                위험어 회귀 테스트
   sx.ts                       인라인 CSS 문자열 → style 헬퍼(디자인 픽셀 재현)
-public/wellness/images/       아이콘·캐릭터(소연)·자극 이미지
+public/wellness/images/       아이콘·마스코트·자극 이미지
+public/wellness/video/        스트레칭 가이드 영상(1분 1편 + 20초 12편)
 ```
 
 ## 설계 원칙 (디자인 핸드오프 준수)
