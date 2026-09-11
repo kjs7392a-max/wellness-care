@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
-import { CHARACTERS, characterOf, DEFAULT_CHARACTER, withWaGwa, type CharacterId } from "./characters";
+import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, type CharacterId } from "./characters";
 import { resolveSuggestion } from "./suggestion";
 import {
   AREAS, CHAT_BEATS, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
@@ -1171,11 +1171,11 @@ export default function WellnessApp() {
     const week = WEEK_TEMP.map((w) => ({ day: w.day, color: TEMP[w.temp] }));
     void week; // 주간 온도 미니바(원본 미표시)
     const ch = characterOf(s.character);
-    // 아바타: 이미지가 오기 전까지 이름 첫 글자 + 캐릭터 색. 이미지가 생기면 characters.ts 의 avatar 에 경로만 넣으면 된다.
+    // 아바타: 이미지가 오기 전까지 역할 첫 글자 + 캐릭터 색. 이미지가 생기면 characters.ts 의 avatar 에 경로만 넣으면 된다.
     const avatar = (size: number, c = ch) => (
       c.avatar
         ? <div style={sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; overflow:hidden; background:url(${c.avatar}) center/cover`)} />
-        : <div style={{ ...sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e`), background: c.color, fontSize: Math.round(size * 0.42) }}>{c.name.slice(1, 2)}</div>
+        : <div style={{ ...sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e`), background: c.color, fontSize: Math.round(size * 0.42) }}>{c.role.slice(0, 1)}</div>
     );
     // 상대 바꾸기 = 새 대화(인사부터). 위험 안내 상태도 초기화.
     const pickCharacter = (id: CharacterId) => {
@@ -1205,7 +1205,7 @@ export default function WellnessApp() {
         <div ref={chatRef} style={sx("flex:1; overflow-y:auto; padding:18px 14px 14px; display:flex; flex-direction:column; gap:12px")}>
           <div style={sx("align-self:center; flex:none; font-size:11px; color:#7b78a6; background:#ece7f8; padding:5px 12px; border-radius:999px; white-space:nowrap")}>{chatDateLabel}</div>
           <div style={sx("flex:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:2px 20px 4px")}>
-            <div style={sx("font-size:12.5px; font-weight:600; color:#5f5397; text-wrap:pretty")}>{ch.role} {withWaGwa(ch.name)} 이야기 중</div>
+            <div style={sx("font-size:12.5px; font-weight:600; color:#5f5397; text-wrap:pretty")}>{CHARACTER_DISPLAY_NAME} · {ch.role}</div>
             <div onClick={() => patch({ pickingCharacter: true })} style={sx("cursor:pointer; font-size:12px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:4px 10px; white-space:nowrap")}>상대 바꾸기</div>
           </div>
 
@@ -1259,7 +1259,7 @@ export default function WellnessApp() {
                     <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
                       <div style={sx("display:flex; align-items:baseline; gap:6px")}>
                         <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{c.role}</div>
-                        <div style={sx("font-size:12px; color:#8ba8b3")}>{c.name} · {c.title}</div>
+                        <div style={sx("font-size:12px; color:#8ba8b3")}>{c.title}</div>
                       </div>
                       <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{c.blurb}</div>
                     </div>

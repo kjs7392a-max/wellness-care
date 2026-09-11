@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, characterOf, DEFAULT_CHARACTER, isCharacterId, systemPromptFor, withWaGwa } from "./characters";
+import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, isCharacterId, systemPromptFor } from "./characters";
 import { SYSTEM_CORE } from "./risk";
 
 describe("CHARACTERS", () => {
@@ -9,10 +9,15 @@ describe("CHARACTERS", () => {
     expect(CHARACTERS.filter((c) => c.gender === "male")).toHaveLength(2);
     expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(4);
   });
-  it("역할·이름에 「선생님」이 붙지 않는다(사용자 지시)", () => {
+  it("역할에 「선생님」이 붙지 않고, 개인 이름이 없다 — 표시 이름은 「마음과 대화」 하나(사용자 지시)", () => {
+    expect(CHARACTER_DISPLAY_NAME).toBe("마음과 대화");
     for (const c of CHARACTERS) {
       expect(c.role).not.toContain("선생님");
-      expect(c.name).not.toContain("선생님");
+      expect("name" in c).toBe(false);
+      for (const old of ["윤서현", "강미경", "박준혁", "한도윤", "서현", "미경", "준혁", "도윤"]) {
+        expect(c.intro, c.id).not.toContain(old);
+        expect(c.persona, c.id).not.toContain(old);
+      }
     }
   });
   it("인물 설정에 임상 용어가 없다(화면·말투에서 상담 용어 금지)", () => {
@@ -45,11 +50,3 @@ describe("characterOf / systemPromptFor", () => {
   });
 });
 
-describe("withWaGwa", () => {
-  it("받침 있으면 과, 없으면 와", () => {
-    expect(withWaGwa("윤서현")).toBe("윤서현과");
-    expect(withWaGwa("박준혁")).toBe("박준혁과");
-    expect(withWaGwa("소연")).toBe("소연과");
-    expect(withWaGwa("미나")).toBe("미나와");
-  });
-});
