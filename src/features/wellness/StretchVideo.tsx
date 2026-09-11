@@ -13,7 +13,8 @@ import { sx } from "./sx";
  * - 크기: 부모 flex 열에서 남는 높이만큼만 차지한다(flex:1 + aspect-ratio 로 너비가 따라온다). 고정 높이로
  *   두면 짧은 폰에서 맨 아래 버튼이 화면 밖으로 밀린다(실제로 그랬다).
  * - 구간 안내는 영상의 currentTime 으로 정한다(타이머가 없으므로 영상이 곧 시계다).
- * - 원본에 오디오 트랙이 있어 muted 로 튼다.
+ * - 소리는 켠다(원본에 음악 트랙 있음 — 2026-09-12 사용자 "음악이 안 나오는데"). 「시작하기」가 사용자 제스처라
+ *   소리 있는 재생도 허용된다. 🚫 muted 를 되살리지 말 것 — 되살리면 음악이 사라진다. 폰이 무음 모드면 OS 가 막는다.
  */
 export function StretchVideo({ guide, playing, onEnded }: { guide: GuideVideo; playing: boolean; onEnded: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
@@ -47,7 +48,6 @@ export function StretchVideo({ guide, playing, onEnded }: { guide: GuideVideo; p
       <video
         ref={ref}
         src={guide.src}
-        muted
         playsInline
         preload="auto"
         onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
