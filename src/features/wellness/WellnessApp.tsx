@@ -328,7 +328,7 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:9px")}>
             <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>{step.kicker}</div>
             <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>{step.title}</div>
-            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{step.body}</div>
+            {step.body && <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{step.body}</div>}
           </div>
 
           {s.ob === 0 && (
@@ -356,7 +356,7 @@ export default function WellnessApp() {
           {s.ob === 2 && (
             <div style={sx("display:flex; flex-direction:column; gap:11px")}>
               {[
-                { title: "수집·이용 동의 (필수)", desc: "걸음·움직인 시간·앱에서 함께한 몸풀기 기록을 이 기기 안에서만 처리합니다." },
+                { title: "수집·이용 동의 (필수)", desc: "걸음·움직인 시간·앱에서 함께한 몸풀기 기록은 암호화되어 본인 계정에만 저장되며, 본인 외에는 누구도 열어볼 수 없습니다." },
               ].map((c, i) => {
                 const on = s.consent[i];
                 return (
