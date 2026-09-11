@@ -7,7 +7,8 @@ import { sx } from "./sx";
 /**
  * 가이드 영상 화면(타이머 없음 — 2026-09-12 사용자 지시 "타이머는 없애고 화면만").
  *
- * - 영상은 1분을 한 번만 튼다(loop 없음 — 2026-09-12 사용자 지시 "1분이 되면 멈춰"). 끝나면 onEnded 로 알린다.
+ * - 영상은 guide.playCount 회(없으면 1회) 이어 틀고 멈춘다(loop 속성 없음 — 2026-09-12 사용자 지시 "1분이 되면
+ *   멈춰" + "전부 1분 리미트": 20초 시범은 3회 = 1분). 마지막 회가 끝나면 onEnded 로 알린다.
  *   재생은 화면 맨 아래 「시작하기」 버튼(playing prop)이 켠다 — 버튼이 사용자 제스처라 자동재생 정책에도
  *   안 걸린다. 혹시 거부되면 「탭해서 시작」이 뜬다.
  * - 크기: 부모 flex 열에서 남는 높이만큼만 차지한다(flex:1 + aspect-ratio 로 너비가 따라온다). 고정 높이로
@@ -21,21 +22,42 @@ export function StretchVideo({ guide, playing, onEnded }: { guide: GuideVideo; p
   const [t, setT] = useState(0);
   const [needTap, setNeedTap] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [round, setRound] = useState(0); // 0부터. 화면엔 round+1 / playCount
+  const playCount = guide.playCount ?? 1;
   const pos = guideStepAt(guide.steps, t);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (playing) { setEnded(false); el.play().then(() => setNeedTap(false)).catch(() => setNeedTap(true)); }
-    else el.pause();
+    if (playing) {
+      // 다 본 뒤 「시작하기」를 다시 누르면 처음(1회차)부터.
+      if (ended) { setRound(0); el.currentTime = 0; }
+      setEnded(false);
+      el.play().then(() => setNeedTap(false)).catch(() => setNeedTap(true));
+    } else el.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
-  // 구간이 바뀌면 진동 한 번(지원 기기만) — 화면을 안 보고 따라 해도 전환을 알 수 있게.
+  // 구간(또는 회차)이 바뀌면 진동 한 번(지원 기기만) — 화면을 안 보고 따라 해도 전환을 알 수 있게.
+  const stepKey = round + "-" + pos.index;
   useEffect(() => {
-    if (t === 0) return;
+    if (t === 0 && round === 0) return;
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(40);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pos.index]);
+  }, [stepKey]);
+
+  // 한 회가 끝났을 때: 남은 회차가 있으면 처음부터 다시, 없으면 끝.
+  const handleEnded = () => {
+    const el = ref.current;
+    if (round + 1 < playCount && el) {
+      setRound(round + 1);
+      el.currentTime = 0;
+      el.play().catch(() => setNeedTap(true));
+      return;
+    }
+    setEnded(true);
+    onEnded();
+  };
 
   const tapPlay = () => {
     const el = ref.current;
@@ -51,13 +73,17 @@ export function StretchVideo({ guide, playing, onEnded }: { guide: GuideVideo; p
         playsInline
         preload="auto"
         onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
-        onEnded={() => { setEnded(true); onEnded(); }}
+        onEnded={handleEnded}
         style={sx("width:100%; height:100%; object-fit:cover; display:block")}
       />
       {needTap && (
         <div style={sx("position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(20,40,50,0.28)")}>
           <div style={sx("padding:14px 22px; border-radius:999px; background:rgba(255,255,255,0.92); color:#2d5c6e; font-size:14px; font-weight:700")}>▶ 탭해서 시작</div>
         </div>
+      )}
+      {/* 회차 — 3회 반복 영상에만. 오른쪽 위 작은 알약. */}
+      {playCount > 1 && (
+        <div style={sx("position:absolute; top:12px; right:12px; padding:5px 10px; border-radius:999px; background:rgba(20,40,50,0.45); color:#fff; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; pointer-events:none")}>{ended ? playCount : Math.min(round + 1, playCount)} / {playCount}</div>
       )}
       {/* 구간 안내 — 영상 하단에 겹침. 영상엔 자막이 없고 앱이 얹는다. */}
       <div style={sx("position:absolute; left:0; right:0; bottom:0; padding:44px 16px 14px; background:linear-gradient(180deg, rgba(20,40,50,0) 0%, rgba(20,40,50,0.62) 100%); color:#fff; display:flex; flex-direction:column; gap:4px; pointer-events:none")}>

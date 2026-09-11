@@ -46,3 +46,28 @@ describe("guideStepAt", () => {
     expect(guideStepAt(steps, NaN).index).toBe(0);
   });
 });
+
+import { guideMaxSec, PROGRAM_VIDEOS } from "./guide";
+
+describe("PROGRAM_VIDEOS — 20초 시범 × 3회 = 1분 제한", () => {
+  it("p1 은 1분 영상 1회, 나머지 12편은 20초 3회 → 전부 최대 60초", () => {
+    const ids = Object.keys(PROGRAM_VIDEOS);
+    expect(ids).toHaveLength(13);
+    for (const id of ids) {
+      const g = PROGRAM_VIDEOS[id];
+      expect(guideMaxSec(g), id).toBe(60);
+      if (id === "p1") { expect(g.playCount ?? 1).toBe(1); expect(guideTotalSec(g.steps)).toBe(60); }
+      else { expect(g.playCount).toBe(3); expect(guideTotalSec(g.steps)).toBe(20); }
+    }
+  });
+  it("걷기 p13·p14 는 영상이 없다", () => {
+    expect(PROGRAM_VIDEOS.p13).toBeUndefined();
+    expect(PROGRAM_VIDEOS.p14).toBeUndefined();
+  });
+  it("모든 영상 파일이 public 에 실재한다", async () => {
+    const fs = await import("node:fs");
+    for (const g of Object.values(PROGRAM_VIDEOS)) {
+      expect(fs.existsSync("public" + g.src), g.src).toBe(true);
+    }
+  });
+});

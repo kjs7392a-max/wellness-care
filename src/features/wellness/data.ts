@@ -1,4 +1,4 @@
-import { SHOULDER_RELEASE, type GuideVideo } from "./guide";
+import { PROGRAM_VIDEOS, SHOULDER_RELEASE, type GuideVideo } from "./guide";
 
 // 교직원 웰니스 케어 MVP — 데이터 상수.
 // 원본: design_handoff_wellness_care/웰니스케어-design.dc.html 의 로직 상단 상수 그대로 이식.
@@ -162,21 +162,21 @@ export interface Program extends StretchItem {
 }
 
 export const PROGRAMS: Program[] = [
-  { id: "p1", area: "neck", title: "목·어깨 긴장 이완", min: 3, place: "indoor", low: true, desc: "칠판 앞에 오래 서 계셨죠. 어깨부터 천천히 내려놓아 볼까요." },
-  { id: "p2", area: "neck", title: "앉은 채로 목 천천히 풀기", min: 1, place: "indoor", low: true, desc: "의자에 앉은 그대로, 고개를 아주 천천히 기울이는 동작만 있어요." },
-  { id: "p3", area: "neck", title: "거북목 되돌리기", min: 5, place: "indoor", low: false, desc: "화면 쪽으로 나온 목을 제자리로 데려오는 동작이에요." },
-  { id: "p4", area: "back", title: "퇴근 전 허리 회복", min: 5, place: "indoor", low: false, desc: "하루 종일 앉아 있던 허리를 되돌리고 나가는 시간이에요." },
-  { id: "p5", area: "back", title: "앉은 자리 허리 부담 덜기", min: 3, place: "indoor", low: true, desc: "등을 의자에 붙이고 자세만 바로잡습니다. 일어서지 않아요." },
-  { id: "p6", area: "eye", title: "30초 눈 쉬기", min: 1, place: "indoor", low: true, desc: "화면에서 잠깐만 눈을 떼면 됩니다. 자리에서 그대로 할 수 있어요." },
-  { id: "p7", area: "wrist", title: "손목·관절 보호 이완", min: 3, place: "indoor", low: true, desc: "반복해서 쓰신 손목을 쉬게 해주는 동작이에요." },
-  { id: "p8", area: "leg", title: "종아리 피로 풀기", min: 5, place: "indoor", low: false, desc: "오래 서 계셨죠. 종아리부터 천천히 풀어볼까요." },
-  { id: "p9", area: "leg", title: "앉아서 다리 부종 케어", min: 3, place: "indoor", low: true, desc: "의자에 앉아 발끝만 천천히 움직이면 됩니다." },
-  { id: "p10", area: "breath", title: "수업 전 목소리 이완 호흡", min: 1, place: "indoor", low: true, desc: "교실에 들어가기 전 잠깐이면 돼요. 목을 열어두면 하루가 수월합니다." },
-  { id: "p11", area: "breath", title: "3분 숨 고르기", min: 3, place: "indoor", low: true, desc: "창가나 복도 끝, 어디든 좋아요. 숨만 천천히 쉬면 됩니다." },
-  { id: "p12", area: "breath", title: "잠들기 전 이완 호흡", min: 10, place: "indoor", low: true, desc: "누운 채로 할 수 있어요. 하루를 닫는 시간입니다." },
+  { id: "p1", area: "neck", title: "목·어깨 긴장 이완", min: 3, place: "indoor", low: true, desc: "칠판 앞에 오래 서 계셨죠. 어깨부터 천천히 내려놓아 볼까요.", video: PROGRAM_VIDEOS.p1 },
+  { id: "p2", area: "neck", title: "앉은 채로 목 천천히 풀기", min: 1, place: "indoor", low: true, desc: "의자에 앉은 그대로, 고개를 아주 천천히 기울이는 동작만 있어요.", video: PROGRAM_VIDEOS.p2 },
+  { id: "p3", area: "neck", title: "거북목 되돌리기", min: 5, place: "indoor", low: false, desc: "화면 쪽으로 나온 목을 제자리로 데려오는 동작이에요.", video: PROGRAM_VIDEOS.p3 },
+  { id: "p4", area: "back", title: "퇴근 전 허리 회복", min: 5, place: "indoor", low: false, desc: "하루 종일 앉아 있던 허리를 되돌리고 나가는 시간이에요.", video: PROGRAM_VIDEOS.p4 },
+  { id: "p5", area: "back", title: "앉은 자리 허리 부담 덜기", min: 3, place: "indoor", low: true, desc: "등을 의자에 붙이고 자세만 바로잡습니다. 일어서지 않아요.", video: PROGRAM_VIDEOS.p5 },
+  { id: "p6", area: "eye", title: "30초 눈 쉬기", min: 1, place: "indoor", low: true, desc: "화면에서 잠깐만 눈을 떼면 됩니다. 자리에서 그대로 할 수 있어요.", video: PROGRAM_VIDEOS.p6 },
+  { id: "p7", area: "wrist", title: "손목·관절 보호 이완", min: 3, place: "indoor", low: true, desc: "반복해서 쓰신 손목을 쉬게 해주는 동작이에요.", video: PROGRAM_VIDEOS.p7 },
+  { id: "p8", area: "leg", title: "종아리 피로 풀기", min: 5, place: "indoor", low: false, desc: "오래 서 계셨죠. 종아리부터 천천히 풀어볼까요.", video: PROGRAM_VIDEOS.p8 },
+  { id: "p9", area: "leg", title: "앉아서 다리 부종 케어", min: 3, place: "indoor", low: true, desc: "의자에 앉아 발끝만 천천히 움직이면 됩니다.", video: PROGRAM_VIDEOS.p9 },
+  { id: "p10", area: "breath", title: "수업 전 목소리 이완 호흡", min: 1, place: "indoor", low: true, desc: "교실에 들어가기 전 잠깐이면 돼요. 목을 열어두면 하루가 수월합니다.", video: PROGRAM_VIDEOS.p10 },
+  { id: "p11", area: "breath", title: "3분 숨 고르기", min: 3, place: "indoor", low: true, desc: "창가나 복도 끝, 어디든 좋아요. 숨만 천천히 쉬면 됩니다.", video: PROGRAM_VIDEOS.p11 },
+  { id: "p12", area: "breath", title: "잠들기 전 이완 호흡", min: 10, place: "indoor", low: true, desc: "누운 채로 할 수 있어요. 하루를 닫는 시간입니다.", video: PROGRAM_VIDEOS.p12 },
   { id: "p13", area: "walk", title: "복도 한 바퀴 걷기", min: 5, place: "indoor", low: false, desc: "교실을 나와 복도 끝까지만 다녀오면 돼요." },
   { id: "p14", area: "walk", title: "해 진 뒤 저녁 산책", min: 10, place: "outdoor", low: false, desc: "더위가 가신 시간에 천천히 걷는 코스예요." },
-  { id: "p15", area: "back", title: "전신 1분 기지개", min: 1, place: "indoor", low: true, desc: "자리에서 크게 한 번 펴는 것만으로 충분합니다." },
+  { id: "p15", area: "back", title: "전신 1분 기지개", min: 1, place: "indoor", low: true, desc: "자리에서 크게 한 번 펴는 것만으로 충분합니다.", video: PROGRAM_VIDEOS.p15 },
 ];
 
 export type WeatherKey = "hot" | "cold" | "rain" | "dust" | "fine";
