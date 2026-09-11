@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
+import { resolveSuggestion } from "./suggestion";
 import {
   AREAS, CHAT_INTRO, CHAT_BEATS, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
-  NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROBES, PROGRAMS, ROLES, slotForHour,
+  NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROBES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, WEEKLY_PAST, type ContentState, type Role, type WeatherKey,
 } from "./data";
 import { riskLevel, RISK_REPLY } from "./risk";
@@ -210,20 +211,19 @@ export default function WellnessApp() {
     const onboarding = authed && st.ob >= 0;
     const parqYes = Object.values(st.parq).filter(Boolean).length;
     const parqAll = Object.keys(st.parq).length === PARQ.length;
-    const hr = st.now.getHours();
-    const slot = slotForHour(hr);
+    // 제안 항목·시간대·주말 판정은 resolveSuggestion 한 곳 — MVP 시연 동안은 하나로 고정돼 있다(suggestion.ts 참고).
+    const sug = resolveSuggestion({ role: roleKey, parqYes: parqYes > 0, hour: st.now.getHours(), dow: st.now.getDay() });
+    const slot = sug.slot;
     const liveKey = st.live && st.live.key;
     const wxBase = WEATHER[(liveKey as WeatherKey) || "hot"] || WEATHER.hot;
     const wx = st.live
       ? { ...wxBase, label: st.live.temp + "° " + wxBase.word, note: (st.live.feels !== st.live.temp ? "체감 " + st.live.feels + "° · " : "") + wxBase.plain }
       : wxBase;
     const feelsTxt = st.live ? "체감 " + st.live.feels + "도" : "체감 35도";
-    const baseItem = (parqYes && role.low ? role.low : role.items)[slot];
-    const item = st.program || baseItem;
+    const item = st.program || sug.item;
     // 주말·휴일엔 프로그램 이름의 평일 표현("퇴근 전 ")을 떼서 상황과 어긋나지 않게 한다.
     // (직접 고른 프로그램 st.program은 사용자가 고른 원래 이름 그대로 둔다.)
-    const dow = st.now.getDay();
-    const isWeekend = dow === 0 || dow === 6;
+    const isWeekend = sug.isWeekend;
     const itemTitle = isWeekend && !st.program ? item.title.replace(/^퇴근 전 /, "") : item.title;
     const area = st.area || "all";
     const libList = PROGRAMS
