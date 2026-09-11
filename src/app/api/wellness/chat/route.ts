@@ -81,7 +81,11 @@ export async function POST(req: Request) {
       .map((b) => b.text)
       .join("")
       .trim();
-    if (!reply) return NextResponse.json({ fallback: true });
+    if (!reply) {
+      // 2026-09-12 라이브 시험 16건 중 1건이 여기로 왔다(오류 없이 빈 본문). 어떤 stop_reason 인지 남긴다(본문은 안 남김).
+      console.warn("[wellness/chat] empty reply", { stop: msg.stop_reason, blocks: msg.content.map((b) => b.type) });
+      return NextResponse.json({ fallback: true });
+    }
     return NextResponse.json({ reply });
   } catch (e) {
     // 키 미설정·쿼터·네트워크 등 — 시나리오 폴백으로 넘긴다.
