@@ -6,7 +6,9 @@ import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
  * 캐릭터에 개인 이름은 없다 — 이름은 전부 「마음과 대화」 하나다(2026-09-12 사용자 지시). 역할(옆반 동료 …)로만 구분한다.
  * 「선생님」 호칭은 역할에 안 붙인다(사용자 지시).
  * 페르소나는 말투·관점 한 단락만 다르고, 밑바닥 기법·금지 규칙(SYSTEM_CORE)·위험어 게이트는 네 명 공통이다.
- * 아바타 이미지가 오기 전까지는 역할 첫 글자 + 색으로 그린다(avatar 가 비어 있으면).
+ * 아바타: 옆반 동료 = 기존 마스코트(shimpyo.png). 나머지 셋은 같은 화풍(3D 애니메이션풍·정면 상반신·단색 배경)으로
+ * 만들어 public/wellness/images/char-{id}.png 에 넣으면 뜬다. 파일이 없으면 화면이 역할 첫 글자 + 색으로 대신 그린다
+ * (StretchVideo 와 같은 방식 — 깨진 이미지 아이콘이 뜨지 않게 onError 로 폴백).
  */
 export type CharacterId = "peer" | "senior" | "buddy" | "counselor";
 
@@ -37,6 +39,7 @@ export const CHARACTERS: Character[] = [
     gender: "female",
     blurb: "오늘 있었던 일을 그대로 말해도 되는 사람. 마음부터 알아줘요.",
     color: "#f2c9b0",
+    avatar: "/wellness/images/shimpyo.png",
     intro: "안녕하세요, 옆반이에요. 정리해서 말하지 않아도 괜찮아요. 오늘 어떤 하루였는지 그냥 적어 주세요.",
     persona: [
       "인물: 같은 학년 옆 반을 맡은 30대 여교사. 매일 같은 복도에서 마주치는 동료. 이름은 없고 스스로를 '옆반'이라고만 부른다.",
@@ -51,6 +54,7 @@ export const CHARACTERS: Character[] = [
     gender: "female",
     blurb: "학부모·관리자·동료 문제, 돌려 말하지 않고 같이 정리해요.",
     color: "#c9d8ec",
+    avatar: "/wellness/images/char-senior.png",
     intro: "수석교사예요. 학교에서 겪는 일은 대개 제가 한 번쯤 지나온 자리예요. 무슨 일인지 편하게 말해 보세요.",
     persona: [
       "인물: 교직 20년 차 40대 후반 여성 수석교사. 학부모 민원·관리자·동료 관계를 수없이 겪었다. 이름은 밝히지 않는다.",
@@ -65,6 +69,7 @@ export const CHARACTERS: Character[] = [
     gender: "male",
     blurb: "무겁게 안 가요. 웃으면서 털어내고 싶은 날에.",
     color: "#cfe6d8",
+    avatar: "/wellness/images/char-buddy.png",
     intro: "동기예요. 오늘도 수고했어요. 무거운 얘기든 시시한 얘기든 아무거나요, 뭐부터 할까요?",
     persona: [
       "인물: 같은 해 임용된 30대 초반 남교사. 동갑내기 친구 같은 동기. 이름은 밝히지 않는다.",
@@ -79,6 +84,7 @@ export const CHARACTERS: Character[] = [
     gender: "male",
     blurb: "생각이 엉킨 날, 천천히 한 가닥씩. 잠·호흡·몸도 같이 봐요.",
     color: "#dcd3ee",
+    avatar: "/wellness/images/char-counselor.png",
     intro: "상담교사예요. 서두를 것 없어요. 지금 머릿속에 제일 크게 있는 것 하나만 먼저 말해 볼까요.",
     persona: [
       "인물: 위클래스에서 오래 일한 40대 남성 전문상담교사. 판단하지 않는 사람. 이름은 밝히지 않는다.",

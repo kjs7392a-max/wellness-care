@@ -57,6 +57,8 @@ interface State {
   character: CharacterId;
   /** 캐릭터 고르기 화면(대화 시트 위에 겹침) */
   pickingCharacter: boolean;
+  /** 아바타 이미지를 못 읽은 캐릭터(파일 아직 없음) — 글자 아바타로 대신 그린다 */
+  avatarMissing: Partial<Record<CharacterId, boolean>>;
 }
 
 function stampAt(n: number, ref?: Date): string {
@@ -78,7 +80,7 @@ export default function WellnessApp() {
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", riskShown: false,
-    character: DEFAULT_CHARACTER, pickingCharacter: false,
+    character: DEFAULT_CHARACTER, pickingCharacter: false, avatarMissing: {},
   }));
 
   const patch = (p: Partial<State>) => setS((st) => ({ ...st, ...p }));
@@ -1172,10 +1174,15 @@ export default function WellnessApp() {
     void week; // 주간 온도 미니바(원본 미표시)
     const ch = characterOf(s.character);
     // 아바타: 이미지가 오기 전까지 역할 첫 글자 + 캐릭터 색. 이미지가 생기면 characters.ts 의 avatar 에 경로만 넣으면 된다.
+    // 이미지가 없거나 못 읽으면(아직 안 만든 캐릭터) 역할 첫 글자 + 색으로 — <img onError> 로 그 자리에서 전환.
     const avatar = (size: number, c = ch) => (
-      c.avatar
-        ? <div style={sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; overflow:hidden; background:url(${c.avatar}) center/cover`)} />
-        : <div style={{ ...sx(`width:${size}px; height:${size}px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e`), background: c.color, fontSize: Math.round(size * 0.42) }}>{c.role.slice(0, 1)}</div>
+      <div style={{ ...sx(`position:relative; width:${size}px; height:${size}px; border-radius:50%; flex:none; overflow:hidden; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e`), background: c.color, fontSize: Math.round(size * 0.42) }}>
+        {c.role.slice(0, 1)}
+        {c.avatar && !s.avatarMissing[c.id] && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.avatar} alt="" onError={() => patchFn((st) => ({ avatarMissing: { ...st.avatarMissing, [c.id]: true } }))} style={sx("position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block")} />
+        )}
+      </div>
     );
     // 상대 바꾸기 = 새 대화(인사부터). 위험 안내 상태도 초기화.
     const pickCharacter = (id: CharacterId) => {
