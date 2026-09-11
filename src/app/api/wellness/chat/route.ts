@@ -75,8 +75,12 @@ export async function POST(req: Request) {
       .trim();
     if (!reply) return NextResponse.json({ fallback: true });
     return NextResponse.json({ reply });
-  } catch {
+  } catch (e) {
     // 키 미설정·쿼터·네트워크 등 — 시나리오 폴백으로 넘긴다.
+    // 원인은 로그에 남긴다(대화 본문은 절대 안 남긴다). 2026-09-12 에 라이브가 전부 fallback 인데
+    // 로그에 200 만 남아 원인을 알 수 없었다 — 삼키기만 하면 죽은 키와 네트워크 장애를 구분 못 한다.
+    const err = e as { status?: number; name?: string; message?: string };
+    console.error("[wellness/chat] llm failed", { status: err?.status, name: err?.name, message: String(err?.message || "").slice(0, 200) });
     return NextResponse.json({ fallback: true });
   }
 }
