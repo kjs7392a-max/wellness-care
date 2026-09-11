@@ -428,7 +428,6 @@ export default function WellnessApp() {
                   </div>
                 );
               })}
-              <div style={sx("font-size:12px; color:#8ba8b3; line-height:1.6; padding:2px; text-wrap:pretty")}>권한을 허용하지 않아도 나머지는 그대로 동작해요.</div>
             </div>
           )}
         </div>
