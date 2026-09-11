@@ -1012,9 +1012,12 @@ export default function WellnessApp() {
               <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>{item.desc}</div>
             </div>
             <StretchVideo guide={item.video} playing={s.running} onEnded={() => patch({ running: false, remaining: 0 })} />
-            <div style={sx("flex:none; font-size:14px; font-weight:700; color:#2d5c6e; text-align:center; text-wrap:pretty")}>영상을 따라 해보세요</div>
-            {/* 맨 아래 버튼: 「시작하기」가 영상을 틀고, 재생 중·끝난 뒤엔 「마치기」로 닫는다(사용자 지시). remaining=0 은 '한 번 다 봤다' 표시. */}
-            <div onClick={s.running || s.remaining === 0 ? close : () => patch({ running: true })} style={sx("flex:none; cursor:pointer; text-align:center; padding:17px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{s.running || s.remaining === 0 ? "마치기" : "시작하기"}</div>
+            <div style={sx("flex:none; display:flex; flex-direction:column; gap:3px; text-align:center")}>
+              <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>영상을 따라 해보세요</div>
+              <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>스트레칭은 1분입니다. 계속 하시려면 1분 뒤 「시작하기」를 다시 누르세요.</div>
+            </div>
+            {/* 맨 아래 버튼: 「시작하기」가 영상을 틀고(끝난 뒤 다시 누르면 처음부터), 재생 중엔 「마치기」로 닫는다(사용자 지시). */}
+            <div onClick={s.running ? close : () => patch({ running: true })} style={sx("flex:none; cursor:pointer; text-align:center; padding:17px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{s.running ? "마치기" : "시작하기"}</div>
           </div>
         </div>
       );

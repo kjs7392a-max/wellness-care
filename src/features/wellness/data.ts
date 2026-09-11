@@ -88,7 +88,7 @@ export const ROLES: Record<Role, RoleContent> = {
     items: [
       { title: "수업 전 목소리·후두 이완 호흡", desc: "교실에 들어가기 전 잠깐이면 돼요. 목을 열어두면 하루가 조금 수월해집니다." },
       { title: "4교시 후 목·어깨 긴장 이완", desc: "칠판 앞에 오래 서 계셨죠. 어깨부터 천천히 내려놓아 볼까요." },
-      { title: "퇴근 전 어깨·목 풀기", desc: "하루 종일 올려두었던 어깨를 내려놓고 나가는 시간이에요.", video: SHOULDER_RELEASE },
+      { title: "퇴근 전 어깨·목 풀기", desc: "하루 종일 굳어 있던 어깨와 목을 풀고 가볍게 퇴근하세요.", video: SHOULDER_RELEASE },
     ],
     low: [
       { title: "앉은 자리에서 하는 목소리 이완 호흡", desc: "의자에 기대앉아 숨만 고르면 됩니다. 일어나지 않으셔도 돼요." },
