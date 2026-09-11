@@ -350,7 +350,6 @@ export default function WellnessApp() {
                   <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ci.why}</div>
                 </div>
               ))}
-              <div style={sx("font-size:12px; color:#8ba8b3; line-height:1.6; padding:2px 2px 0; text-wrap:pretty")}>카메라와 마이크는 사용하지 않고, 위치도 수집하지 않아요. 무엇을 보셨는지, 누구와 있었는지는 알 수 없습니다.</div>
             </div>
           )}
 
