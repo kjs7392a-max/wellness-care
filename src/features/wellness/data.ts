@@ -1,3 +1,5 @@
+import { SHOULDER_RELEASE, type GuideVideo } from "./guide";
+
 // 교직원 웰니스 케어 MVP — 데이터 상수.
 // 원본: design_handoff_wellness_care/웰니스케어-design.dc.html 의 로직 상단 상수 그대로 이식.
 // 문구·수치는 임상/디자인 감수를 거친 값이므로 임의 수정 금지.
@@ -65,11 +67,18 @@ export const PROBES: Probe[] = [
   },
 ];
 
+/** 홈 제안·라이브러리 항목이 공유하는 최소 형태. video 가 있으면 타이머 시트가 원형 시계 대신 가이드 영상을 튼다. */
+export interface StretchItem {
+  title: string;
+  desc: string;
+  video?: GuideVideo;
+}
+
 export interface RoleContent {
   label: string;
   hint: string;
-  items: { title: string; desc: string }[];
-  low: { title: string; desc: string }[];
+  items: StretchItem[];
+  low: StretchItem[];
 }
 
 export const ROLES: Record<Role, RoleContent> = {
@@ -79,12 +88,12 @@ export const ROLES: Record<Role, RoleContent> = {
     items: [
       { title: "수업 전 목소리·후두 이완 호흡", desc: "교실에 들어가기 전 잠깐이면 돼요. 목을 열어두면 하루가 조금 수월해집니다." },
       { title: "4교시 후 목·어깨 긴장 이완", desc: "칠판 앞에 오래 서 계셨죠. 어깨부터 천천히 내려놓아 볼까요." },
-      { title: "퇴근 전 어깨·목 풀기", desc: "하루 종일 올려두었던 어깨를 내려놓고 나가는 시간이에요." },
+      { title: "퇴근 전 어깨·목 풀기", desc: "하루 종일 올려두었던 어깨를 내려놓고 나가는 시간이에요.", video: SHOULDER_RELEASE },
     ],
     low: [
       { title: "앉은 자리에서 하는 목소리 이완 호흡", desc: "의자에 기대앉아 숨만 고르면 됩니다. 일어나지 않으셔도 돼요." },
       { title: "앉은 채로 목·어깨 천천히 풀기", desc: "의자에 앉은 그대로, 고개를 아주 천천히 기울이는 동작만 있어요." },
-      { title: "퇴근 전 앉은 채로 어깨 내려놓기", desc: "자리에 앉은 그대로, 어깨만 천천히 풀고 나가시면 돼요." },
+      { title: "퇴근 전 앉은 채로 어깨 내려놓기", desc: "자리에 앉은 그대로, 어깨만 천천히 풀고 나가시면 돼요.", video: SHOULDER_RELEASE },
     ],
   },
   admin: {
@@ -144,14 +153,12 @@ export const AREAS = [
   { id: "walk", label: "걷기" },
 ];
 
-export interface Program {
+export interface Program extends StretchItem {
   id: string;
   area: string;
-  title: string;
   min: number;
   place: "indoor" | "outdoor";
   low: boolean;
-  desc: string;
 }
 
 export const PROGRAMS: Program[] = [

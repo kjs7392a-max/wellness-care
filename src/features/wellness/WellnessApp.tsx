@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
+import { StretchVideo } from "./StretchVideo";
 import {
   AREAS, CHAT_INTRO, CHAT_BEATS, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
   NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROBES, PROGRAMS, ROLES, slotForHour,
@@ -1038,12 +1039,21 @@ export default function WellnessApp() {
             })}
           </div>
 
+          {item.video ? (
+            // 가이드 영상이 있는 항목은 원형 시계 대신 영상 + 구간 안내. 남은 시간은 영상 아래 작게.
+            <div style={sx("display:flex; flex-direction:column; align-items:center; gap:12px; padding:4px 0")}>
+              <StretchVideo guide={item.video} elapsed={s.minutes * 60 - s.remaining} running={s.running} total={s.minutes * 60} />
+              <div style={sx("font-size:22px; font-weight:300; color:#2d5c6e; font-variant-numeric:tabular-nums")}>{mm}:{ss}</div>
+              <div style={sx("font-size:13px; color:#8ba8b3; text-align:center; text-wrap:pretty")}>{timerHint}</div>
+            </div>
+          ) : (
           <div style={sx("display:flex; flex-direction:column; align-items:center; gap:20px; padding:14px 0")}>
             <div style={sx("position:relative; width:206px; height:206px; border-radius:50%; background:linear-gradient(140deg,#eaf5f8,#d5eaf1); display:flex; align-items:center; justify-content:center; box-shadow:inset 0 2px 18px rgba(45,92,110,0.07)")}>
               <div style={sx("font-size:42px; font-weight:300; color:#2d5c6e; font-variant-numeric:tabular-nums")}>{mm}:{ss}</div>
             </div>
             <div style={sx("font-size:13px; color:#8ba8b3; text-align:center; text-wrap:pretty")}>{timerHint}</div>
           </div>
+          )}
 
           <div onClick={toggleTimer} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{timerBtn}</div>
         </div>
