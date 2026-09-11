@@ -997,6 +997,27 @@ export default function WellnessApp() {
 
   function renderContent() {
     const item = v.item;
+    // 가이드 영상이 있는 항목 = 타이머 없이 영상만(2026-09-12 사용자 지시). 분 선택·시계·기록 없음.
+    if (item.video) {
+      const close = () => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: null, running: false, consultOpen: false }); };
+      return (
+        <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+          <div style={sx("display:flex; align-items:center; padding:52px 20px 10px")}>
+            <div onClick={close} style={sx("cursor:pointer; font-size:15px; color:#6b8c9a; padding:4px 8px 4px 0")}>‹ 닫기</div>
+          </div>
+          <div style={sx("flex:1; display:flex; flex-direction:column; gap:18px; padding:8px 24px 32px")}>
+            <div style={sx("display:flex; flex-direction:column; gap:8px")}>
+              <div style={sx("font-size:23px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{v.itemTitle}</div>
+              <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>{item.desc}</div>
+            </div>
+            <StretchVideo guide={item.video} playing={s.running} />
+            <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e; text-align:center; text-wrap:pretty")}>영상을 따라 해보세요</div>
+            {/* 맨 아래 버튼: 「시작하기」가 영상을 틀고, 재생 중엔 「마치기」로 닫는다(사용자 지시). */}
+            <div onClick={s.running ? close : () => patch({ running: true })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{s.running ? "마치기" : "시작하기"}</div>
+          </div>
+        </div>
+      );
+    }
     const mm = String(Math.floor(s.remaining / 60)).padStart(2, "0");
     const ss = String(s.remaining % 60).padStart(2, "0");
     const durations = [1, 3, 5, 10];
@@ -1039,21 +1060,12 @@ export default function WellnessApp() {
             })}
           </div>
 
-          {item.video ? (
-            // 가이드 영상이 있는 항목은 원형 시계 대신 영상 + 구간 안내. 남은 시간은 영상 아래 작게.
-            <div style={sx("display:flex; flex-direction:column; align-items:center; gap:12px; padding:4px 0")}>
-              <StretchVideo guide={item.video} elapsed={s.minutes * 60 - s.remaining} running={s.running} total={s.minutes * 60} />
-              <div style={sx("font-size:22px; font-weight:300; color:#2d5c6e; font-variant-numeric:tabular-nums")}>{mm}:{ss}</div>
-              <div style={sx("font-size:13px; color:#8ba8b3; text-align:center; text-wrap:pretty")}>{timerHint}</div>
-            </div>
-          ) : (
           <div style={sx("display:flex; flex-direction:column; align-items:center; gap:20px; padding:14px 0")}>
             <div style={sx("position:relative; width:206px; height:206px; border-radius:50%; background:linear-gradient(140deg,#eaf5f8,#d5eaf1); display:flex; align-items:center; justify-content:center; box-shadow:inset 0 2px 18px rgba(45,92,110,0.07)")}>
               <div style={sx("font-size:42px; font-weight:300; color:#2d5c6e; font-variant-numeric:tabular-nums")}>{mm}:{ss}</div>
             </div>
             <div style={sx("font-size:13px; color:#8ba8b3; text-align:center; text-wrap:pretty")}>{timerHint}</div>
           </div>
-          )}
 
           <div onClick={toggleTimer} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{timerBtn}</div>
         </div>
