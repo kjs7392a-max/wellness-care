@@ -953,7 +953,6 @@ export default function WellnessApp() {
     const answered = v.answered;
     const done = samDone(s.sam);
     const dir = done ? directing(s.sam as Required<{ [K in (typeof AXES)[number]["key"]]: SamScore }>, v.cond.dayBody, v.slot) : null;
-    const visible = AXES.slice(0, Math.min(answered + 1, AXES.length));
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
@@ -980,32 +979,40 @@ export default function WellnessApp() {
             <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 다섯 번이면 오늘의 디렉팅이 나와요.</div>
           )}
 
-          {visible.map((x, k) => {
-            const value = s.sam[x.key];
-            const isCurrent = k === answered && !done;
+          {/* 고른 줄은 한 줄로 접힘(바꾸기 가능) */}
+          {AXES.filter((x, k) => s.sam[x.key] !== null && (k < answered || done)).map((x) => (
+            <div key={x.key} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: null } }))} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #e3eef1")}>
+              <div style={sx("width:34px; height:34px; border-radius:9px; overflow:hidden; flex:none; background:#eef3f5")}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`${IMG}/sam-${x.key}-${s.sam[x.key]}.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              </div>
+              <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#6b8c9a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{x.question}</div>
+              <div style={sx("flex:none; font-size:12.5px; font-weight:700; color:#2d5c6e")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>
+              <div style={sx("flex:none; font-size:11px; font-weight:700; color:#7a6bc4")}>바꾸기</div>
+            </div>
+          ))}
+
+          {/* 지금 답할 줄 — 그림 5장을 세로로 크게 */}
+          {!done && (() => {
+            const x = AXES.find((ax) => s.sam[ax.key] === null)!;
             return (
-              <div key={x.key} style={{ ...sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:14px 13px 12px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both"), opacity: isCurrent || done || value ? 1 : 0.6 }}>
-                <div style={sx("display:flex; align-items:baseline; justify-content:space-between; gap:8px")}>
-                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.question}</div>
-                  <div style={sx("flex:none; font-size:11px; color:#8ba8b3; white-space:nowrap")}>{x.hint}</div>
-                </div>
-                <div style={sx("display:grid; grid-template-columns:repeat(5,1fr); gap:6px")}>
-                  {([1, 2, 3, 4, 5] as SamScore[]).map((n) => {
-                    const on = value === n;
-                    return (
-                      <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 3px 6px; border-radius:13px; border:2px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#7a6bc4" : "transparent" }}>
-                        <div style={sx("width:100%; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#eef3f5")}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={`${IMG}/sam-${x.key}-${n}.png`} alt={x.labels[n - 1]} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                        </div>
-                        <div style={{ ...sx("font-size:10px; font-weight:700; text-align:center; line-height:1.2; word-break:keep-all"), color: on ? "#7a6bc4" : "#8ba8b3" }}>{x.labels[n - 1]}</div>
+              <div key={x.key} style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
+                <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.question}</div>
+                <div style={sx("font-size:11.5px; color:#8ba8b3")}>{x.hint} · 지금 느낌에 가장 가까운 그림을 골라 주세요</div>
+                <div style={sx("display:flex; flex-direction:column; gap:8px")}>
+                  {([1, 2, 3, 4, 5] as SamScore[]).map((n) => (
+                    <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:6px; border-radius:16px; border:1.5px solid #e3eef1; background:#fff; transition:all 0.18s")}>
+                      <div style={sx("width:132px; height:84px; border-radius:12px; overflow:hidden; flex:none; background:#eef3f5")}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`${IMG}/sam-${x.key}-${n}.png`} alt={x.labels[n - 1]} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       </div>
-                    );
-                  })}
+                      <div style={sx("flex:1; min-width:0; font-size:14px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.labels[n - 1]}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
-          })}
+          })()}
 
           {dir && (
             <div style={sx("flex:none; display:flex; flex-direction:column; gap:14px; animation:wRise 0.4s ease-out both")}>
