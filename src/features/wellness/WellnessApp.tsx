@@ -517,7 +517,6 @@ export default function WellnessApp() {
     const stepZoneLabel = stepFrac < 0.4 ? "평소보다 적음" : stepFrac <= 0.8 ? "평소 범위 안" : "평소보다 많음";
     const knobX = (80 - 68 * Math.cos(Math.PI * stepFrac)).toFixed(1);
     const knobY = (80 - 68 * Math.sin(Math.PI * stepFrac)).toFixed(1);
-    const sleepBars = [9, 17, 6, 22, 13, 20, 26].map((h, i) => ({ h, bg: i === 6 ? "#8a7cd0" : "#e6e2f7" }));
     const moveBars = [11, 19, 8, 24, 14, 21, 26].map((h, i) => ({ h, bg: i === 6 ? "#5bc4b8" : "#daf0ec" }));
 
     return (
@@ -637,14 +636,12 @@ export default function WellnessApp() {
                 <div style={sx("font-size:19px; font-weight:700; color:#2d5c6e; letter-spacing:-0.03em; line-height:1; font-variant-numeric:tabular-nums; margin-top:-6px")}>4,120</div>
                 <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{stepZoneLabel}</div>
               </div>
-              {/* 몸풀기 — 이번 주 요일 점(한 날 = 점 하나, 오늘 진하게) */}
+              {/* 몸풀기 — 점·부위 개수는 뜻이 안 읽혀서(사용자) 「오늘 몫 완료」 배지 + 횟수·시간 + 설명 한 줄로 */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px; border-right:1px solid #ece8f5")}>
                 <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>몸풀기</div>
-                <div style={sx("display:flex; gap:4px; padding:6px 0 2px")}>
-                  {sleepBars.map((b, k) => (<div key={k} style={{ ...sx("width:8px; height:8px; border-radius:50%"), background: b.h >= 13 ? (k === 6 ? "#8a7cd0" : "#c4b8ec") : "#ece8f5" }} />))}
-                </div>
+                <div style={sx("margin:6px 0 2px; padding:4px 9px; border-radius:999px; background:#dff2e6; color:#2f6a4a; font-size:10.5px; font-weight:700; white-space:nowrap")}>오늘 몫 완료</div>
                 <div style={sx("font-size:19px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>3회 · 7분</div>
-                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>목·어깨 2 · 눈 1</div>
+                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>함께한 스트레칭</div>
               </div>
               {/* 움직인 시간 */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px")}>
