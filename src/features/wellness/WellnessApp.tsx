@@ -432,7 +432,7 @@ export default function WellnessApp() {
                   <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{v.parqYes ? "해당되는 항목이 있어 앉은 자리에서 하는 낮은 강도만 제안해 드립니다. 새로운 운동을 시작하기 전에는 주치의와 한 번 상의해 주세요." : "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
                 </div>
               )}
-              <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.65; padding:2px; text-wrap:pretty")}>PAR-Q+ (Physical Activity Readiness Questionnaire)는 캐나다운동생리학회가 만든 국제 표준 문항으로, 건강검진이나 진단이 아닙니다. 이 답은 활동 강도를 정하는 데만 쓰이고, 본인 외에는 누구도 볼 수 없습니다. 설정에서 언제든 다시 답할 수 있어요.</div>
+              <div style={sx("font-size:13px; color:#2d5c6e; font-weight:600; line-height:1.65; padding:2px; text-wrap:pretty")}>PAR-Q+ (Physical Activity Readiness Questionnaire)는 캐나다운동생리학회가 만든 국제 표준 문항으로, 건강검진이나 진단이 아닙니다. 이 답은 활동 강도를 정하는 데만 쓰이고, 본인 외에는 누구도 볼 수 없습니다. 설정에서 언제든 다시 답할 수 있어요.</div>
             </div>
           )}
 
