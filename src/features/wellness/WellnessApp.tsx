@@ -570,56 +570,6 @@ export default function WellnessApp() {
           );
         })()}
 
-        {/* AI 오늘의 제안 */}
-        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #e2e9f5; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
-          <div style={sx("display:flex; align-items:center; gap:9px")}>
-            <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:34px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,0.85); border:1px solid rgba(255,255,255,0.95)")}>
-              <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
-              <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
-            </div>
-            <div style={sx("flex:1; min-width:0; font-size:13px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
-          </div>
-          <div style={sx("display:flex; align-items:center; gap:9px")}>
-            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>AI 오늘의 제안</div>
-            <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
-          </div>
-          <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
-          <div onClick={() => patch({ sheet: "content", program: null })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:60px; padding:0 16px; border-radius:16px; background:#7a6bc4; box-shadow:0 6px 16px rgba(122,107,196,0.32)")}>
-            <div style={sx("flex:none; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center")}>
-              <div style={sx("width:0; height:0; margin-left:3px; border-left:11px solid #fff; border-top:7px solid transparent; border-bottom:7px solid transparent")} />
-            </div>
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-              <div style={sx("font-size:10.5px; font-weight:700; color:rgba(255,255,255,0.75); letter-spacing:0.03em")}>지금 바로 시작하기</div>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#fff; text-wrap:pretty")}>{v.itemTitle}</div>
-            </div>
-            <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
-          </div>
-        </div>
-
-        {/* 2단 타일 */}
-        <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
-          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
-            <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
-              <div style={sx(`width:36px; height:36px; flex:none; border-radius:11px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
-              <div style={sx("flex:1; text-align:right; font-size:15px; color:#e0876c")}>↗</div>
-            </div>
-            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
-              <div style={sx("font-size:12px; color:#9a5f4c; line-height:1.5")}>짧은 몸풀기 {v.libList.length}가지</div>
-            </div>
-          </div>
-          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
-            <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
-              <div style={sx(`width:36px; height:36px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
-              <div style={sx("flex:1; text-align:right; font-size:15px; color:#8a7cd0")}>↗</div>
-            </div>
-            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#4a3f80")}>마음 건강</div>
-              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5")}>대화 · 오늘의 그림</div>
-            </div>
-          </div>
-        </div>
-
         {/* 오늘의 기록 */}
         <div style={sx("display:grid; gap:11px")}>
           <div style={sx("display:flex; align-items:center; gap:9px; padding:0 2px")}>
@@ -681,6 +631,56 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
+        {/* AI 오늘의 제안 */}
+        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #e2e9f5; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
+          <div style={sx("display:flex; align-items:center; gap:9px")}>
+            <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:34px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,0.85); border:1px solid rgba(255,255,255,0.95)")}>
+              <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
+              <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
+            </div>
+            <div style={sx("flex:1; min-width:0; font-size:13px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
+          </div>
+          <div style={sx("display:flex; align-items:center; gap:9px")}>
+            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>AI 오늘의 제안</div>
+            <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
+          </div>
+          <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
+          <div onClick={() => patch({ sheet: "content", program: null })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:60px; padding:0 16px; border-radius:16px; background:#7a6bc4; box-shadow:0 6px 16px rgba(122,107,196,0.32)")}>
+            <div style={sx("flex:none; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center")}>
+              <div style={sx("width:0; height:0; margin-left:3px; border-left:11px solid #fff; border-top:7px solid transparent; border-bottom:7px solid transparent")} />
+            </div>
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+              <div style={sx("font-size:10.5px; font-weight:700; color:rgba(255,255,255,0.75); letter-spacing:0.03em")}>지금 바로 시작하기</div>
+              <div style={sx("font-size:14.5px; font-weight:700; color:#fff; text-wrap:pretty")}>{v.itemTitle}</div>
+            </div>
+            <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
+          </div>
+        </div>
+
+        {/* 2단 타일 */}
+        <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
+          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
+            <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
+              <div style={sx(`width:36px; height:36px; flex:none; border-radius:11px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
+              <div style={sx("flex:1; text-align:right; font-size:15px; color:#e0876c")}>↗</div>
+            </div>
+            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:14.5px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
+              <div style={sx("font-size:12px; color:#9a5f4c; line-height:1.5")}>짧은 몸풀기 {v.libList.length}가지</div>
+            </div>
+          </div>
+          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
+            <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
+              <div style={sx(`width:36px; height:36px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
+              <div style={sx("flex:1; text-align:right; font-size:15px; color:#8a7cd0")}>↗</div>
+            </div>
+            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:14.5px; font-weight:700; color:#4a3f80")}>마음 건강</div>
+              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5")}>대화 · 오늘의 그림</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     );
   }
