@@ -1216,14 +1216,22 @@ export default function WellnessApp() {
             <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: oc.fg }}>{v.cond.yesterday}</div>
             <div style={{ ...sx("font-size:28px; font-weight:800; letter-spacing:-0.02em"), color: oc.fg }}>{v.cond.dayOverall ? LEVEL_LABEL[v.cond.dayOverall] : "아직 기록이 적어요"}</div>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; margin-top:6px"), color: oc.fg }}>이번 주 흐름</div>
-            {/* 요일별 이름만 — 그래프·숫자 없음 */}
-            <div style={sx("display:flex; gap:5px")}>
+            {/* 요일마다 가로 바 — 채움 길이 = 단계(5칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}
+            <div style={sx("display:flex; flex-direction:column; gap:7px")}>
               {flow.map((h, i) => {
                 const hc = h ? LEVEL_COLOR[h] : { bg: "#eef3f5", fg: "#8ba8b3" };
-                return (<div key={i} style={{ ...sx("flex:1; text-align:center; padding:8px 2px; border-radius:11px; font-size:11px; font-weight:700; line-height:1.3; word-break:keep-all"), background: "rgba(255,255,255,0.7)", color: hc.fg, outline: i === flow.length - 1 ? "1.5px solid rgba(45,92,110,0.3)" : "none" }}>{h ? LEVEL_LABEL[h] : "—"}</div>);
+                const last = i === flow.length - 1;
+                return (
+                  <div key={i} style={{ ...sx("display:flex; align-items:center; gap:9px"), opacity: last ? 1 : 0.8 }}>
+                    <div style={{ ...sx("flex:none; width:28px; font-size:11.5px; font-weight:700; text-align:right"), color: oc.fg }}>{last ? "어제" : dowLabels[i]}</div>
+                    <div style={sx("flex:1; height:9px; border-radius:999px; background:rgba(255,255,255,0.75); overflow:hidden")}>
+                      <div style={{ ...sx("height:100%; border-radius:999px; transition:width 0.4s"), width: h ? `${h * 20}%` : "0%", background: hc.fg, opacity: last ? 1 : 0.7 }} />
+                    </div>
+                    <div style={{ ...sx("flex:none; width:58px; font-size:11.5px; text-align:left; white-space:nowrap"), color: hc.fg, fontWeight: last ? 800 : 600 }}>{h ? LEVEL_LABEL[h] : "기록 없음"}</div>
+                  </div>
+                );
               })}
             </div>
-            <div style={{ ...sx("display:flex; gap:5px; font-size:10.5px; opacity:0.7"), color: oc.fg }}>{dowLabels.map((l, i) => (<div key={i} style={sx("flex:1; text-align:center")}>{i === dowLabels.length - 1 ? "어제" : l}</div>))}</div>
             <div style={{ ...sx("font-size:11.5px; opacity:0.75; line-height:1.5"), color: oc.fg }}>종합은 신체와 마음의 가운데 값이에요. 둘이 갈리면 낮은 쪽으로 봅니다.</div>
           </div>
 
