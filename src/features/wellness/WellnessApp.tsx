@@ -1178,6 +1178,7 @@ export default function WellnessApp() {
                 );
               })}
             </div>
+            <div style={sx("text-align:center; font-size:12.5px; color:#7a6bc4; font-weight:600; line-height:1.5; text-wrap:pretty")}>마음에 드는 캐릭터를 선택하면 대화창으로 들어갑니다.</div>
           </div>
 
           {/* 구분선 */}
