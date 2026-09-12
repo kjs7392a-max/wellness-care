@@ -1166,9 +1166,9 @@ export default function WellnessApp() {
             </div>
             <div style={sx("display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:0 4px")}>
               {CHARACTERS.map((c) => {
-                const on = c.id === s.character;
+                // 네 개 다 같은 흰 테두리 — 「지난번 상대」 보라 링은 뺀다(사용자 지시). 누르면 바로 새 대화라 고른 상태가 없다.
                 return (
-                  <div key={c.id} onClick={() => startTalkWith(c.id)} style={{ ...sx("cursor:pointer; aspect-ratio:1; border-radius:50%; overflow:hidden; border:3px solid; position:relative; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e; font-size:20px"), background: c.color, borderColor: on ? "#7a6bc4" : "#fff", boxShadow: on ? "0 0 0 2px #cfc5ea" : "0 2px 8px rgba(45,92,110,0.12)" }}>
+                  <div key={c.id} onClick={() => startTalkWith(c.id)} style={{ ...sx("cursor:pointer; aspect-ratio:1; border-radius:50%; overflow:hidden; border:3px solid #fff; position:relative; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e; font-size:20px"), background: c.color, boxShadow: "0 2px 8px rgba(45,92,110,0.12)" }}>
                     {c.role.slice(0, 1)}
                     {c.avatar && !s.avatarMissing[c.id] && (
                       // eslint-disable-next-line @next/next/no-img-element
