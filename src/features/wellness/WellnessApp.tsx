@@ -300,12 +300,6 @@ export default function WellnessApp() {
             <div onClick={doLogin} style={{ ...sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.26); transition:background 0.2s"), background: loginBtnBg }}>로그인</div>
           </div>
 
-          <div style={sx("display:flex; align-items:center; gap:12px")}>
-            <div style={sx("flex:1; height:1px; background:#e3eef1")} />
-            <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; color:#8ba8b3")}>또는</div>
-            <div style={sx("flex:1; height:1px; background:#e3eef1")} />
-          </div>
-
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
             <div onClick={doLogin} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:15px; background:#f4fafb; border:1px dashed #cfe6ee; font-size:14px; font-weight:600; color:#6b8c9a")}>계정 없이 둘러보기</div>
           </div>
