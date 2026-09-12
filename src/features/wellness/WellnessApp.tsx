@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, type CharacterId } from "./characters";
+import { bodyEvidence, bodyLevel, change, HEAVY_PICKS, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, suggestion } from "./condition";
 import { resolveSuggestion } from "./suggestion";
 import {
-  AREAS, CHAT_BEATS, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
+  AREAS, CHAT_BEATS, CONDITION_HISTORY, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
   NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROBES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, WEEKLY_PAST, type ContentState, type Role, type WeatherKey,
 } from "./data";
@@ -34,7 +35,9 @@ interface State {
   loginPw: string;
   ob: number;
   tab: "home" | "records" | "settings";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition";
+  /** 컨디션 상세 시트의 탭 */
+  condTab: "body" | "mind";
   answers: Record<string, string>;
   minutes: number;
   remaining: number;
@@ -80,7 +83,7 @@ export default function WellnessApp() {
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", riskShown: false,
-    character: DEFAULT_CHARACTER, pickingCharacter: false, avatarMissing: {},
+    character: DEFAULT_CHARACTER, pickingCharacter: false, avatarMissing: {}, condTab: "body",
   }));
 
   const patch = (p: Partial<State>) => setS((st) => ({ ...st, ...p }));
@@ -241,7 +244,21 @@ export default function WellnessApp() {
     const totals = doneTotals();
     const maxByMin = Math.max(...Object.values(totals.byMin), 1);
     const answered = PROBES.filter((p) => st.answers[p.id]).length;
-    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, maxByMin, answered };
+    // 컨디션 단계 — 재료는 이번 주 기록. ⚠ 걸음·움직인 시간은 아직 목업이라 '평소 수준'(0)으로 둔다(실데이터 연동 시 여기만 바꾼다).
+    //   몸풀기 = 주간 목업(DONE_WEEK) + 이 세션에서 실제로 한 것. 오늘의 그림 = 목업 5일 + 오늘 3문항을 다 답했으면 +1일.
+    //   대화는 횟수만(내용 안 봄). 지난주 단계·최근 4주는 목업 상수(CONDITION_HISTORY).
+    const todayPicked = answered === PROBES.length ? Object.values(st.answers) : [];
+    const heavyToday = todayPicked.some((v) => HEAVY_PICKS.some((h) => v.includes(h))) ? 1 : 0;
+    const heavyMock = MIND_DAYS.filter((d) => HEAVY_PICKS.some((h) => d.picked.includes(h))).length;
+    const bodyIn = { stretchCount: totals.count + st.sessions.length, moveVsUsual: 0 as const, stepsVsUsual: 0 as const };
+    const mindIn = { pictureDays: MIND_DAYS.length + (todayPicked.length ? 1 : 0), heavyDays: heavyMock + heavyToday, chatCount: st.chat.filter((m) => m.role === "me").length, riskFlagged: st.riskShown };
+    const cond = {
+      bodyIn, mindIn,
+      body: bodyLevel(bodyIn), mind: mindLevel(mindIn),
+      bodyChange: change(CONDITION_HISTORY.body[CONDITION_HISTORY.body.length - 1], bodyLevel(bodyIn)),
+      mindChange: change(CONDITION_HISTORY.mind[CONDITION_HISTORY.mind.length - 1], mindLevel(mindIn)),
+    };
+    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, maxByMin, answered, cond };
   }
 
   const nowTime = `${s.now.getHours()}:${String(s.now.getMinutes()).padStart(2, "0")}`;
@@ -275,6 +292,7 @@ export default function WellnessApp() {
           {s.sheet === "library" && renderLibrary()}
           {s.sheet === "mind" && renderMind()}
           {s.sheet === "talk" && renderTalk()}
+          {s.sheet === "condition" && renderCondition()}
         </div>
       </div>
     </div>
@@ -575,6 +593,24 @@ export default function WellnessApp() {
               <div style={sx("font-size:12px; color:#5f5397; line-height:1.5")}>대화 · 오늘의 그림</div>
             </div>
           </div>
+        </div>
+
+        {/* 컨디션 카드 2장 — 단계와 변화만, 숫자 없음(사용자 확정). 누르면 상세 시트. */}
+        <div style={sx("display:grid; gap:9px")}>
+          <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:10px")}>
+            {([["body", "신체 컨디션", v.cond.body, v.cond.bodyChange], ["mind", "마음 컨디션", v.cond.mind, v.cond.mindChange]] as const).map(([k, name, lv, ch]) => {
+              const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
+              const arrow = ch.dir === "up" ? "↑" : ch.dir === "down" ? "↓" : "";
+              return (
+                <div key={k} onClick={() => patch({ sheet: "condition", condTab: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:6px; padding:15px 15px 13px; border-radius:18px; border:1px solid rgba(45,92,110,0.06); box-shadow:0 2px 10px rgba(45,92,110,0.05)"), background: c.bg }}>
+                  <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>{name}</div>
+                  <div style={{ ...sx("font-size:20px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
+                  <div style={{ ...sx("font-size:11.5px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>{arrow ? `${arrow} ${ch.text}` : ch.text}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.55; padding:0 4px; text-wrap:pretty")}>{suggestion(v.cond.body, v.cond.mind)}</div>
         </div>
 
         {/* 오늘의 기록 */}
@@ -1151,6 +1187,73 @@ export default function WellnessApp() {
           </div>
 
           <div style={sx("font-size:12px; color:#8ba8b3; line-height:1.65; padding:4px 4px 0; text-wrap:pretty")}>두 가지 모두 선택입니다. 먼저 열지 않으면 아무 일도 일어나지 않아요.</div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderCondition() {
+    const tab = s.condTab;
+    const lv = tab === "body" ? v.cond.body : v.cond.mind;
+    const ch = tab === "body" ? v.cond.bodyChange : v.cond.mindChange;
+    const evidence = tab === "body" ? bodyEvidence(v.cond.bodyIn, CONDITION_HISTORY.prevStretch) : mindEvidence(v.cond.mindIn);
+    const history = [...(tab === "body" ? CONDITION_HISTORY.body : CONDITION_HISTORY.mind), lv];
+    const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
+    const risk = tab === "mind" && v.cond.mindIn.riskFlagged;
+    const cta = tab === "body"
+      ? { label: "몸풀기 하러 가기", go: () => patch({ sheet: "library" }) }
+      : { label: "마음과 대화 열기", go: () => patch({ sheet: "talk" }) };
+    const close = () => patch({ sheet: null });
+    const tabBtn = (k: "body" | "mind", label: string) => (
+      <div onClick={() => patch({ condTab: k })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; border:1.5px solid"), background: tab === k ? "#f2edfa" : "#fff", color: tab === k ? "#7a6bc4" : "#8ba8b3", borderColor: tab === k ? "#7a6bc4" : "#e3eef1" }}>{label}</div>
+    );
+    return (
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eee9f7")}>
+          <div style={sx("padding:48px 16px 10px; display:flex; align-items:center; gap:11px")}>
+            <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+              <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>컨디션 상세</div>
+              <div style={sx("font-size:11px; color:#8ba8b3")}>단계는 선생님만 봅니다 · 점수나 순위는 없어요</div>
+            </div>
+          </div>
+          <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
+            {tabBtn("body", "신체")}
+            {tabBtn("mind", "마음")}
+          </div>
+        </div>
+        <div style={sx("flex:1; overflow-y:auto; padding:18px 18px 28px; display:flex; flex-direction:column; gap:14px")}>
+          <div style={{ ...sx("display:flex; flex-direction:column; gap:6px; padding:18px 18px 16px; border-radius:20px"), background: c.bg }}>
+            <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>이번 주</div>
+            <div style={{ ...sx("font-size:26px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "아직 기록이 적어요"}</div>
+            <div style={{ ...sx("font-size:13px; line-height:1.5; opacity:0.9"), color: c.fg }}>{ch.dir === "up" ? "↑ " : ch.dir === "down" ? "↓ " : ""}{ch.text}</div>
+          </div>
+
+          <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px 17px; border-radius:18px; background:#fff; border:1px solid #e3eef1")}>
+            <div style={sx("font-size:13px; font-weight:700; color:#2d5c6e")}>근거</div>
+            {evidence.map((e, i) => (<div key={i} style={sx("font-size:13.5px; color:#4d7c8c; line-height:1.55")}>· {e}</div>))}
+            {risk && <div onClick={() => patch({ sheet: "talk", consultOpen: true })} style={sx("cursor:pointer; margin-top:6px; text-align:center; border:1px solid #e0d9f2; background:#f8f5fd; color:#7a6bc4; font-size:13px; font-weight:700; padding:11px; border-radius:12px")}>마음쉼 상담 익명으로 신청하기</div>}
+          </div>
+
+          <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#fff; border:1px solid #e3eef1")}>
+            <div style={sx("font-size:13px; font-weight:700; color:#2d5c6e")}>최근 4주</div>
+            {/* 이름만 나열 — 그래프·숫자 없음 */}
+            <div style={sx("display:flex; gap:6px")}>
+              {history.map((h, i) => {
+                const hc = h ? LEVEL_COLOR[h] : { bg: "#eef3f5", fg: "#8ba8b3" };
+                return (
+                  <div key={i} style={{ ...sx("flex:1; text-align:center; padding:9px 4px; border-radius:11px; font-size:11.5px; font-weight:700; line-height:1.3"), background: hc.bg, color: hc.fg, outline: i === history.length - 1 ? "1.5px solid rgba(45,92,110,0.25)" : "none" }}>{h ? LEVEL_LABEL[h] : "—"}</div>
+                );
+              })}
+            </div>
+            <div style={sx("display:flex; gap:6px; font-size:10.5px; color:#8ba8b3")}>{["3주 전", "2주 전", "지난주", "이번 주"].map((l) => (<div key={l} style={sx("flex:1; text-align:center")}>{l}</div>))}</div>
+          </div>
+
+          <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#f2edfa; border:1px solid #e0d9f2")}>
+            <div style={sx("font-size:13px; font-weight:700; color:#5f5397")}>제안</div>
+            <div style={sx("font-size:14px; color:#2d5c6e; line-height:1.6; text-wrap:pretty")}>{suggestion(v.cond.body, v.cond.mind)}</div>
+            <div onClick={cta.go} style={sx("cursor:pointer; text-align:center; padding:13px; border-radius:13px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>{cta.label}</div>
+          </div>
         </div>
       </div>
     );
