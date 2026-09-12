@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodyEvidence, bodyLevel, change, HEAVY_PICKS, LEVEL_LABEL, levelFromSum, mindEvidence, mindLevel, suggestion } from "./condition";
-import { PROBES } from "./data";
+import { bodyEvidence, bodyLevel, change, LEVEL_LABEL, levelFromSum, mindEvidence, mindLevel, suggestion } from "./condition";
 
 describe("levelFromSum", () => {
   it("−3~+3 → 1~5", () => {
@@ -31,10 +30,6 @@ describe("mindLevel", () => {
     const a = mindLevel({ pictureDays: 4, heavyDays: 0, chatCount: 0, riskFlagged: false });
     const b = mindLevel({ pictureDays: 4, heavyDays: 0, chatCount: 7, riskFlagged: false });
     expect(a).toBe(b);
-  });
-  it("무거운 결 목록은 실제 「오늘의 마음카드」 선택지와 글자가 같다", () => {
-    const labels = new Set(PROBES.flatMap((p) => p.options.map((o) => o.label)));
-    for (const h of HEAVY_PICKS) expect(labels.has(h), h).toBe(true);
   });
 });
 

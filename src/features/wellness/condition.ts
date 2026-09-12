@@ -45,7 +45,7 @@ export interface BodyInput {
 export interface MindInput {
   /** 이번 주 「오늘의 마음카드」을 기록한 날 수 */
   pictureDays: number;
-  /** 그중 무거운 결(엉킨 결·강렬한 감정·조용한 정지·눈부신 소란)을 고른 날 수 */
+  /** 그중 무거운 날 수 — SAM 기분 ≤2 (sam.ts samWeight) */
   heavyDays: number;
   /** 「마음과 대화」 횟수 — 내용이 아니라 횟수만 */
   chatCount: number;
@@ -53,8 +53,6 @@ export interface MindInput {
   riskFlagged: boolean;
 }
 
-/** 「오늘의 마음카드」 선택지 중 무거운 결로 보는 것 — PROBES 의 label 과 글자가 같아야 한다 */
-export const HEAVY_PICKS = ["엉킨 결", "강렬한 감정", "조용한 정지", "눈부신 소란"];
 
 export function stretchSignal(n: number): Signal { return n >= 3 ? 1 : n >= 1 ? 0 : -1; }
 export function bodyLevel(b: BodyInput): Level {
@@ -152,7 +150,7 @@ export interface DayBodyInput {
   stepsVsUsual: Signal;
 }
 export interface DayMindInput {
-  /** 어제 「오늘의 마음카드」 결 — heavy(무거운 결) / light(가벼운 결) / none(기록 없음) */
+  /** 어제 「오늘의 마음카드」(SAM 기분) — heavy(≤2) / light(≥4) / none(기록 없음). 그저 그럼(3)은 none 이 아니라 chatCount 와 함께 보통 */
   pick: "heavy" | "light" | "none";
   chatCount: number;
   riskFlagged: boolean;
