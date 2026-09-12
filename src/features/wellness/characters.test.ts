@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, isCharacterId, systemPromptFor } from "./characters";
+import { CHARACTERS, CHARACTER_DISPLAY_NAME, INTRO, characterOf, DEFAULT_CHARACTER, isCharacterId, systemPromptFor } from "./characters";
 import { SYSTEM_CORE, SYSTEM_EXAMPLES } from "./risk";
 
 describe("CHARACTERS", () => {
@@ -20,9 +20,10 @@ describe("CHARACTERS", () => {
       }
     }
   });
-  it("인사말에 「안녕하세요」·역할 이름(옆반·수석교사·동기·상담교사·상담사)이 없고, 인물 설정이 직함을 밝히지 말라고 명시한다(사용자 지시)", () => {
+  it("인사말은 4명 전부 같은 한 문장(INTRO), 역할 이름(옆반·수석교사·동기·상담교사·상담사)이 없고, 인물 설정이 직함을 밝히지 말라고 명시한다(사용자 지시)", () => {
     for (const c of CHARACTERS) {
-      for (const w of ["안녕하세요", "옆반", "수석교사", "동기", "상담교사", "상담사"]) expect(c.intro, c.id).not.toContain(w);
+      expect(c.intro, c.id).toBe(INTRO);
+      for (const w of ["옆반", "수석교사", "동기", "상담교사", "상담사"]) expect(c.intro, c.id).not.toContain(w);
       expect(c.persona, c.id).toContain("직함도 밝히지 않는다");
     }
   });
