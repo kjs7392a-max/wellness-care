@@ -4,8 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, type CharacterId } from "./characters";
-import { AROUSAL_LABEL, directing, samWeight, VALENCE_LABEL, type SamAnswer, type SamScore } from "./sam";
-import { Manikin } from "./Manikin";
+import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, flowText, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion } from "./suggestion";
 import {
@@ -80,7 +79,7 @@ export default function WellnessApp() {
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     parq: {}, parqOnly: false, perms: {}, area: "all", program: null,
     authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: { valence: null, arousal: null }, minutes: 3, remaining: 180, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, minutes: 3, remaining: 180, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", riskShown: false,
@@ -244,14 +243,14 @@ export default function WellnessApp() {
       .filter((pg) => !(wx.prefer === "indoor" && pg.place === "outdoor"));
     const totals = doneTotals();
     const maxByMin = Math.max(...Object.values(totals.byMin), 1);
-    const answered = (st.sam.valence ? 1 : 0) + (st.sam.arousal ? 1 : 0);
+    const answered = samAnswered(st.sam);
     // 컨디션 단계 — 재료는 이번 주 기록. ⚠ 걸음·움직인 시간은 아직 목업이라 '평소 수준'(0)으로 둔다(실데이터 연동 시 여기만 바꾼다).
     //   몸풀기 = 주간 목업(DONE_WEEK) + 이 세션에서 실제로 한 것. 오늘의 마음카드 = 목업 5일 + 오늘 3문항을 다 답했으면 +1일.
     //   대화는 횟수만(내용 안 봄). 지난주 단계·최근 4주는 목업 상수(CONDITION_HISTORY).
     // 오늘 마음카드(SAM): 기분·긴장 둘 다 답했을 때만 오늘 기록. 기분 ≤2 면 무거운 날.
-    const samDone = st.sam.valence !== null && st.sam.arousal !== null;
-    const todayPicked = samDone ? [st.sam.valence as SamScore] : [];
-    const heavyToday = samDone && samWeight(st.sam.valence as SamScore) === "heavy" ? 1 : 0;
+    const done = samDone(st.sam);
+    const todayPicked = done ? [st.sam.valence as SamScore] : [];
+    const heavyToday = done && samWeight(st.sam.valence as SamScore) === "heavy" ? 1 : 0;
     const heavyMock = MIND_DAYS.filter((d) => d.valence <= 2).length;
     const bodyIn = { stretchCount: totals.count + st.sessions.length, moveVsUsual: 0 as const, stepsVsUsual: 0 as const };
     const mindIn = { pictureDays: MIND_DAYS.length + (todayPicked.length ? 1 : 0), heavyDays: heavyMock + heavyToday, chatCount: st.chat.filter((m) => m.role === "me").length, riskFlagged: st.riskShown };
@@ -713,7 +712,7 @@ export default function WellnessApp() {
     ];
     const mindActions = [
       { label: "마음과 대화에 이번 주 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
-      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: { valence: null, arousal: null } }) },
+      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM }) },
     ];
 
     return (
@@ -833,7 +832,7 @@ export default function WellnessApp() {
                 <div style={sx("flex:none; width:34px; padding-top:1px; font-size:12.5px; font-weight:700; color:#6b8c9a; white-space:nowrap")}>{md.day}</div>
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:7px")}>
                   <div style={sx("font-size:13.5px; color:#3a4a72; line-height:1.6; font-weight:500; text-wrap:pretty")}>{md.reading}</div>
-                  <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>기분 {VALENCE_LABEL[md.valence]} · 긴장 {AROUSAL_LABEL[md.arousal]}</div>
+                  <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>하늘 {AXES[0].labels[md.valence - 1]} · 물 {AXES[1].labels[md.arousal - 1]}</div>
                 </div>
               </div>
             ))}
@@ -949,23 +948,12 @@ export default function WellnessApp() {
   }
 
   function renderPicture() {
-    // 오늘의 마음카드 = SAM 두 줄(기분·긴장). 그림 인형 5개 중 하나씩 고르면 사분면이 정해지고 디렉팅 하나.
-    const step: 0 | 1 | 2 = s.sam.valence === null ? 0 : s.sam.arousal === null ? 1 : 2;
-    const dir = step === 2 ? directing(s.sam.valence as SamScore, s.sam.arousal as SamScore, v.cond.dayBody, v.slot) : null;
-    const row = (kind: "valence" | "arousal", value: SamScore | null, onPick: (n: SamScore) => void) => (
-      <div style={sx("display:grid; grid-template-columns:repeat(5,1fr); gap:6px")}>
-        {([1, 2, 3, 4, 5] as SamScore[]).map((n) => {
-          const on = value === n;
-          const label = kind === "valence" ? VALENCE_LABEL[n] : AROUSAL_LABEL[n];
-          return (
-            <div key={n} onClick={() => onPick(n)} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 2px 7px; border-radius:14px; border:1.5px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#7a6bc4" : "#e3eef1" }}>
-              <Manikin kind={kind} level={n} size={48} active={on} />
-              <div style={{ ...sx("font-size:10px; font-weight:700; text-align:center; line-height:1.25; word-break:keep-all"), color: on ? "#7a6bc4" : "#8ba8b3" }}>{label}</div>
-            </div>
-          );
-        })}
-      </div>
-    );
+    // 오늘의 마음카드 = 은유 그림 5줄(하늘·물·배·밤·교실 날씨) × 5장. 축은 SAM 3 + 수면 + Kunin Faces(sam.ts).
+    // 줄은 앞 줄을 고르면 다음 줄이 나타난다. 5줄 다 고르면 디렉팅 하나.
+    const answered = v.answered;
+    const done = samDone(s.sam);
+    const dir = done ? directing(s.sam as Required<{ [K in (typeof AXES)[number]["key"]]: SamScore }>, v.cond.dayBody, v.slot) : null;
+    const visible = AXES.slice(0, Math.min(answered + 1, AXES.length));
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
@@ -983,44 +971,54 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        <div style={sx("flex:1; overflow-y:auto; padding:16px 18px 24px; display:flex; flex-direction:column; gap:14px")}>
-          {/* 1. 기분 */}
-          <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:15px 14px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06)")}>
-            <div style={sx("display:flex; align-items:baseline; gap:8px")}>
-              <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>지금 기분은 어느 쪽인가요?</div>
-              <div style={sx("font-size:11.5px; color:#8ba8b3")}>왼쪽 힘듦 → 오른쪽 좋음</div>
-            </div>
-            {row("valence", s.sam.valence, (n) => patchFn((st) => ({ sam: { ...st.sam, valence: n } })))}
+        <div style={sx("flex:1; overflow-y:auto; padding:14px 18px 24px; display:flex; flex-direction:column; gap:12px")}>
+          {/* 진행 점 5개 */}
+          <div style={sx("display:flex; align-items:center; gap:6px; justify-content:center")}>
+            {AXES.map((x, k) => (<div key={x.key} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === answered && !done ? 22 : 8, background: k < answered || done ? "#7a6bc4" : k === answered ? "#b9aee6" : "#dfe6ea" }} />))}
           </div>
+          {answered === 0 && (
+            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 다섯 번이면 오늘의 디렉팅이 나와요.</div>
+          )}
 
-          {/* 2. 긴장 — 기분을 고른 뒤 나타난다 */}
-          {step >= 1 && (
-            <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:15px 14px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
-              <div style={sx("display:flex; align-items:baseline; gap:8px")}>
-                <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>지금 몸은 어느 쪽인가요?</div>
-                <div style={sx("font-size:11.5px; color:#8ba8b3")}>왼쪽 차분 → 오른쪽 긴장</div>
+          {visible.map((x, k) => {
+            const value = s.sam[x.key];
+            const isCurrent = k === answered && !done;
+            return (
+              <div key={x.key} style={{ ...sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:14px 13px 12px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both"), opacity: isCurrent || done || value ? 1 : 0.6 }}>
+                <div style={sx("display:flex; align-items:baseline; justify-content:space-between; gap:8px")}>
+                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.question}</div>
+                  <div style={sx("flex:none; font-size:11px; color:#8ba8b3; white-space:nowrap")}>{x.hint}</div>
+                </div>
+                <div style={sx("display:grid; grid-template-columns:repeat(5,1fr); gap:6px")}>
+                  {([1, 2, 3, 4, 5] as SamScore[]).map((n) => {
+                    const on = value === n;
+                    return (
+                      <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 3px 6px; border-radius:13px; border:2px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#7a6bc4" : "transparent" }}>
+                        <div style={sx("width:100%; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#eef3f5")}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={`${IMG}/sam-${x.key}-${n}.png`} alt={x.labels[n - 1]} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        </div>
+                        <div style={{ ...sx("font-size:10px; font-weight:700; text-align:center; line-height:1.2; word-break:keep-all"), color: on ? "#7a6bc4" : "#8ba8b3" }}>{x.labels[n - 1]}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              {row("arousal", s.sam.arousal, (n) => patchFn((st) => ({ sam: { ...st.sam, arousal: n } })))}
-            </div>
-          )}
-
-          {step === 0 && (
-            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:2px 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 두 번 고르면 오늘의 디렉팅을 드려요.</div>
-          )}
+            );
+          })}
 
           {dir && (
             <div style={sx("flex:none; display:flex; flex-direction:column; gap:14px; animation:wRise 0.4s ease-out both")}>
               <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#f2edfa; border:1px solid #dbedf2")}>
-                <div style={sx("display:flex; align-items:center; gap:8px; flex-wrap:wrap")}>
-                  <div style={sx("font-size:13px; font-weight:800; color:#5f5397")}>오늘의 디렉팅</div>
-                  <div style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:4px 9px")}>기분 {VALENCE_LABEL[s.sam.valence as SamScore]}</div>
-                  <div style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:4px 9px")}>몸 {AROUSAL_LABEL[s.sam.arousal as SamScore]}</div>
+                <div style={sx("display:flex; align-items:center; gap:6px; flex-wrap:wrap")}>
+                  <div style={sx("font-size:13px; font-weight:800; color:#5f5397; margin-right:2px")}>오늘의 디렉팅</div>
+                  {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
                 </div>
                 <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.text}</div>
-                <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)으로 기분과 긴장을 묻고, 정서 원형 모델(Russell 1980)로 읽었어요. 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
+                <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물·배는 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장·통제감, 밤은 수면 문항, 교실 날씨는 Kunin Faces 만족 척도. 읽기는 정서 원형 모델(Russell 1980). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
-                <div onClick={() => patch({ sam: { valence: null, arousal: null } })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #e3eef1; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
+                <div onClick={() => patch({ sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #e3eef1; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
                 <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
               </div>
             </div>
@@ -1175,7 +1173,7 @@ export default function WellnessApp() {
             <div style={sx("flex:none; font-size:16px; color:#b5c8d0")}>›</div>
           </div>
 
-          <div onClick={() => patch({ sheet: "picture", sam: { valence: null, arousal: null } })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
+          <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
             <div style={sx(`width:48px; height:48px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/probe-mood.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>오늘의 마음카드</div>
@@ -1301,7 +1299,7 @@ export default function WellnessApp() {
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>마음과 대화</div>
-            <div onClick={() => patch({ sheet: "picture", sam: { valence: null, arousal: null } })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>오늘의 마음카드</div>
+            <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>오늘의 마음카드</div>
           </div>
         </div>
 

@@ -1,61 +1,95 @@
 import type { Level } from "./condition";
 
 /**
- * SAM(Self-Assessment Manikin, Bradley & Lang 1994) — 그림 인형으로 답하는 검증된 정서 자가보고 척도.
- * 두 축만 쓴다: valence(불쾌 1 ~ 유쾌 5) · arousal(차분 1 ~ 들뜸/긴장 5). 원본은 9점이지만 5점 축약형도 널리 쓰인다.
- * 두 답을 정서의 원형 모델(Russell 1980) 사분면으로 읽고, 사분면별로 근거가 있는 정서조절 전략을 제안한다.
+ * 「오늘의 마음카드」 — 그림으로 답하는 자가보고 5줄 + 종합 디렉팅.
  *
- * 2026-09-12 사용자 확정: 추상 그림 6장(투사식)은 검사가 될 수 없어 SAM 으로 교체. 점수·등급·진단 없음, 자가보고.
- * 그림은 저작권 문제가 없도록 우리가 그린 5단계 인형(SVG, Manikin 컴포넌트).
+ * 축과 근거:
+ *   valence·arousal·dominance = SAM(Self-Assessment Manikin, Bradley & Lang 1994) 세 축(기분·긴장·통제감)
+ *   sleep = 단일 문항 수면 자가보고(연구에서 통용) · satisfaction = Kunin Faces Scale(1955, 직무 만족)
+ * 묻는 방식(2026-09-12 사용자 확정): "기분 어떠세요?" 같은 직접 질문이 아니라 **은유 그림 5장** 중 하나를 고른다
+ * (하늘·물·배·밤·교실 날씨). SAM 이 원래 글자 없는 그림 척도라 원본 취지와 맞다. 점수·등급·진단 없음.
+ * 읽기: 기분×긴장 → 정서 원형 모델(Russell 1980) 사분면 → 사분면별 정서조절 전략. 통제감 낮으면 "내가 정하는 작은 선택",
+ * 잠이 나쁘면 회복이 먼저. 만족은 기록 탭 주간 흐름용.
  */
 
 export type SamScore = 1 | 2 | 3 | 4 | 5;
+export type AxisKey = "valence" | "arousal" | "dominance" | "sleep" | "satisfaction";
+
 export interface SamAnswer {
   valence: SamScore | null;
   arousal: SamScore | null;
+  dominance: SamScore | null;
+  sleep: SamScore | null;
+  satisfaction: SamScore | null;
+}
+export const EMPTY_SAM: SamAnswer = { valence: null, arousal: null, dominance: null, sleep: null, satisfaction: null };
+
+export interface Axis {
+  key: AxisKey;
+  /** 은유 질문 */
+  question: string;
+  /** 왼쪽 ↔ 오른쪽 작은 안내 */
+  hint: string;
+  /** 그림 5장 이름표(왼 → 오) */
+  labels: [string, string, string, string, string];
+  /** 근거 표기(각주용) */
+  basis: string;
 }
 
-export const VALENCE_LABEL: Record<SamScore, string> = { 1: "많이 힘듦", 2: "조금 힘듦", 3: "그저 그럼", 4: "조금 좋음", 5: "많이 좋음" };
-export const AROUSAL_LABEL: Record<SamScore, string> = { 1: "축 처짐", 2: "느긋함", 3: "보통", 4: "긴장됨", 5: "매우 긴장·들뜸" };
+export const AXES: Axis[] = [
+  { key: "valence", question: "오늘 마음의 하늘을 고른다면?", hint: "폭우 ↔ 노을", labels: ["폭우", "흐림", "옅은 구름", "맑음", "노을"], basis: "SAM 기분" },
+  { key: "arousal", question: "지금 내 안의 물은 어떤 모양인가요?", hint: "잔잔한 호수 ↔ 폭포", labels: ["잔잔한 호수", "느린 강", "잔물결", "파도", "폭포"], basis: "SAM 긴장" },
+  { key: "dominance", question: "오늘 나는 어떤 배에 타고 있었나요?", hint: "떠내려감 ↔ 키를 잡음", labels: ["떠내려가는 종이배", "노 없는 배", "흔들리는 배", "노 젓는 배", "키를 잡은 배"], basis: "SAM 통제감" },
+  { key: "sleep", question: "어젯밤을 한 장면으로 고른다면?", hint: "뒤척임 ↔ 깊은 잠", labels: ["뒤척인 밤", "반쯤 뜬 눈", "얕은 잠", "편한 잠", "깊은 잠"], basis: "수면 단일 문항" },
+  { key: "satisfaction", question: "오늘 교실의 날씨는 어땠나요?", hint: "천둥 ↔ 화창", labels: ["천둥", "비", "흐림", "맑음", "화창"], basis: "Kunin Faces(만족)" },
+];
+
+export function samDone(a: SamAnswer): boolean {
+  return AXES.every((x) => a[x.key] !== null);
+}
+export function samAnswered(a: SamAnswer): number {
+  return AXES.filter((x) => a[x.key] !== null).length;
+}
 
 /** 원형 모델 사분면 — HP 고각성·유쾌 / LP 저각성·유쾌 / HN 고각성·불쾌 / LN 저각성·불쾌 */
 export type Quadrant = "HP" | "LP" | "HN" | "LN";
 
 /**
- * 사분면 판정. 기분이 그저 그럼(3)일 땐 긴장 축이 정한다 — 긴장되면 HN(긴장), 처지면 LN(처짐), 보통이면 LP(무난).
+ * 사분면 판정. 기분이 가운데(3)일 땐 긴장 축이 정한다 — 긴장되면 HN, 처지면 LN, 보통이면 LP(무난).
  * 유쾌한데 긴장 보통(3)이면 LP 로(들뜸이 아니라 평온으로 본다).
  */
 export function quadrantOf(v: SamScore, a: SamScore): Quadrant {
   const pos = v >= 4, neg = v <= 2, high = a >= 4, low = a <= 2;
   if (neg) return high ? "HN" : "LN";
   if (pos) return high ? "HP" : "LP";
-  // v === 3
   if (high) return "HN";
   if (low) return "LN";
   return "LP";
 }
 
-/** 마음 컨디션 재료 — 기분 축만 본다(불쾌 ≤2 heavy, 유쾌 ≥4 light) */
+/** 마음 컨디션 재료 — 기분 축만 본다(≤2 heavy, ≥4 light) */
 export function samWeight(v: SamScore): "heavy" | "light" | "neutral" {
   return v <= 2 ? "heavy" : v >= 4 ? "light" : "neutral";
 }
 
-/** 첫 문단 — 사분면 + 세기. 용어 없이 상태 말로. */
+const L = (key: AxisKey, n: SamScore) => AXES.find((x) => x.key === key)!.labels[n - 1];
+
+/** 첫 문단 — 고른 은유를 받아서 시작 + 사분면 상태 말 */
 function opening(q: Quadrant, v: SamScore, a: SamScore): string {
-  const strong = v === 1 || v === 5 || a === 1 || a === 5;
+  const lead = `오늘 하늘은 ${L("valence", v)}, 안의 물은 ${L("arousal", a)} — `;
   switch (q) {
-    case "HP": return strong
-      ? "지금 기분이 좋고 에너지도 많이 올라와 있어요. 오늘은 힘이 나는 날이에요."
-      : "지금 기분이 좋은 편이고 에너지도 조금 올라와 있어요. 움직이고 싶은 날이에요.";
-    case "LP": return v >= 4
-      ? "지금 기분이 좋은 편이고 몸은 편안해요. 애쓰지 않아도 하루가 잘 흘러가는 상태예요."
-      : "지금은 특별히 좋지도 나쁘지도 않은, 무난한 상태예요. 몸도 크게 긴장하지 않았어요.";
-    case "HN": return v <= 2
-      ? "지금 기분이 힘든 쪽이고 몸도 긴장해 있어요. 낮에 있었던 일이 아직 가라앉지 않은 것 같아요."
-      : "지금 기분은 그저 그런데 몸이 긴장해 있어요. 마음보다 몸이 먼저 신호를 보내는 상태예요.";
-    case "LN": return v <= 2
-      ? "지금 기분이 힘든 쪽이고 힘도 빠져 있어요. 쌓인 피로가 마음까지 내려온 날이에요."
-      : "지금 기분은 그저 그런데 힘이 빠져 있어요. 에너지가 바닥에 가까워진 상태예요.";
+    case "HP": return lead + (v === 5 || a === 5
+      ? "기분이 좋고 에너지도 많이 올라와 있어요. 오늘은 힘이 나는 날이에요."
+      : "기분이 좋은 편이고 에너지도 조금 올라와 있어요. 움직이고 싶은 날이에요.");
+    case "LP": return lead + (v >= 4
+      ? "기분이 좋은 편이고 몸은 편안해요. 애쓰지 않아도 하루가 잘 흘러가는 상태예요."
+      : "특별히 좋지도 나쁘지도 않은, 무난한 상태예요. 몸도 크게 긴장하지 않았어요.");
+    case "HN": return lead + (v <= 2
+      ? "겉보다 안이 더 요동친 날이에요. 기분이 힘든 쪽이고 몸도 긴장해 있어요."
+      : "기분은 그저 그런데 몸이 긴장해 있어요. 마음보다 몸이 먼저 신호를 보내는 상태예요.");
+    case "LN": return lead + (v <= 2
+      ? "기분이 힘든 쪽이고 힘도 빠져 있어요. 쌓인 피로가 마음까지 내려온 날이에요."
+      : "기분은 그저 그런데 힘이 빠져 있어요. 에너지가 바닥에 가까워진 상태예요.");
   }
 }
 
@@ -67,7 +101,19 @@ const WHY: Record<Quadrant, string> = {
   LN: "이런 날은 몸이 무겁고, 해야 할 일이 평소보다 크게 보이고, 시작이 제일 어려워요. 게을러서가 아니라 에너지가 바닥에 가까워서 그래요. 의지로 밀어붙이기보다 아주 작은 움직임으로 시동을 거는 게 효과가 있어요.",
 };
 
-/** 어제 신체 컨디션을 한 줄로 엮는다 — 오늘 제안의 근거 */
+/** 통제감이 낮을 때만 — 내가 정하는 아주 작은 선택 하나(통제감 회복) */
+function dominanceLine(d: SamScore): string | null {
+  if (d >= 3) return null;
+  return `오늘은 ${L("dominance", d)}처럼 흘러갔다고 하셨어요. 하루가 나를 끌고 간 날엔 큰 결정보다 아주 작은 선택 하나가 통제감을 돌려줍니다 — 퇴근길 음악을 고르는 것, 저녁 메뉴를 내가 정하는 것 정도면 돼요.`;
+}
+
+/** 잠이 나빴으면 무엇보다 먼저 — 회복 우선 */
+function sleepLine(sl: SamScore): string | null {
+  if (sl >= 3) return null;
+  return `어젯밤은 ${L("sleep", sl)}이었어요. 잠이 모자란 날은 기분도 긴장도 실제보다 나쁘게 느껴져요. 오늘 무엇을 하든 이 점을 먼저 감안하고, 저녁엔 잠들기 전 이완 호흡으로 밤을 챙기는 게 가장 큰 회복입니다.`;
+}
+
+/** 어제 신체 컨디션을 한 줄로 엮는다 */
 function bodyLine(body: Level | null): string {
   if (body === null) return "어제 몸 기록이 아직 없어서, 오늘은 마음 쪽만 보고 제안드려요.";
   if (body <= 2) return "어제 몸 컨디션은 낮은 쪽이었어요. 마음이 어떻든 오늘은 몸이 먼저 쉬어야 하는 날입니다.";
@@ -75,9 +121,7 @@ function bodyLine(body: Level | null): string {
   return "어제 몸 컨디션은 좋은 편이었어요. 몸에 힘이 남아 있으니, 마음이 무거워도 몸부터 움직여 볼 수 있어요.";
 }
 
-/**
- * 제안 — 사분면별 정서조절 전략 하나. HN 긴장 낮추기(호흡·이완) / LN 아주 작은 행동 하나(행동활성화) / HP 힘 쓸 곳 / LP 유지·기록
- */
+/** 제안 — 사분면별 정서조절 전략 하나. HN 긴장 낮추기 / LN 아주 작은 행동 / HP 힘 쓸 곳 / LP 유지·기록 */
 function closing(q: Quadrant, body: Level | null, slot: number): string {
   const evening = slot === 2;
   const tired = body !== null && body <= 2;
@@ -121,9 +165,17 @@ export interface Directing {
   text: string;
 }
 
-/** 두 답 → 문단 5개(지금 상태 · 몸에서 나타남 · 어제 몸 · 오늘의 제안 · 안심) */
-export function directing(v: SamScore, a: SamScore, body: Level | null, slot: number): Directing {
-  const q = quadrantOf(v, a);
-  const paras = [opening(q, v, a), WHY[q], bodyLine(body), closing(q, body, slot), REASSURE[q]];
-  return { quadrant: q, weight: samWeight(v), text: paras.join("\n\n") };
+/** 다섯 답 → 문단 5~7개(지금 상태 · 몸에서 나타남 · [잠] · [통제감] · 어제 몸 · 제안 · 안심) */
+export function directing(ans: Required<{ [K in AxisKey]: SamScore }>, body: Level | null, slot: number): Directing {
+  const q = quadrantOf(ans.valence, ans.arousal);
+  const paras = [
+    opening(q, ans.valence, ans.arousal),
+    WHY[q],
+    sleepLine(ans.sleep),
+    dominanceLine(ans.dominance),
+    bodyLine(body),
+    closing(q, body, slot),
+    REASSURE[q],
+  ].filter((p): p is string => !!p);
+  return { quadrant: q, weight: samWeight(ans.valence), text: paras.join("\n\n") };
 }
