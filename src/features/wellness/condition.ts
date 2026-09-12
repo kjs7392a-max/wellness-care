@@ -136,3 +136,55 @@ export function overallLevel(body: Level | null, mind: Level | null, riskFlagged
   if (mind === null) return body;
   return Math.floor((body + mind) / 2) as Level;
 }
+
+// ── 하루 단위 (홈 = 어제) ─────────────────────────────────────────────────────────────
+// 2026-09-12 사용자 확정: 홈은 「어제」의 종합 컨디션(달력상 어제 — 일요일에도 몸풀기·대화를 하니 '지난 금요일'로 바꾸지 않는다),
+// 이번 주 종합은 기록 탭. 규칙 구조는 주간과 같고 재료만 하루치.
+
+export interface DayBodyInput {
+  /** 어제 앱에서 함께한 스트레칭 횟수 */
+  stretchCount: number;
+  moveVsUsual: Signal;
+  stepsVsUsual: Signal;
+}
+export interface DayMindInput {
+  /** 어제 「오늘의 그림」 결 — heavy(무거운 결) / light(가벼운 결) / none(기록 없음) */
+  pick: "heavy" | "light" | "none";
+  chatCount: number;
+  riskFlagged: boolean;
+}
+
+export function dayStretchSignal(n: number): Signal { return n >= 2 ? 1 : n >= 1 ? 0 : -1; }
+export function dayBodyLevel(b: DayBodyInput): Level {
+  return levelFromSum(dayStretchSignal(b.stretchCount) + b.moveVsUsual + b.stepsVsUsual);
+}
+/** 기록이 하나도 없으면 단계 없음. 대화는 횟수만 근거에 적고 단계엔 영향 없음(주간과 같은 원칙). */
+export function dayMindLevel(m: DayMindInput): Level | null {
+  if (m.riskFlagged) return 1;
+  if (m.pick === "none" && m.chatCount <= 0) return null;
+  const pickSignal: Signal = m.pick === "heavy" ? -1 : m.pick === "light" ? 1 : 0;
+  // 하루엔 재료가 하나뿐이라 ±1 이 곧 단계 한 칸(보통 기준 좋음/조금 지침). 매우 좋음·휴식 필요는 하루로는 안 나온다.
+  return levelFromSum(pickSignal);
+}
+
+export function dayBodyEvidence(b: DayBodyInput): string[] {
+  const usual = (s: Signal, what: string) => (s === 0 ? `${what} 평소 수준` : s > 0 ? `${what} 평소보다 많음` : `${what} 평소보다 조금 적음`);
+  return [`스트레칭 ${b.stretchCount}번`, usual(b.moveVsUsual, "움직인 시간"), usual(b.stepsVsUsual, "걸음")];
+}
+export function dayMindEvidence(m: DayMindInput): string[] {
+  if (m.riskFlagged) return ["어제는 많이 힘든 날이었어요. 오늘은 쉬어가도 됩니다."];
+  const pick = m.pick === "heavy" ? "오늘의 그림: 무거운 결" : m.pick === "light" ? "오늘의 그림: 가벼운 결" : "오늘의 그림: 기록 없음";
+  return [pick, `마음과 대화 ${m.chatCount}번`];
+}
+
+/** 「어제 · 9월 11일(금)」 — 홈 카드 제목용 */
+export function yesterdayLabel(now: Date): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const dow = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
+  return `어제 · ${d.getMonth() + 1}월 ${d.getDate()}일(${dow})`;
+}
+
+/** 최근 며칠 흐름 문장 — "보통 → 좋음 → 보통" (숫자 없음, 이름만) */
+export function flowText(levels: (Level | null)[]): string {
+  return levels.map((l) => (l ? LEVEL_LABEL[l] : "—")).join(" → ");
+}

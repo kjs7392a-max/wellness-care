@@ -78,3 +78,29 @@ describe("overallLevel — 종합", () => {
     expect(overallLevel(5, 5, true)).toBe(1);
   });
 });
+
+import { dayBodyLevel, dayMindLevel, dayBodyEvidence, dayMindEvidence, yesterdayLabel, flowText } from "./condition";
+describe("하루 단위(어제)", () => {
+  it("스트레칭 2번 + 평소 수준 = 좋음 / 0번 + 둘 다 적음 = 휴식 필요", () => {
+    expect(dayBodyLevel({ stretchCount: 2, moveVsUsual: 0, stepsVsUsual: 0 })).toBe(4);
+    expect(dayBodyLevel({ stretchCount: 0, moveVsUsual: -1, stepsVsUsual: -1 })).toBe(1);
+  });
+  it("그림 결이 가벼우면 좋음, 무거우면 조금 지침, 기록 없고 대화도 없으면 단계 없음, 위험어는 휴식 필요", () => {
+    expect(dayMindLevel({ pick: "light", chatCount: 0, riskFlagged: false })).toBe(4);
+    expect(dayMindLevel({ pick: "heavy", chatCount: 0, riskFlagged: false })).toBe(2);
+    expect(dayMindLevel({ pick: "none", chatCount: 0, riskFlagged: false })).toBeNull();
+    expect(dayMindLevel({ pick: "none", chatCount: 1, riskFlagged: false })).toBe(3);
+    expect(dayMindLevel({ pick: "light", chatCount: 0, riskFlagged: true })).toBe(1);
+  });
+  it("어제 라벨은 달력상 어제(일요일이어도) — 요일까지", () => {
+    expect(yesterdayLabel(new Date(2026, 8, 12))).toBe("어제 · 9월 11일(금)");
+    expect(yesterdayLabel(new Date(2026, 8, 14))).toBe("어제 · 9월 13일(일)"); // 월요일 아침 = 지난 금요일이 아니라 일요일
+    expect(yesterdayLabel(new Date(2026, 9, 1))).toBe("어제 · 9월 30일(수)");
+  });
+  it("흐름 문장·근거에 숫자 단계가 없다", () => {
+    expect(flowText([3, 4, 3])).toBe("보통 → 좋음 → 보통");
+    expect(flowText([null, 4])).toBe("— → 좋음");
+    expect(dayBodyEvidence({ stretchCount: 2, moveVsUsual: 0, stepsVsUsual: 0 })[0]).toBe("스트레칭 2번");
+    expect(dayMindEvidence({ pick: "light", chatCount: 1, riskFlagged: false })).toEqual(["오늘의 그림: 가벼운 결", "마음과 대화 1번"]);
+  });
+});

@@ -242,6 +242,17 @@ export const CONDITION_HISTORY: { body: (1 | 2 | 3 | 4 | 5)[]; mind: (1 | 2 | 3 
   prevStretch: 1,
 };
 
+/**
+ * 어제 하루 재료(목업) — 홈 「어제 종합 컨디션」과 상세의 신체·마음 근거. 실데이터 연동 시 어제 날짜로 집계해 채운다.
+ * 스트레칭 2번·평소 수준 → 신체 좋음 / 그림 결 가벼움·대화 1번 → 마음 좋음 / 종합 좋음.
+ */
+export const YESTERDAY = {
+  body: { stretchCount: 2, moveVsUsual: 0 as const, stepsVsUsual: 0 as const },
+  mind: { pick: "light" as "heavy" | "light" | "none", chatCount: 1 },
+};
+/** 이번 주 흐름(목업) — 월요일부터 그저께까지의 종합 단계. 어제는 YESTERDAY 로 계산해 뒤에 붙인다. */
+export const WEEK_FLOW: (1 | 2 | 3 | 4 | 5)[] = [3, 2, 3, 4];
+
 export const DONE_WEEK = [
   { id: "p1", n: 4 },
   { id: "p11", n: 3 },
