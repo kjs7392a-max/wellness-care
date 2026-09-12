@@ -1183,7 +1183,7 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
             <div style={sx("display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>마음과 대화</div>
-              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>스트레스, 답답함, 억울함 — 터놓고 말해도 되는 자리예요. 이야기 나눌 상대를 골라 주세요.</div>
+              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요. 오늘 하루 선생님의 마음을 열어보세요.</div>
             </div>
             <div style={sx("display:grid; grid-template-columns:repeat(4,1fr); gap:10px")}>
               {CHARACTERS.map((c) => {
