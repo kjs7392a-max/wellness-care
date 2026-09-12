@@ -307,7 +307,6 @@ export default function WellnessApp() {
           </div>
 
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
-            <div onClick={doLogin} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:15px; background:#fff; border:1.5px solid #d9e7ec; font-size:14.5px; font-weight:700; color:#2d5c6e")}>교육청 통합인증으로 계속</div>
             <div onClick={doLogin} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:15px; background:#f4fafb; border:1px dashed #cfe6ee; font-size:14px; font-weight:600; color:#6b8c9a")}>계정 없이 둘러보기</div>
           </div>
         </div>
