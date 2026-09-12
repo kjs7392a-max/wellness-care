@@ -543,6 +543,33 @@ export default function WellnessApp() {
           </div>
         </div>
 
+        {/* 종합 컨디션 카드 — 신체·마음을 합친 단계 하나가 주인공, 두 축은 칩으로. 숫자 없음(사용자 확정). 누르면 상세 시트. */}
+        {(() => {
+          const lv = v.cond.dayOverall;
+          const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
+          const flow = flowText(v.cond.weekFlow.slice(-3));
+          const chip = (name: string, l: typeof lv) => {
+            const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
+            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:1.5px solid rgba(45,92,110,0.28)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
+          };
+          return (
+            <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.28); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
+              <div style={sx("display:flex; align-items:flex-start; justify-content:space-between; gap:10px")}>
+                <div style={sx("display:flex; flex-direction:column; gap:4px")}>
+                  <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>{v.cond.yesterday} 종합 컨디션</div>
+                  <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
+                  <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>최근 흐름 {flow}</div>
+                </div>
+                <div style={{ ...sx("flex:none; font-size:12px; font-weight:700; padding:7px 11px; border-radius:999px; border:1.5px solid rgba(45,92,110,0.25); background:rgba(255,255,255,0.7); white-space:nowrap"), color: c.fg }}>상세보기 ›</div>
+              </div>
+              <div style={sx("display:flex; gap:8px")}>
+                {chip("신체", v.cond.dayBody)}
+                {chip("마음", v.cond.dayMind)}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* AI 오늘의 제안 */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #e2e9f5; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
@@ -568,34 +595,6 @@ export default function WellnessApp() {
             <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
           </div>
         </div>
-
-        {/* 종합 컨디션 카드 — 신체·마음을 합친 단계 하나가 주인공, 두 축은 칩으로. 숫자 없음(사용자 확정). 누르면 상세 시트. */}
-        {(() => {
-          const lv = v.cond.dayOverall;
-          const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
-          const flow = flowText(v.cond.weekFlow.slice(-3));
-          const chip = (name: string, l: typeof lv) => {
-            const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:1.5px solid rgba(45,92,110,0.28)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
-          };
-          return (
-            <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.28); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
-              <div style={sx("display:flex; align-items:flex-start; justify-content:space-between; gap:10px")}>
-                <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-                  <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>{v.cond.yesterday} 종합 컨디션</div>
-                  <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
-                  <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>최근 흐름 {flow}</div>
-                </div>
-                <div style={{ ...sx("flex:none; font-size:12px; font-weight:700; padding:7px 11px; border-radius:999px; border:1.5px solid rgba(45,92,110,0.25); background:rgba(255,255,255,0.7); white-space:nowrap"), color: c.fg }}>상세보기 ›</div>
-              </div>
-              <div style={sx("display:flex; gap:8px")}>
-                {chip("신체", v.cond.dayBody)}
-                {chip("마음", v.cond.dayMind)}
-              </div>
-              <div style={{ ...sx("font-size:13px; line-height:1.55; text-wrap:pretty"), color: c.fg }}>{suggestion(v.cond.dayBody, v.cond.dayMind)}</div>
-            </div>
-          );
-        })()}
 
         {/* 2단 타일 */}
         <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
