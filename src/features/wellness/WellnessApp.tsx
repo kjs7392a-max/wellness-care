@@ -1203,16 +1203,13 @@ export default function WellnessApp() {
           </div>
 
           {/* 구분선 */}
-          <div style={sx("flex:none; height:1px; background:#d6dfe4; margin:0 22px")} />
+          <div style={sx("flex:none; height:2px; background:#c9d5dc; margin:0 22px; border-radius:2px")} />
 
           {/* 오늘의 마음카드 — 섹션 전체가 버튼 */}
           <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px 22px 26px; text-align:center")}>
+            <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>오늘의 마음카드</div>
             <div style={sx(`width:92px; height:92px; flex:none; border-radius:26px; overflow:hidden; background:url(${IMG}/probe-mood.png) center/cover; box-shadow:0 6px 18px rgba(45,92,110,0.14)`)} />
-            <div style={sx("display:flex; flex-direction:column; gap:6px")}>
-              <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>오늘의 마음카드</div>
-              <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>말로 꺼내기 어려운 날엔<br />끌리는 그림을 하나 골라 보세요</div>
-            </div>
-            <div style={sx("font-size:13px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:8px 18px")}>그림 고르러 가기 ›</div>
+            <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>말로 꺼내기 어려운 날엔<br />끌리는 그림을 하나 골라 보세요</div>
           </div>
         </div>
       </div>
