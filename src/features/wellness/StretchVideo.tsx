@@ -11,8 +11,9 @@ import { sx } from "./sx";
  *   멈춰" + "전부 1분 리미트": 20초 시범은 3회 = 1분). 마지막 회가 끝나면 onEnded 로 알린다.
  *   재생은 화면 맨 아래 「시작하기」 버튼(playing prop)이 켠다 — 버튼이 사용자 제스처라 자동재생 정책에도
  *   안 걸린다. 혹시 거부되면 「탭해서 시작」이 뜬다.
- * - 크기: 부모 flex 열에서 남는 높이만큼만 차지한다(flex:1 + aspect-ratio 로 너비가 따라온다). 고정 높이로
- *   두면 짧은 폰에서 맨 아래 버튼이 화면 밖으로 밀린다(실제로 그랬다).
+ * - 크기: 폭은 항상 꽉 채우고, 높이는 부모 flex 열에서 남는 만큼(flex:1). 영상은 object-fit 으로 채운다 —
+ *   비율(9:16)을 지키면 짧은 폰에서 폭이 200px 도 안 돼 "너무 작다"(2026-09-12 사용자 사진), 고정 높이면 버튼이
+ *   밀린다(그 전날). 그래서 cover 로 위·아래를 잘라 머리~허리를 크게 보여준다(전신이 필요한 편만 contain).
  * - 구간 안내는 영상의 currentTime 으로 정한다(타이머가 없으므로 영상이 곧 시계다).
  * - 소리는 켠다(원본에 음악 트랙 있음 — 2026-09-12 사용자 "음악이 안 나오는데"). 「시작하기」가 사용자 제스처라
  *   소리 있는 재생도 허용된다. 🚫 muted 를 되살리지 말 것 — 되살리면 음악이 사라진다. 폰이 무음 모드면 OS 가 막는다.
@@ -66,7 +67,7 @@ export function StretchVideo({ guide, playing, onEnded }: { guide: GuideVideo; p
   };
 
   return (
-    <div style={sx("position:relative; flex:1 1 0; min-height:0; aspect-ratio:9/16; width:auto; max-width:100%; align-self:center; border-radius:22px; overflow:hidden; background:#e8f1f5; box-shadow:0 10px 28px rgba(45,92,110,0.14)")} onClick={needTap ? tapPlay : undefined}>
+    <div style={sx("position:relative; flex:1 1 0; min-height:220px; width:100%; border-radius:22px; overflow:hidden; background:#1c2f38; box-shadow:0 10px 28px rgba(45,92,110,0.14)")} onClick={needTap ? tapPlay : undefined}>
       <video
         ref={ref}
         src={guide.src}
@@ -74,7 +75,7 @@ export function StretchVideo({ guide, playing, onEnded }: { guide: GuideVideo; p
         preload="auto"
         onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
         onEnded={handleEnded}
-        style={sx("width:100%; height:100%; object-fit:cover; display:block")}
+        style={{ ...sx("width:100%; height:100%; display:block"), objectFit: guide.fit ?? "cover", objectPosition: guide.focus ?? "50% 20%" }}
       />
       {needTap && (
         <div style={sx("position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(20,40,50,0.28)")}>

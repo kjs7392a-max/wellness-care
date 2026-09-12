@@ -1010,22 +1010,16 @@ export default function WellnessApp() {
       const close = () => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: null, running: false, consultOpen: false }); };
       return (
         <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
-          <div style={sx("display:flex; align-items:center; padding:52px 20px 10px")}>
+          <div style={sx("display:flex; align-items:center; padding:40px 20px 6px")}>
             <div onClick={close} style={sx("cursor:pointer; font-size:15px; color:#6b8c9a; padding:4px 8px 4px 0")}>‹ 닫기</div>
           </div>
-          {/* 열 전체가 화면 높이 안에 들어간다(min-height:0). 영상이 남는 높이만큼만 차지해 맨 아래 버튼이 밀리지 않는다. */}
-          <div style={sx("flex:1; min-height:0; display:flex; flex-direction:column; gap:14px; padding:4px 24px 24px")}>
-            <div style={sx("flex:none; display:flex; flex-direction:column; gap:6px")}>
-              <div style={sx("font-size:23px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{v.itemTitle}</div>
-              <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>{item.desc}</div>
-            </div>
+          {/* 열 전체가 화면 높이 안에 들어간다(min-height:0). 글은 최소로 두고 영상이 남는 높이를 다 쓴다(폰에서 영상이 너무 작았다). */}
+          <div style={sx("flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; padding:0 20px 20px")}>
+            <div style={sx("flex:none; font-size:21px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{v.itemTitle}</div>
             <StretchVideo guide={item.video} playing={s.running} onEnded={() => patch({ running: false, remaining: 0 })} />
-            <div style={sx("flex:none; display:flex; flex-direction:column; gap:3px; text-align:center")}>
-              <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>영상을 따라 해보세요</div>
-              <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>스트레칭은 1분입니다. 계속 하시려면 1분 뒤 「시작하기」를 다시 누르세요.</div>
-            </div>
+            <div style={sx("flex:none; text-align:center; font-size:13px; color:#2d5c6e; line-height:1.5; text-wrap:pretty")}><b>영상을 따라 해보세요</b> · 1분이 지나면 멈춥니다. 계속하려면 「시작하기」를 다시 누르세요.</div>
             {/* 맨 아래 버튼: 「시작하기」가 영상을 틀고(끝난 뒤 다시 누르면 처음부터), 재생 중엔 「마치기」로 닫는다(사용자 지시). */}
-            <div onClick={s.running ? close : () => patch({ running: true })} style={sx("flex:none; cursor:pointer; text-align:center; padding:17px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{s.running ? "마치기" : "시작하기"}</div>
+            <div onClick={s.running ? close : () => patch({ running: true })} style={sx("flex:none; cursor:pointer; text-align:center; padding:15px; border-radius:16px; background:#7a6bc4; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.28)")}>{s.running ? "마치기" : "시작하기"}</div>
           </div>
         </div>
       );
