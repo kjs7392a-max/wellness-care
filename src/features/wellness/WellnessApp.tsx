@@ -519,11 +519,6 @@ export default function WellnessApp() {
     const knobY = (80 - 68 * Math.sin(Math.PI * stepFrac)).toFixed(1);
     const sleepBars = [9, 17, 6, 22, 13, 20, 26].map((h, i) => ({ h, bg: i === 6 ? "#8a7cd0" : "#e6e2f7" }));
     const moveBars = [11, 19, 8, 24, 14, 21, 26].map((h, i) => ({ h, bg: i === 6 ? "#5bc4b8" : "#daf0ec" }));
-    const hourly = [4, 9, 26, 14, 7, 31, 11, 5, 19, 23, 8, 3].map((val, i) => ({
-      h: Math.max(4, val),
-      bg: val >= 20 ? "#f5a98c" : val >= 9 ? "#f8cbb6" : "#fbe6dc",
-      label: 8 + i + (i % 3 === 0 ? "시" : ""),
-    }));
 
     return (
       <div style={sx("flex:1; overflow-y:auto; display:grid; align-content:start; gap:16px; padding:10px 20px 96px")}>
@@ -627,68 +622,39 @@ export default function WellnessApp() {
           </div>
 
           {!EMPTY_STATE ? (
-            <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
-              {/* 걸음 (전폭) */}
-              <div style={sx("grid-column:span 2; display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
-                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:5px")}>
-                  <div style={sx("font-size:12px; font-weight:600; color:#8ba8b3")}>걸음</div>
-                  <div style={sx("font-size:30px; font-weight:700; color:#2d5c6e; letter-spacing:-0.035em; line-height:1; font-variant-numeric:tabular-nums")}>4,120</div>
-                  <div style={sx("font-size:11.5px; color:#8ba8b3; white-space:nowrap; padding-top:1px")}>평소 3,200 – 6,400</div>
-                  <div style={sx("display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding-top:4px")}>
-                    {stepZones.map((z) => (
-                      <div key={z.label} style={sx("display:flex; align-items:center; gap:4px")}>
-                        <div style={{ ...sx("width:7px; height:7px; border-radius:50%; flex:none"), background: z.color }} />
-                        <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{z.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <svg viewBox="0 0 160 96" style={{ flex: "none", width: 150, height: "auto", overflow: "visible" }}>
-                  <path d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke="#eef2f4" strokeWidth="13" strokeLinecap="round" />
-                  {stepZones.map((z, i) => (
-                    <path key={i} d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke={z.color} strokeWidth="13" strokeLinecap="round" strokeDasharray={z.dash} strokeDashoffset={z.off} />
+            // 한 장 세 칸 — 홈은 '오늘'만 보여주고 누적은 기록 탭이 맡는다(2026-09-12 사용자 확정). 시각 요소는 작게 살린다.
+            <div style={sx("display:grid; grid-template-columns:1.25fr 1fr 1fr; gap:6px; padding:14px 12px 13px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.16), 0 2px 5px rgba(80,88,140,0.08)")}>
+              {/* 걸음 — 작은 반원 게이지(평소 범위 대비, 등급 아님) */}
+              <div style={sx("display:flex; flex-direction:column; align-items:center; gap:2px; padding:0 4px; border-right:1px solid #ece8f5")}>
+                <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>걸음</div>
+                <svg viewBox="0 0 160 96" style={{ width: 84, height: "auto", overflow: "visible" }}>
+                  <path d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke="#eef2f4" strokeWidth="14" strokeLinecap="round" />
+                  {stepZones.map((z, k) => (
+                    <path key={k} d="M12 80 A68 68 0 0 1 148 80" fill="none" stroke={z.color} strokeWidth="14" strokeLinecap="round" strokeDasharray={z.dash} strokeDashoffset={z.off} />
                   ))}
-                  <circle cx={knobX} cy={knobY} r="9" fill="#4a3f80" stroke="#fff" strokeWidth="3.5" />
-                  <text x="80" y="74" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="#6b8c9a">{stepZoneLabel}</text>
+                  <circle cx={knobX} cy={knobY} r="10" fill="#4a3f80" stroke="#fff" strokeWidth="4" />
                 </svg>
+                <div style={sx("font-size:19px; font-weight:700; color:#2d5c6e; letter-spacing:-0.03em; line-height:1; font-variant-numeric:tabular-nums; margin-top:-6px")}>4,120</div>
+                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{stepZoneLabel}</div>
               </div>
-
-              {/* 시간대별 움직임 (전폭) */}
-              <div style={sx("grid-column:span 2; display:flex; flex-direction:column; gap:12px; padding:16px 18px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
-                <div style={sx("display:flex; align-items:baseline; gap:9px")}>
-                  <div style={sx("flex:1; min-width:0; font-size:12px; font-weight:600; color:#8ba8b3")}>시간대별 움직임</div>
-                  <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#e0876c")}>가장 활발했던 13시</div>
+              {/* 몸풀기 — 이번 주 요일 점(한 날 = 점 하나, 오늘 진하게) */}
+              <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px; border-right:1px solid #ece8f5")}>
+                <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>몸풀기</div>
+                <div style={sx("display:flex; gap:4px; padding:6px 0 2px")}>
+                  {sleepBars.map((b, k) => (<div key={k} style={{ ...sx("width:8px; height:8px; border-radius:50%"), background: b.h >= 13 ? (k === 6 ? "#8a7cd0" : "#c4b8ec") : "#ece8f5" }} />))}
                 </div>
-                <div style={sx("display:flex; align-items:flex-end; gap:4px; height:62px")}>
-                  {hourly.map((h, i) => (
-                    <div key={i} style={sx("flex:1; display:flex; flex-direction:column; align-items:center; gap:6px")}>
-                      <div style={{ ...sx("width:100%; border-radius:4px 4px 2px 2px"), height: h.h, background: h.bg }} />
-                      <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{h.label}</div>
-                    </div>
-                  ))}
-                </div>
+                <div style={sx("font-size:19px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>3회 · 7분</div>
+                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>목·어깨 2 · 눈 1</div>
               </div>
-
-              {/* 함께한 몸풀기 */}
-              <div style={sx("display:flex; flex-direction:column; gap:9px; padding:16px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
-                <div style={sx("font-size:12px; font-weight:600; color:#8ba8b3")}>함께한 몸풀기</div>
-                <div style={sx("font-size:22px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>3회 · 7분</div>
-                <div style={sx("display:flex; gap:3px; align-items:flex-end; height:26px; padding-top:2px")}>
-                  {sleepBars.map((b, i) => (<div key={i} style={{ ...sx("flex:1; border-radius:3px"), height: b.h, background: b.bg }} />))}
-                </div>
-                <div style={sx("font-size:11px; color:#8ba8b3; white-space:nowrap")}>목·어깨 2회 · 눈 1회</div>
-              </div>
-
               {/* 움직인 시간 */}
-              <div style={sx("display:flex; flex-direction:column; gap:9px; padding:16px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
-                <div style={sx("font-size:12px; font-weight:600; color:#8ba8b3")}>움직인 시간</div>
-                <div style={sx("font-size:22px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>42분</div>
-                <div style={sx("display:flex; gap:3px; align-items:flex-end; height:26px; padding-top:2px")}>
-                  {moveBars.map((b, i) => (<div key={i} style={{ ...sx("flex:1; border-radius:3px"), height: b.h, background: b.bg }} />))}
+              <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px")}>
+                <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>움직인 시간</div>
+                <div style={sx("display:flex; gap:3px; align-items:flex-end; height:22px; padding-top:4px")}>
+                  {moveBars.map((b, k) => (<div key={k} style={{ ...sx("width:7px; border-radius:3px"), height: Math.round(b.h * 0.8), background: b.bg }} />))}
                 </div>
-                <div style={sx("font-size:11px; color:#8ba8b3; white-space:nowrap")}>걷기 34분 · 계단 8분</div>
+                <div style={sx("font-size:19px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>42분</div>
+                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>걷기 34 · 계단 8</div>
               </div>
-
             </div>
           ) : (
             <div style={sx("display:flex; flex-direction:column; gap:13px; padding:18px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
