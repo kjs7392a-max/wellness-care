@@ -1000,7 +1000,7 @@ export default function WellnessApp() {
           )}
 
           {answered === 0 && (
-            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:2px 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 그림을 보고 지금 느낌으로 고르면 됩니다. 여섯 장이 끝나면 오늘의 디렉팅을 드려요.</div>
+            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:2px 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 검사가 아니라 지금 마음을 들여다보는 방법이에요. 여섯 장이 끝나면 오늘의 디렉팅을 드려요.</div>
           )}
 
           {done && dir && (
@@ -1020,7 +1020,7 @@ export default function WellnessApp() {
                   {dir.top.map((t) => (<div key={t} style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:4px 9px")}>{t}</div>))}
                 </div>
                 <div style={sx("font-size:15px; font-weight:500; line-height:1.7; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty")}>{dir.text}</div>
-                <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>읽어내려 애쓰지 않으셔도 괜찮아요. 오늘 고른 그림은 선생님만 봅니다.</div>
+                <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>이 카드는 검사가 아니라, 지금 마음을 스스로 들여다보는 방법이에요. 오늘 고른 그림은 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
                 <div onClick={() => patch({ answers: {} })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #e3eef1; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>

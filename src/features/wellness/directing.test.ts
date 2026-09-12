@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { directing, HEAVY_TONES, pickWeight, ranked, tally, TONES } from "./directing";
+import { directing, dominantQuadrant, HEAVY_TONES, pickWeight, quadrantTally, ranked, tally, TONE_QUADRANT, TONES } from "./directing";
 import { PROBES } from "./data";
 
 describe("마음카드 데이터", () => {
@@ -12,9 +12,14 @@ describe("마음카드 데이터", () => {
     }
     expect(used.size).toBe(6);
   });
+  it("결 6종이 원형 모델 사분면에 빠짐없이 놓이고, 무거운 결 = 불쾌 사분면", () => {
+    for (const t of TONES) expect(["HP", "LP", "HN", "LN"]).toContain(TONE_QUADRANT[t]);
+    for (const t of HEAVY_TONES) expect(["HN", "LN"]).toContain(TONE_QUADRANT[t]);
+    for (const t of TONES.filter((x) => !HEAVY_TONES.includes(x))) expect(["HP", "LP"]).toContain(TONE_QUADRANT[t]);
+  });
 });
 
-describe("tally / ranked / pickWeight", () => {
+describe("tally / ranked / pickWeight / quadrant", () => {
   it("집계와 순위", () => {
     const t = tally(["무게", "무게", "안정", "격동", "무게", "안정"]);
     expect(t.무게).toBe(3);
@@ -24,29 +29,46 @@ describe("tally / ranked / pickWeight", () => {
     expect(pickWeight(["무게", "정지", "격동", "안정", "활력", "연결"])).toBe("heavy");
     expect(pickWeight(["안정", "활력", "연결", "안정", "활력", "연결"])).toBe("light");
     expect(pickWeight(["무게", "안정", "활력", "연결", "안정", "활력"])).toBe("neutral");
-    expect(HEAVY_TONES).toEqual(["무게", "정지", "격동"]);
+  });
+  it("우세 사분면: 불쾌가 절반 이상이면 불쾌 쪽(HN/LN 중 많은 쪽), 아니면 유쾌 쪽. 동률은 낮은 각성", () => {
+    expect(quadrantTally(["격동", "격동", "무게", "활력", "안정", "연결"])).toEqual({ HP: 1, LP: 2, HN: 2, LN: 1 });
+    expect(dominantQuadrant(["격동", "격동", "무게", "활력", "안정", "연결"])).toBe("HN");
+    expect(dominantQuadrant(["무게", "정지", "격동", "활력", "활력", "활력"])).toBe("LN"); // 3:3 → 불쾌, HN1<LN2
+    expect(dominantQuadrant(["활력", "활력", "안정", "무게", "연결", "활력"])).toBe("HP");
+    expect(dominantQuadrant(["안정", "연결", "활력", "무게", "안정", "격동"])).toBe("LP");
+    expect(dominantQuadrant([])).toBeNull();
   });
 });
 
-describe("directing", () => {
-  it("첫 문장은 가장 많은 결, 둘째는 두 번째 결, 마무리는 제안 — 숫자·진단 없음", () => {
+describe("directing — 사분면별 전략", () => {
+  it("저각성·불쾌(무게 우세): 눌린 것 + 아주 작은 행동 하나. 숫자·진단 없음", () => {
     const d = directing(["무게", "무게", "안정", "격동", "무게", "안정"], 4, 2);
+    expect(d.quadrant).toBe("LN");
     expect(d.weight).toBe("heavy");
     expect(d.top).toEqual(["무게", "안정"]);
     expect(d.text).toContain("쌓이고 눌린");
-    expect(d.text).toContain("중심은 흔들리지");
-    expect(d.text).toContain("퇴근 전 어깨·목 풀기");
-    expect(d.text).not.toMatch(/\d점|등급|우울증|진단/);
+    expect(d.text).toContain("중심은 흔들리지"); // 둘째 결(안정)은 다른 사분면이라 짚어 준다
+    expect(d.text).toContain("아주 작은 행동 하나");
+    expect(d.text).not.toMatch(/\d점|등급|우울증|진단|각성 수준/);
   });
-  it("고르게 갈리면 섞임 문장", () => {
-    const d = directing(["활력", "안정", "연결", "무게", "정지", "격동"], 3, 1);
-    expect(d.text).toContain("고르게 갈렸어요");
+  it("고각성·불쾌(격동 우세): 식지 않은 감정 + 호흡으로 각성 낮추기", () => {
+    const d = directing(["격동", "격동", "격동", "무게", "활력", "안정"], 4, 1);
+    expect(d.quadrant).toBe("HN");
+    expect(d.text).toContain("식지 않은 감정");
+    expect(d.text).toContain("숨 고르기");
   });
-  it("몸이 낮고 결이 무거우면 쉬라는 제안, 가벼우면 좋은 흐름", () => {
-    expect(directing(["무게", "정지", "격동", "무게", "정지", "격동"], 1, 2).text).toContain("쉬어가야");
-    expect(directing(["활력", "안정", "활력", "안정", "연결", "안정"], 4, 0).text).toContain("좋은 흐름");
+  it("몸이 지친 날엔 사분면과 무관하게 부담 낮은 제안", () => {
+    expect(directing(["무게", "정지", "격동", "무게", "정지", "격동"], 1, 2).text).toContain("그걸로 오늘은 충분");
+    expect(directing(["활력", "활력", "활력", "안정", "연결", "활력"], 1, 2).text).toContain("힘을 아껴");
   });
-  it("아직 아무것도 안 골랐으면 빈 글", () => {
+  it("유쾌 우세: 유지·기록", () => {
+    const d = directing(["안정", "연결", "안정", "활력", "안정", "연결"], 4, 0);
+    expect(d.quadrant).toBe("LP");
+    expect(d.text).toContain("좋은 흐름");
+    expect(d.text).toContain("기록해 두면");
+  });
+  it("고르게 갈리면 섞임 문장, 아직 아무것도 안 골랐으면 빈 글", () => {
+    expect(directing(["활력", "안정", "연결", "무게", "정지", "격동"], 3, 1).text).toContain("고르게 갈렸어요");
     expect(directing([], 3, 1).text).toBe("");
   });
 });
