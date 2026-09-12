@@ -1219,13 +1219,13 @@ export default function WellnessApp() {
             {/* 요일마다 가로 바 — 채움 길이 = 단계(5칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}
             <div style={sx("display:flex; flex-direction:column; gap:7px")}>
               {flow.map((h, i) => {
-                const hc = h ? LEVEL_COLOR[h] : { bg: "#eef3f5", fg: "#8ba8b3" };
+                const hc = h ? LEVEL_COLOR[h] : { bg: "#eef3f5", bar: "#d5dde2", fg: "#8ba8b3" };
                 const last = i === flow.length - 1;
                 return (
                   <div key={i} style={{ ...sx("display:flex; align-items:center; gap:9px"), opacity: last ? 1 : 0.8 }}>
                     <div style={{ ...sx("flex:none; width:28px; font-size:11.5px; font-weight:700; text-align:right"), color: oc.fg }}>{last ? "어제" : dowLabels[i]}</div>
                     <div style={sx("flex:1; height:9px; border-radius:999px; background:rgba(255,255,255,0.75); overflow:hidden")}>
-                      <div style={{ ...sx("height:100%; border-radius:999px; transition:width 0.4s"), width: h ? `${h * 20}%` : "0%", background: hc.fg, opacity: last ? 1 : 0.7 }} />
+                      <div style={{ ...sx("height:100%; border-radius:999px; transition:width 0.4s"), width: h ? `${h * 20}%` : "0%", background: hc.bar, opacity: last ? 1 : 0.85 }} />
                     </div>
                     <div style={{ ...sx("flex:none; width:58px; font-size:11.5px; text-align:left; white-space:nowrap"), color: hc.fg, fontWeight: last ? 800 : 600 }}>{h ? LEVEL_LABEL[h] : "기록 없음"}</div>
                   </div>
@@ -1236,7 +1236,7 @@ export default function WellnessApp() {
             <div style={sx("display:flex; flex-wrap:wrap; gap:6px 12px; padding-top:2px")}>
               {([1, 2, 3, 4, 5] as const).map((l) => (
                 <div key={l} style={sx("display:flex; align-items:center; gap:5px")}>
-                  <div style={{ ...sx("width:14px; height:7px; border-radius:999px"), background: LEVEL_COLOR[l].fg }} />
+                  <div style={{ ...sx("width:14px; height:7px; border-radius:999px"), background: LEVEL_COLOR[l].bar }} />
                   <div style={{ ...sx("font-size:10.5px; font-weight:600; opacity:0.85"), color: oc.fg }}>{LEVEL_LABEL[l]}</div>
                 </div>
               ))}

@@ -11,13 +11,17 @@ export type Level = 1 | 2 | 3 | 4 | 5;
 export type Signal = -1 | 0 | 1;
 
 export const LEVEL_LABEL: Record<Level, string> = { 1: "휴식 필요", 2: "조금 지침", 3: "보통", 4: "좋음", 5: "매우 좋음" };
-/** 카드 배경/글자색 — 낮은 단계에 경고색(빨강)을 쓰지 않는다. 평가가 아니라 상태다. */
-export const LEVEL_COLOR: Record<Level, { bg: string; fg: string }> = {
-  1: { bg: "#fbe7dc", fg: "#8a4a3c" },
-  2: { bg: "#fbf1d6", fg: "#7a5a1e" },
-  3: { bg: "#e8eff3", fg: "#3f6272" },
-  4: { bg: "#dff2e6", fg: "#2f6a4a" },
-  5: { bg: "#c9ead6", fg: "#1f5a3a" },
+/**
+ * 단계 색 — 낮은 단계에 경고색(빨강)을 쓰지 않는다. 평가가 아니라 상태다.
+ * bg = 카드 배경(아주 옅게) · bar = 바·범례(파스텔 — 2026-09-12 사용자: MZ·여성 사용자가 많으니 부드럽게) · fg = 글자(읽히도록 조금 진하게).
+ * 살구 → 크림 → 라벤더 → 민트 → 세이지 순. 라벤더는 앱 브랜드색(보라)과 같은 결.
+ */
+export const LEVEL_COLOR: Record<Level, { bg: string; bar: string; fg: string }> = {
+  1: { bg: "#fdeee7", bar: "#f5bfae", fg: "#a1614f" },
+  2: { bg: "#fdf5e3", bar: "#f3d99a", fg: "#8f6d2a" },
+  3: { bg: "#eeeef9", bar: "#c9c6ee", fg: "#5f5a9c" },
+  4: { bg: "#e4f5ec", bar: "#a9dfc7", fg: "#3b7a5c" },
+  5: { bg: "#d6efdf", bar: "#8fd0b0", fg: "#2c6a4b" },
 };
 
 /** 신호 합계(−3~+3)를 5단계로. −2 이하 = 휴식 필요 … +2 이상 = 매우 좋음 */
