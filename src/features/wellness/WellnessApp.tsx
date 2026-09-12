@@ -1178,14 +1178,15 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        <div style={sx("flex:1; overflow-y:auto; padding:18px 18px 24px; display:flex; flex-direction:column; gap:12px")}>
+        {/* 두 섹션이 화면을 반씩 꽉 채운다(사용자 지시) — 위 「마음과 대화」, 구분선, 아래 「오늘의 마음카드」. 세로가 모자란 폰에서만 스크롤. */}
+        <div style={sx("flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column")}>
           {/* 마음과 대화 — 상대는 여기서 그림만 보고 고른다(이름·역할 표기 없음, 사용자 지시). 누르면 그 상대와 새 대화. */}
-          <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
-            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>마음과 대화</div>
-              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요. 오늘 하루 선생님의 마음을 열어보세요.</div>
+          <div style={sx("flex:1; min-height:230px; display:flex; flex-direction:column; justify-content:center; gap:18px; padding:22px 22px 20px")}>
+            <div style={sx("display:flex; flex-direction:column; gap:6px; text-align:center")}>
+              <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>마음과 대화</div>
+              <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요.<br />오늘 하루 선생님의 마음을 열어보세요.</div>
             </div>
-            <div style={sx("display:grid; grid-template-columns:repeat(4,1fr); gap:10px")}>
+            <div style={sx("display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:0 4px")}>
               {CHARACTERS.map((c) => {
                 const on = c.id === s.character;
                 return (
@@ -1202,18 +1203,17 @@ export default function WellnessApp() {
           </div>
 
           {/* 구분선 */}
-          <div style={sx("height:1px; background:#dfe6ea; margin:2px 4px")} />
+          <div style={sx("flex:none; height:1px; background:#d6dfe4; margin:0 22px")} />
 
-          <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
-            <div style={sx(`width:48px; height:48px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/probe-mood.png) center/cover`)} />
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>오늘의 마음카드</div>
-              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>말로 꺼내기 어려운 날엔 끌리는 그림을 하나 골라 보세요</div>
+          {/* 오늘의 마음카드 — 섹션 전체가 버튼 */}
+          <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px 22px 26px; text-align:center")}>
+            <div style={sx(`width:92px; height:92px; flex:none; border-radius:26px; overflow:hidden; background:url(${IMG}/probe-mood.png) center/cover; box-shadow:0 6px 18px rgba(45,92,110,0.14)`)} />
+            <div style={sx("display:flex; flex-direction:column; gap:6px")}>
+              <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>오늘의 마음카드</div>
+              <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>말로 꺼내기 어려운 날엔<br />끌리는 그림을 하나 골라 보세요</div>
             </div>
-            <div style={sx("flex:none; font-size:16px; color:#b5c8d0")}>›</div>
+            <div style={sx("font-size:13px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:8px 18px")}>그림 고르러 가기 ›</div>
           </div>
-
-          <div style={sx("font-size:12px; color:#8ba8b3; line-height:1.65; padding:4px 4px 0; text-wrap:pretty")}>두 가지 모두 선택입니다. 먼저 열지 않으면 아무 일도 일어나지 않아요.</div>
         </div>
       </div>
     );
