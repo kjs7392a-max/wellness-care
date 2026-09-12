@@ -63,3 +63,18 @@ describe("change / suggestion / evidence", () => {
     expect(Object.values(LEVEL_LABEL)).toHaveLength(5);
   });
 });
+
+import { overallLevel } from "./condition";
+describe("overallLevel — 종합", () => {
+  it("평균, 어중간하면 낮은 쪽(좋음+보통 = 보통)", () => {
+    expect(overallLevel(4, 3)).toBe(3);
+    expect(overallLevel(4, 4)).toBe(4);
+    expect(overallLevel(5, 2)).toBe(3);
+    expect(overallLevel(1, 5)).toBe(3);
+  });
+  it("한쪽이 없으면 있는 쪽, 둘 다 없으면 없음, 위험어 주는 무조건 휴식 필요", () => {
+    expect(overallLevel(4, null)).toBe(4);
+    expect(overallLevel(null, null)).toBeNull();
+    expect(overallLevel(5, 5, true)).toBe(1);
+  });
+});

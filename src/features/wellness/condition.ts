@@ -123,3 +123,16 @@ export function mindEvidence(m: MindInput): string[] {
     `마음과 대화 ${m.chatCount}번`,
   ];
 }
+
+/**
+ * 종합 컨디션 — 신체·마음을 합친 하나(홈 카드 주인공, 2026-09-12 사용자 확정).
+ * 규칙: 두 단계의 평균, 어중간하면 낮은 쪽으로(좋음 4 + 보통 3 = 3.5 → 보통). 한쪽이 없으면 있는 쪽.
+ * 위험어 안내가 뜬 주는 마음이 1 이라 종합도 낮아진다 — 그 위에 따로 무조건 1 로 못박는다.
+ */
+export function overallLevel(body: Level | null, mind: Level | null, riskFlagged = false): Level | null {
+  if (riskFlagged) return 1;
+  if (body === null && mind === null) return null;
+  if (body === null) return mind;
+  if (mind === null) return body;
+  return Math.floor((body + mind) / 2) as Level;
+}
