@@ -693,13 +693,13 @@ export default function WellnessApp() {
     const weeklyBars = WEEKLY_PAST.concat([{ label: "이번 주", v: totals.min }]).map((w) => ({ label: w.label, value: w.v, h: Math.round(w.v * 0.75) + 8, bg: w.label === "이번 주" ? "#7a6bc4" : "#e6e2f7" }));
     const doneList = DONE_WEEK.map((d) => {
       const pg = PROGRAMS.find((x) => x.id === d.id)!;
-      return { title: pg.title, min: pg.min + "분", chipBg: pg.min <= 1 ? "#fdf1e6" : pg.min <= 3 ? "#ffe6ec" : "#f2edfa", chipInk: pg.min <= 3 ? "#8a4a3c" : "#4a3f80", n: d.n };
+      return { title: pg.title, n: d.n };
     });
     const item = v.item;
     const recIsBody = s.recTab === "body";
     const bodySolution = "이번 주는 목·어깨 쪽을 가장 자주 고르셨고, 오후 2시–4시에 앉아 계신 시간이 길었어요. 요즘처럼 더운 주에는 낮 시간대를 늘리기보다, 그 시간엔 실내에서 1분짜리를 한 번 더 끼워 넣고 걷기는 해가 진 뒤로 옮기는 쪽이 잘 맞을 것 같아요.";
     const bodyActions = [
-      { label: v.wx.prefer === "indoor" ? "낮에는 실내에서 3분 한 번 더" : "오후 3시에 3분 걷기 한 번 더", go: () => patch({ tab: "home" }) },
+      { label: v.wx.prefer === "indoor" ? "낮에는 실내에서 1분 한 번 더" : "오후 3시에 복도 한 바퀴 한 번 더", go: () => patch({ tab: "home" }) },
       { label: "오늘 " + v.itemTitle + " 해보기", go: () => patch({ sheet: "content" }) },
     ];
     const mindActions = [
@@ -752,13 +752,11 @@ export default function WellnessApp() {
                 <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>어떤 걸 하셨나요</div>
                 <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>{DONE_WEEK.length} / {PROGRAMS.length}가지</div>
               </div>
+              {/* 스트레칭 이름 + 몇 회 — 분 칩·점 대신 글자로(사용자 지시). 전부 1분이라 분은 안 적는다. */}
               {doneList.map((dn, i) => (
                 <div key={i} style={sx("display:flex; align-items:center; gap:11px")}>
-                  <div style={{ ...sx("flex:none; width:34px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; white-space:nowrap"), background: dn.chipBg, color: dn.chipInk }}>{dn.min}</div>
-                  <div style={sx("flex:1; min-width:0; font-size:13px; font-weight:600; color:#3a4a72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap")}>{dn.title}</div>
-                  <div style={sx("flex:none; display:flex; gap:3px")}>
-                    {Array.from({ length: dn.n }).map((_, k) => (<div key={k} style={sx("width:7px; height:7px; border-radius:50%; background:#8a7cd0")} />))}
-                  </div>
+                  <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:600; color:#3a4a72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap")}>{dn.title}</div>
+                  <div style={sx("flex:none; font-size:13px; font-weight:800; color:#7a6bc4; white-space:nowrap")}>{dn.n}회</div>
                 </div>
               ))}
               <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>목·어깨와 호흡 쪽으로 손이 많이 가셨어요. 손목과 다리는 아직 안 해보셨는데, 한 번쯤 열어보셔도 좋아요.</div>
