@@ -543,6 +543,15 @@ export default function WellnessApp() {
           </div>
         </div>
 
+        {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}
+        <div style={sx("display:flex; align-items:center; gap:9px; margin-top:-4px")}>
+          <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:32px; padding:0 13px; border-radius:999px; background:#fff; border:1px solid #e3eef1")}>
+            <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
+            <div style={sx("font-size:13px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
+          </div>
+          <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
+        </div>
+
         {/* 종합 컨디션 카드 — 신체·마음을 합친 단계 하나가 주인공, 두 축은 칩으로. 숫자 없음(사용자 확정). 누르면 상세 시트. */}
         {(() => {
           const lv = v.cond.dayOverall;
@@ -633,13 +642,6 @@ export default function WellnessApp() {
         </div>
         {/* AI 오늘의 제안 */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #e2e9f5; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
-          <div style={sx("display:flex; align-items:center; gap:9px")}>
-            <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:34px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,0.85); border:1px solid rgba(255,255,255,0.95)")}>
-              <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
-              <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
-            </div>
-            <div style={sx("flex:1; min-width:0; font-size:13px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
-          </div>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
             <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>AI 오늘의 제안</div>
             <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
