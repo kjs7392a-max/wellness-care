@@ -323,13 +323,13 @@ export default function WellnessApp() {
           </div>
 
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
-            <input value={s.loginId} onChange={(e) => patch({ loginId: e.target.value })} placeholder="학교 계정 (nnn@sen.go.kr)" style={sx("width:100%; box-sizing:border-box; border:1.5px solid #e3eef1; background:#fff; border-radius:14px; padding:16px; font-size:14.5px; color:#2d5c6e; outline:none; font-family:inherit")} />
-            <input value={s.loginPw} onChange={(e) => patch({ loginPw: e.target.value })} type="password" placeholder="비밀번호" style={sx("width:100%; box-sizing:border-box; border:1.5px solid #e3eef1; background:#fff; border-radius:14px; padding:16px; font-size:14.5px; color:#2d5c6e; outline:none; font-family:inherit")} />
+            <input value={s.loginId} onChange={(e) => patch({ loginId: e.target.value })} placeholder="학교 계정 (nnn@sen.go.kr)" style={sx("width:100%; box-sizing:border-box; border:1.5px solid #c9d6dc; background:#fff; border-radius:14px; padding:16px; font-size:14.5px; color:#2d5c6e; outline:none; font-family:inherit")} />
+            <input value={s.loginPw} onChange={(e) => patch({ loginPw: e.target.value })} type="password" placeholder="비밀번호" style={sx("width:100%; box-sizing:border-box; border:1.5px solid #c9d6dc; background:#fff; border-radius:14px; padding:16px; font-size:14.5px; color:#2d5c6e; outline:none; font-family:inherit")} />
             <div onClick={doLogin} style={{ ...sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.26); transition:background 0.2s"), background: loginBtnBg }}>로그인</div>
           </div>
 
           {/* 학교 계정·비밀번호 블록과 둘러보기 사이 구분선(글자 없이 선만 — 사용자 지시) */}
-          <div style={sx("height:1px; background:#e3eef1")} />
+          <div style={sx("height:1px; background:#c9d6dc")} />
 
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
             <div onClick={doLogin} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:15px; background:#f4fafb; border:1px dashed #cfe6ee; font-size:14px; font-weight:600; color:#6b8c9a")}>계정 없이 둘러보기</div>
@@ -367,7 +367,7 @@ export default function WellnessApp() {
           {s.ob === 0 && (
             <div style={sx("display:flex; flex-direction:column; gap:9px")}>
               {PRINCIPLES.map((text, i) => (
-                <div key={i} style={sx("display:flex; gap:11px; align-items:flex-start; padding:15px 16px; border-radius:15px; background:#fff; border:1px solid #e3eef1")}>
+                <div key={i} style={sx("display:flex; gap:11px; align-items:flex-start; padding:15px 16px; border-radius:15px; background:#fff; border:1px solid #c9d6dc")}>
                   <div style={sx("width:6px; height:6px; border-radius:50%; background:#7a6bc4; margin-top:7px; flex:none")} />
                   <div style={sx("flex:1; font-size:14px; color:#2d5c6e; line-height:1.55; font-weight:500; text-wrap:pretty")}>{text}</div>
                 </div>
@@ -378,7 +378,7 @@ export default function WellnessApp() {
           {s.ob === 1 && (
             <div style={sx("display:flex; flex-direction:column; gap:10px")}>
               {COLLECT.map((ci, i) => (
-                <div key={i} style={sx("display:flex; flex-direction:column; gap:4px; padding:16px; border-radius:15px; background:#fff; border:1px solid #e3eef1")}>
+                <div key={i} style={sx("display:flex; flex-direction:column; gap:4px; padding:16px; border-radius:15px; background:#fff; border:1px solid #c9d6dc")}>
                   <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{ci.name}</div>
                   <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ci.why}</div>
                 </div>
@@ -393,8 +393,8 @@ export default function WellnessApp() {
               ].map((c, i) => {
                 const on = s.consent[i];
                 return (
-                  <div key={i} onClick={() => patchFn((st) => { const c2 = st.consent.slice() as [boolean, boolean]; c2[i] = !c2[i]; return { consent: c2 }; })} style={{ ...sx("cursor:pointer; display:flex; gap:13px; align-items:flex-start; padding:17px 16px; border-radius:16px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#c4b8ec" : "#e3eef1" }}>
-                    <div style={{ ...sx("width:22px; height:22px; border-radius:7px; flex:none; margin-top:1px; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#d9e7ec" }}>{on ? "✓" : ""}</div>
+                  <div key={i} onClick={() => patchFn((st) => { const c2 = st.consent.slice() as [boolean, boolean]; c2[i] = !c2[i]; return { consent: c2 }; })} style={{ ...sx("cursor:pointer; display:flex; gap:13px; align-items:flex-start; padding:17px 16px; border-radius:16px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#c4b8ec" : "#c9d6dc" }}>
+                    <div style={{ ...sx("width:22px; height:22px; border-radius:7px; flex:none; margin-top:1px; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>{on ? "✓" : ""}</div>
                     <div style={sx("flex:1; display:flex; flex-direction:column; gap:4px")}>
                       <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{c.title}</div>
                       <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{c.desc}</div>
@@ -410,8 +410,8 @@ export default function WellnessApp() {
               ].map((pm, i) => {
                 const on = s.perms[i] !== false;
                 return (
-                  <div key={i} onClick={() => patchFn((sti) => ({ perms: { ...sti.perms, [i]: !(sti.perms[i] !== false) } }))} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:15px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#c4b8ec" : "#e3eef1" }}>
-                    <div style={{ ...sx("width:22px; height:22px; border-radius:7px; flex:none; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#d9e7ec" }}>{on ? "✓" : ""}</div>
+                  <div key={i} onClick={() => patchFn((sti) => ({ perms: { ...sti.perms, [i]: !(sti.perms[i] !== false) } }))} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:15px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#c4b8ec" : "#c9d6dc" }}>
+                    <div style={{ ...sx("width:22px; height:22px; border-radius:7px; flex:none; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>{on ? "✓" : ""}</div>
                     <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
                       <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{pm.name}</div>
                       <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{pm.note}</div>
@@ -427,7 +427,7 @@ export default function WellnessApp() {
               {(Object.keys(ROLES) as Role[]).map((k) => {
                 const on = v.roleKey === k && !!s.role;
                 return (
-                  <div key={k} onClick={() => patch({ role: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:5px; padding:17px 18px; border-radius:16px; border:1.5px solid; transition:all 0.2s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#c4b8ec" : "#e3eef1" }}>
+                  <div key={k} onClick={() => patch({ role: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:5px; padding:17px 18px; border-radius:16px; border:1.5px solid; transition:all 0.2s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#c4b8ec" : "#c9d6dc" }}>
                     <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{ROLES[k].label}</div>
                     <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ROLES[k].hint}</div>
                   </div>
@@ -441,17 +441,17 @@ export default function WellnessApp() {
               {PARQ.map((text, i) => {
                 const val = s.parq[i];
                 return (
-                  <div key={i} style={{ ...sx("display:flex; align-items:center; gap:12px; padding:14px 15px; border-radius:15px; background:#fff; border:1.5px solid"), borderColor: val === undefined ? "#e3eef1" : "#dbedf2" }}>
+                  <div key={i} style={{ ...sx("display:flex; align-items:center; gap:12px; padding:14px 15px; border-radius:15px; background:#fff; border:1.5px solid"), borderColor: val === undefined ? "#c9d6dc" : "#c9d6dc" }}>
                     <div style={sx("flex:1; min-width:0; font-size:13.5px; color:#2d5c6e; line-height:1.55; font-weight:500; text-wrap:pretty")}>{text}</div>
                     <div style={sx("flex:none; display:flex; gap:6px")}>
-                      <div onClick={() => patchFn((sti) => ({ parq: { ...sti.parq, [i]: false } }))} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:44px; min-width:56px; padding:0 13px; border-radius:12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: val === false ? "#f2edfa" : "#fff", color: val === false ? "#7a6bc4" : "#8ba8b3", borderColor: val === false ? "#7a6bc4" : "#e3eef1" }}>아니오</div>
-                      <div onClick={() => patchFn((sti) => ({ parq: { ...sti.parq, [i]: true } }))} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:44px; min-width:52px; padding:0 13px; border-radius:12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: val === true ? "#f2edfa" : "#fff", color: val === true ? "#7a6bc4" : "#8ba8b3", borderColor: val === true ? "#7a6bc4" : "#e3eef1" }}>예</div>
+                      <div onClick={() => patchFn((sti) => ({ parq: { ...sti.parq, [i]: false } }))} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:44px; min-width:56px; padding:0 13px; border-radius:12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: val === false ? "#f2edfa" : "#fff", color: val === false ? "#7a6bc4" : "#8ba8b3", borderColor: val === false ? "#7a6bc4" : "#c9d6dc" }}>아니오</div>
+                      <div onClick={() => patchFn((sti) => ({ parq: { ...sti.parq, [i]: true } }))} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:44px; min-width:52px; padding:0 13px; border-radius:12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: val === true ? "#f2edfa" : "#fff", color: val === true ? "#7a6bc4" : "#8ba8b3", borderColor: val === true ? "#7a6bc4" : "#c9d6dc" }}>예</div>
                     </div>
                   </div>
                 );
               })}
               {v.parqAll && (
-                <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #dbedf2; animation:wRise 0.4s ease-out both")}>
+                <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #c9d6dc; animation:wRise 0.4s ease-out both")}>
                   <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.parqYes ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
                   <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{v.parqYes ? "해당되는 항목이 있어 앉은 자리에서 하는 낮은 강도만 제안해 드립니다. 새로운 운동을 시작하기 전에는 주치의와 한 번 상의해 주세요." : "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
                 </div>
@@ -536,7 +536,7 @@ export default function WellnessApp() {
             <div style={sx("font-size:12.5px; color:#8ba8b3; font-weight:500")}>{todayLabel} · {v.role.label}</div>
             <div style={sx("font-size:20px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{greeting}</div>
           </div>
-          <div onClick={() => patch({ tab: "settings" })} style={sx("cursor:pointer; width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:1px solid #e3eef1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(45,92,110,0.06)")}>
+          <div onClick={() => patch({ tab: "settings" })} style={sx("cursor:pointer; width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:1px solid #c9d6dc; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(45,92,110,0.06)")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="#7a6bc4" strokeWidth="1.9" strokeLinecap="round" style={{ width: 19, height: 19 }}>
               <path d="M12 4.2l1.5 1.9 2.4-.5.5 2.4 1.9 1.5-1.1 2.2 1.1 2.2-1.9 1.5-.5 2.4-2.4-.5L12 19.8l-1.5-1.9-2.4.5-.5-2.4-1.9-1.5L6.8 12 5.7 9.8l1.9-1.5.5-2.4 2.4.5z" strokeLinejoin="round" />
               <circle cx="12" cy="12" r="2.6" />
@@ -546,7 +546,7 @@ export default function WellnessApp() {
 
         {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}
         <div style={sx("display:flex; align-items:center; gap:9px; margin-top:-4px")}>
-          <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:32px; padding:0 13px; border-radius:999px; background:#fff; border:1px solid #e3eef1")}>
+          <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:32px; padding:0 13px; border-radius:999px; background:#fff; border:1px solid #c9d6dc")}>
             <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
             <div style={sx("font-size:13px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
           </div>
@@ -560,17 +560,17 @@ export default function WellnessApp() {
           const flow = flowText(v.cond.weekFlow.slice(-3));
           const chip = (name: string, l: typeof lv) => {
             const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:1.5px solid rgba(45,92,110,0.28)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
+            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:1.5px solid rgba(45,92,110,0.45)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
           };
           return (
-            <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.28); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
+            <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.45); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
               <div style={sx("display:flex; align-items:flex-start; justify-content:space-between; gap:10px")}>
                 <div style={sx("display:flex; flex-direction:column; gap:4px")}>
                   <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>{v.cond.yesterday} 종합 컨디션</div>
                   <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
                   <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>최근 흐름 {flow}</div>
                 </div>
-                <div style={{ ...sx("flex:none; font-size:12px; font-weight:700; padding:7px 11px; border-radius:999px; border:1.5px solid rgba(45,92,110,0.25); background:rgba(255,255,255,0.7); white-space:nowrap"), color: c.fg }}>상세보기 ›</div>
+                <div style={{ ...sx("flex:none; font-size:12px; font-weight:700; padding:7px 11px; border-radius:999px; border:1.5px solid rgba(45,92,110,0.45); background:rgba(255,255,255,0.7); white-space:nowrap"), color: c.fg }}>상세보기 ›</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
                 {chip("신체", v.cond.dayBody)}
@@ -588,7 +588,7 @@ export default function WellnessApp() {
 
           {!EMPTY_STATE ? (
             // 한 장 세 칸 — 홈은 '오늘'만 보여주고 누적은 기록 탭이 맡는다(2026-09-12 사용자 확정). 시각 요소는 작게 살린다.
-            <div style={sx("display:grid; grid-template-columns:1.25fr 1fr 1fr; gap:6px; padding:14px 12px 13px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.16), 0 2px 5px rgba(80,88,140,0.08)")}>
+            <div style={sx("display:grid; grid-template-columns:1.25fr 1fr 1fr; gap:6px; padding:14px 12px 13px; border-radius:20px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 10px 22px rgba(80,88,140,0.16), 0 2px 5px rgba(80,88,140,0.08)")}>
               {/* 걸음 — 작은 반원 게이지(평소 범위 대비, 등급 아님) */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; gap:2px; padding:0 4px; border-right:1px solid #ece8f5")}>
                 <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>걸음</div>
@@ -622,14 +622,14 @@ export default function WellnessApp() {
               </div>
             </div>
           ) : (
-            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:18px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
+            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:18px; border-radius:20px; background:#fff; border:1px solid #c9d6dc")}>
               <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>오늘은 아직 조용해요. 시작은 1분이면 충분합니다.</div>
-              <div onClick={() => patch({ sheet: "content", program: null })} style={sx("cursor:pointer; text-align:center; padding:13px; border-radius:13px; background:#f2edfa; border:1px solid #e0d9f2; font-size:14px; font-weight:700; color:#7a6bc4")}>1분 기지개부터</div>
+              <div onClick={() => patch({ sheet: "content", program: null })} style={sx("cursor:pointer; text-align:center; padding:13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:14px; font-weight:700; color:#7a6bc4")}>1분 기지개부터</div>
             </div>
           )}
 
           {s.sessions.length > 0 && (
-            <div style={sx("display:flex; flex-direction:column; gap:9px; padding:16px 18px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
+            <div style={sx("display:flex; flex-direction:column; gap:9px; padding:16px 18px; border-radius:20px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
               <div style={sx("font-size:12px; font-weight:600; color:#8ba8b3")}>오늘 함께한 몸풀기</div>
               {s.sessions.map((ss, i) => (
                 <div key={i} style={sx("display:flex; align-items:center; gap:10px")}>
@@ -642,7 +642,7 @@ export default function WellnessApp() {
           )}
         </div>
         {/* AI 오늘의 제안 */}
-        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #e2e9f5; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
+        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #c9d6dc; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
             <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>AI 오늘의 제안</div>
             <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
@@ -714,9 +714,9 @@ export default function WellnessApp() {
         {(() => {
           const lv = v.cond.overall; const ch = v.cond.overallChange;
           const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
-          const chip = (name: string, l: typeof lv) => { const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" }; return <div style={{ ...sx("flex:1; display:flex; justify-content:space-between; padding:8px 11px; border-radius:11px; font-size:12px; font-weight:700; border:1.5px solid rgba(45,92,110,0.22)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>; };
+          const chip = (name: string, l: typeof lv) => { const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" }; return <div style={{ ...sx("flex:1; display:flex; justify-content:space-between; padding:8px 11px; border-radius:11px; font-size:12px; font-weight:700; border:1.5px solid rgba(45,92,110,0.45)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>; };
           return (
-            <div style={{ ...sx("display:flex; flex-direction:column; gap:9px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.22)"), background: c.bg }}>
+            <div style={{ ...sx("display:flex; flex-direction:column; gap:9px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: c.bg }}>
               <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>이번 주 종합 컨디션</div>
               <div style={sx("display:flex; align-items:baseline; gap:10px")}>
                 <div style={{ ...sx("font-size:22px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
@@ -728,26 +728,26 @@ export default function WellnessApp() {
         })()}
         <div style={sx("font-size:13px; color:#8ba8b3; line-height:1.5; margin-bottom:2px")}>선생님만 볼 수 있어요. 학교와 교육청에는 어떤 형태로도 전달되지 않습니다.</div>
         <div style={sx("display:flex; gap:7px; padding-bottom:2px")}>
-          <div onClick={() => patch({ recTab: "body" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: recIsBody ? "#f2edfa" : "#fff", color: recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: recIsBody ? "#7a6bc4" : "#e3eef1" }}>몸의 기록</div>
-          <div onClick={() => patch({ recTab: "mind" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: !recIsBody ? "#f2edfa" : "#fff", color: !recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: !recIsBody ? "#7a6bc4" : "#e3eef1" }}>마음의 기록</div>
+          <div onClick={() => patch({ recTab: "body" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: recIsBody ? "#f2edfa" : "#fff", color: recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: recIsBody ? "#7a6bc4" : "#c9d6dc" }}>몸의 기록</div>
+          <div onClick={() => patch({ recTab: "mind" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: !recIsBody ? "#f2edfa" : "#fff", color: !recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: !recIsBody ? "#7a6bc4" : "#c9d6dc" }}>마음의 기록</div>
         </div>
 
         {recIsBody ? (
           <div style={sx("display:flex; flex-direction:column; gap:12px")}>
             <div style={sx("display:flex; gap:11px")}>
-              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:20px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #fadbd3")}>
+              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:20px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #efc3b6")}>
                 <div style={sx("font-size:11.5px; font-weight:700; color:#9a5f4c")}>이번 주 걸음</div>
                 <div style={sx("font-size:23px; font-weight:700; color:#8a4a3c; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>28,940</div>
                 <div style={sx("font-size:11px; color:#9a5f4c; white-space:nowrap")}>하루 평균 4,134</div>
               </div>
-              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:20px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #ddd9f3")}>
+              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:20px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #c7c0e8")}>
                 <div style={sx("font-size:11.5px; font-weight:700; color:#5f5397")}>이번 주 실행</div>
                 <div style={sx("font-size:23px; font-weight:700; color:#4a3f80; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>{totals.count}회</div>
                 <div style={sx("font-size:11px; color:#5f5397; white-space:nowrap")}>모두 {totals.min}분</div>
               </div>
             </div>
 
-            <div style={sx("display:flex; flex-direction:column; gap:12px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
+            <div style={sx("display:flex; flex-direction:column; gap:12px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #c9d6dc")}>
               <div style={sx("display:flex; align-items:baseline; gap:9px")}>
                 <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>어떤 걸 하셨나요</div>
                 <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>{DONE_WEEK.length} / {PROGRAMS.length}가지</div>
@@ -762,7 +762,7 @@ export default function WellnessApp() {
               <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>목·어깨와 호흡 쪽으로 손이 많이 가셨어요. 손목과 다리는 아직 안 해보셨는데, 한 번쯤 열어보셔도 좋아요.</div>
             </div>
 
-            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
+            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #c9d6dc")}>
               <div style={sx("display:flex; align-items:baseline; gap:9px")}>
                 <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>최근 4주 실행 시간</div>
                 <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>주별 합계 (분 · 한 편 1분)</div>
@@ -799,12 +799,12 @@ export default function WellnessApp() {
           </div>
         ) : (
           <div style={sx("display:flex; flex-direction:column; gap:12px")}>
-            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:linear-gradient(140deg,#f3eefb 0%,#eaf3fb 100%); border:1px solid #e2e9f5")}>
+            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:linear-gradient(140deg,#f3eefb 0%,#eaf3fb 100%); border:1px solid #c9d6dc")}>
               <div style={sx("font-size:13.5px; font-weight:700; color:#4a3f80")}>이번 주 마음은 이런 모양이었어요</div>
               <div style={sx("font-size:14px; color:#4d5578; line-height:1.7; text-wrap:pretty")}>주 초에는 버티는 쪽에 마음이 쏠려 있었고, 주 중반부터는 조금씩 정돈되는 쪽으로 옮겨갔어요. 읽어내려 애쓰지 않으셔도 괜찮아요.</div>
             </div>
             {MIND_DAYS.map((md, i) => (
-              <div key={i} style={sx("display:flex; align-items:flex-start; gap:13px; padding:16px; border-radius:18px; background:#fff; border:1px solid #e3eef1")}>
+              <div key={i} style={sx("display:flex; align-items:flex-start; gap:13px; padding:16px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
                 <div style={sx("flex:none; width:34px; padding-top:1px; font-size:12.5px; font-weight:700; color:#6b8c9a; white-space:nowrap")}>{md.day}</div>
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:7px")}>
                   <div style={sx("font-size:13.5px; color:#3a4a72; line-height:1.6; font-weight:500; text-wrap:pretty")}>{md.reading}</div>
@@ -841,21 +841,21 @@ export default function WellnessApp() {
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 96px")}>
         <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>설정</div>
 
-        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#f2edfa; border:1px solid #dbedf2")}>
+        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#f2edfa; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>개인정보 5대 원칙</div>
           <div style={sx("display:flex; flex-direction:column; gap:7px")}>
             {PRINCIPLES.map((text, i) => (<div key={i} style={sx("font-size:13px; color:#4d7c8c; line-height:1.55; text-wrap:pretty")}>{text}</div>))}
           </div>
         </div>
 
-        <div style={sx("display:flex; flex-direction:column; border-radius:18px; background:#fff; border:1px solid #e3eef1; overflow:hidden")}>
+        <div style={sx("display:flex; flex-direction:column; border-radius:18px; background:#fff; border:1px solid #c9d6dc; overflow:hidden")}>
           <div style={sx("display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
             <div style={sx("flex:1; display:flex; flex-direction:column; gap:3px")}>
               <div style={sx("font-size:14px; font-weight:600; color:#2d5c6e")}>알림 받지 않기</div>
               <div style={sx("font-size:12px; color:#8ba8b3")}>앱 안에서는 그대로 이용할 수 있어요</div>
             </div>
             <div onClick={() => patch({ notifOff: !s.notifOff })} style={{ ...sx("cursor:pointer; width:46px; height:27px; border-radius:14px; padding:3px; display:flex; transition:background 0.2s"), justifyContent: s.notifOff ? "flex-end" : "flex-start", background: s.notifOff ? "#7a6bc4" : "#dbe8ec" }}>
-              <div style={sx("width:21px; height:21px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(45,92,110,0.25)")} />
+              <div style={sx("width:21px; height:21px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(45,92,110,0.45)")} />
             </div>
           </div>
           <div style={sx("display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
@@ -887,15 +887,15 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #e3eef1")}>
+        <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => patch({ wiped: true })} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #d9e7ec; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => patch({ wiped: true })} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
         </div>
 
         <div style={sx("display:flex; gap:10px; padding:4px 0 8px")}>
-          <div onClick={() => patch({ ob: 0 })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #e3eef1; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
-          <div onClick={() => patch({ authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #e3eef1; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
+          <div onClick={() => patch({ ob: 0 })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
+          <div onClick={() => patch({ authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
     );
@@ -941,7 +941,7 @@ export default function WellnessApp() {
             </div>
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
-            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>마음과 대화</div>
+            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #c9d6dc")}>마음과 대화</div>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>오늘의 마음카드</div>
           </div>
         </div>
@@ -957,7 +957,7 @@ export default function WellnessApp() {
 
           {/* 고른 줄은 한 줄로 접힘(바꾸기 가능) */}
           {AXES.filter((x, k) => s.sam[x.key] !== null && (k < answered || done)).map((x) => (
-            <div key={x.key} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: null } }))} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #e3eef1")}>
+            <div key={x.key} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: null } }))} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #c9d6dc")}>
               <div style={sx("width:34px; height:34px; border-radius:9px; overflow:hidden; flex:none; background:#eef3f5")}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`${IMG}/sam-${x.key}-${s.sam[x.key]}.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -972,12 +972,12 @@ export default function WellnessApp() {
           {!done && (() => {
             const x = AXES.find((ax) => s.sam[ax.key] === null)!;
             return (
-              <div key={x.key} style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
+              <div key={x.key} style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
                 <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.question}</div>
                 <div style={sx("font-size:11.5px; color:#8ba8b3")}>{x.hint} · 지금 느낌에 가장 가까운 그림을 골라 주세요</div>
                 <div style={sx("display:flex; flex-direction:column; gap:8px")}>
                   {([1, 2, 3, 4, 5] as SamScore[]).map((n) => (
-                    <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; padding:8px 8px 9px; border-radius:16px; border:1.5px solid #e3eef1; background:#fff; transition:all 0.18s")}>
+                    <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; padding:8px 8px 9px; border-radius:16px; border:1.5px solid #c9d6dc; background:#fff; transition:all 0.18s")}>
                       {/* 그림을 가운데 크게, 이름표는 아래(사용자 지시) */}
                       <div style={sx("width:100%; max-width:220px; aspect-ratio:2/1; border-radius:12px; overflow:hidden; background:#eef3f5")}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -993,16 +993,16 @@ export default function WellnessApp() {
 
           {dir && (
             <div style={sx("flex:none; display:flex; flex-direction:column; gap:14px; animation:wRise 0.4s ease-out both")}>
-              <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#f2edfa; border:1px solid #dbedf2")}>
+              <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#f2edfa; border:1px solid #c9d6dc")}>
                 <div style={sx("display:flex; align-items:center; gap:6px; flex-wrap:wrap")}>
                   <div style={sx("font-size:13px; font-weight:800; color:#5f5397; margin-right:2px")}>오늘의 디렉팅</div>
-                  {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
+                  {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #cfc5ea; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
                 </div>
                 <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.text}</div>
                 <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물·배는 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장·통제감, 밤은 수면 문항, 교실 날씨는 Kunin Faces 만족 척도. 읽기는 정서 원형 모델(Russell 1980). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
-                <div onClick={() => patch({ sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #e3eef1; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
+                <div onClick={() => patch({ sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
                 <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
               </div>
             </div>
@@ -1070,7 +1070,7 @@ export default function WellnessApp() {
             {durations.map((m) => {
               const on = s.minutes === m;
               return (
-                <div key={m} onClick={() => { if (timerRef.current) clearInterval(timerRef.current); patch({ minutes: m, remaining: m * 60, running: false }); }} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:13px 0; border-radius:14px; font-size:14px; font-weight:700; border:1.5px solid; transition:all 0.2s"), background: on ? "#f2edfa" : "#fff", color: on ? "#7a6bc4" : "#8ba8b3", borderColor: on ? "#c4b8ec" : "#e3eef1" }}>{m}분</div>
+                <div key={m} onClick={() => { if (timerRef.current) clearInterval(timerRef.current); patch({ minutes: m, remaining: m * 60, running: false }); }} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:13px 0; border-radius:14px; font-size:14px; font-weight:700; border:1.5px solid; transition:all 0.2s"), background: on ? "#f2edfa" : "#fff", color: on ? "#7a6bc4" : "#8ba8b3", borderColor: on ? "#c4b8ec" : "#c9d6dc" }}>{m}분</div>
               );
             })}
           </div>
@@ -1106,7 +1106,7 @@ export default function WellnessApp() {
             {AREAS.map((a) => {
               const on = (s.area || "all") === a.id;
               return (
-                <div key={a.id} onClick={() => patch({ area: a.id })} style={{ ...sx("cursor:pointer; flex:none; white-space:nowrap; min-height:36px; display:flex; align-items:center; padding:0 14px; border-radius:999px; font-size:12.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: on ? "#ffe6ec" : "#fff", color: on ? "#8a4a3c" : "#9a8590", borderColor: on ? "#e0876c" : "#f0e4e0" }}>{a.label}</div>
+                <div key={a.id} onClick={() => patch({ area: a.id })} style={{ ...sx("cursor:pointer; flex:none; white-space:nowrap; min-height:36px; display:flex; align-items:center; padding:0 14px; border-radius:999px; font-size:12.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: on ? "#ffe6ec" : "#fff", color: on ? "#8a4a3c" : "#9a8590", borderColor: on ? "#e0876c" : "#e2cec7" }}>{a.label}</div>
               );
             })}
           </div>
@@ -1117,7 +1117,7 @@ export default function WellnessApp() {
             const chipBg = pg.min <= 1 ? "#fdf1e6" : pg.min <= 3 ? "#ffe6ec" : "#f2edfa";
             const chipInk = pg.min <= 3 ? "#8a4a3c" : "#4a3f80";
             return (
-              <div key={pg.id} onClick={() => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: "content", program: pg, minutes: pg.min, remaining: pg.min * 60, running: false }); }} style={sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:18px; background:#fff; border:1px solid #f0e4e0; box-shadow:0 2px 8px rgba(196,150,140,0.08)")}>
+              <div key={pg.id} onClick={() => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: "content", program: pg, minutes: pg.min, remaining: pg.min * 60, running: false }); }} style={sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:18px; background:#fff; border:1px solid #e2cec7; box-shadow:0 2px 8px rgba(196,150,140,0.08)")}>
                 <div style={{ ...sx("flex:none; width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800; white-space:nowrap"), background: chipBg, color: chipInk }}>{pg.min}분</div>
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
                   <div style={sx("font-size:14.5px; font-weight:700; color:#5a4a58; text-wrap:pretty")}>{pg.title}</div>
@@ -1147,7 +1147,7 @@ export default function WellnessApp() {
     const closeSheet = () => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: null, running: false, consultOpen: false }); };
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#f6f2fc 0%,#f0f7fb 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
-        <div style={sx("flex:none; display:flex; align-items:center; gap:11px; padding:48px 16px 14px; background:#fff; border-bottom:1px solid #eee9f7")}>
+        <div style={sx("flex:none; display:flex; align-items:center; gap:11px; padding:48px 16px 14px; background:#fff; border-bottom:1px solid #d9d2ec")}>
           <div onClick={closeSheet} style={sx("cursor:pointer; flex:none; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
           <div style={sx(`width:38px; height:38px; border-radius:13px; flex:none; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
@@ -1168,7 +1168,7 @@ export default function WellnessApp() {
               {CHARACTERS.map((c) => {
                 const on = c.id === s.character;
                 return (
-                  <div key={c.id} onClick={() => startTalkWith(c.id)} style={{ ...sx("cursor:pointer; aspect-ratio:1; border-radius:50%; overflow:hidden; border:3px solid; position:relative; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e; font-size:20px"), background: c.color, borderColor: on ? "#7a6bc4" : "#fff", boxShadow: on ? "0 0 0 2px #e0d9f2" : "0 2px 8px rgba(45,92,110,0.12)" }}>
+                  <div key={c.id} onClick={() => startTalkWith(c.id)} style={{ ...sx("cursor:pointer; aspect-ratio:1; border-radius:50%; overflow:hidden; border:3px solid; position:relative; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e; font-size:20px"), background: c.color, borderColor: on ? "#7a6bc4" : "#fff", boxShadow: on ? "0 0 0 2px #cfc5ea" : "0 2px 8px rgba(45,92,110,0.12)" }}>
                     {c.role.slice(0, 1)}
                     {c.avatar && !s.avatarMissing[c.id] && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1181,7 +1181,7 @@ export default function WellnessApp() {
           </div>
 
           {/* 구분선 */}
-          <div style={sx("flex:none; height:2px; background:#c9d5dc; margin:0 22px; border-radius:2px")} />
+          <div style={sx("flex:none; height:2px; background:#b3c2cb; margin:0 22px; border-radius:2px")} />
 
           {/* 오늘의 마음카드 — 섹션 전체가 버튼 */}
           <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px 22px 26px; text-align:center")}>
@@ -1208,20 +1208,20 @@ export default function WellnessApp() {
     const axis = (name: string, l: (typeof v.cond)["overall"], evidence: string[], cta: { label: string; go: () => void } | null) => {
       const c = box(l);
       return (
-        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#fff; border:1px solid #e3eef1")}>
+        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:8px")}>
             <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{name}</div>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; padding:6px 11px; border-radius:999px"), background: c.bg, color: c.fg }}>{l ? LEVEL_LABEL[l] : "기록 부족"}</div>
           </div>
           {evidence.map((e, i) => (<div key={i} style={sx("font-size:13.5px; color:#4d7c8c; line-height:1.55")}>· {e}</div>))}
           {/* 링크 없음 — 몸풀기·대화·마음쉼 안내는 홈·대화 화면에 있다(사용자 지시). 근거 문장만. */}
-          {cta && <div onClick={cta.go} style={sx("cursor:pointer; align-self:flex-start; font-size:12.5px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:7px 12px")}>{cta.label} ›</div>}
+          {cta && <div onClick={cta.go} style={sx("cursor:pointer; align-self:flex-start; font-size:12.5px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #cfc5ea; border-radius:999px; padding:7px 12px")}>{cta.label} ›</div>}
         </div>
       );
     };
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
-        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #eee9f7")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
           <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>종합 컨디션</div>
@@ -1230,7 +1230,7 @@ export default function WellnessApp() {
         </div>
         <div style={sx("flex:1; overflow-y:auto; padding:18px 18px 28px; display:flex; flex-direction:column; gap:14px")}>
           {/* 종합 */}
-          <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:18px 18px 16px; border-radius:20px"), background: oc.bg }}>
+          <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:18px 18px 16px; border-radius:20px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: oc.fg }}>{v.cond.yesterday}</div>
             <div style={{ ...sx("font-size:28px; font-weight:800; letter-spacing:-0.02em"), color: oc.fg }}>{v.cond.dayOverall ? LEVEL_LABEL[v.cond.dayOverall] : "아직 기록이 적어요"}</div>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; margin-top:6px"), color: oc.fg }}>이번 주 흐름</div>
@@ -1286,7 +1286,7 @@ export default function WellnessApp() {
     );
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#f6f2fc 0%,#f0f7fb 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
-        <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eee9f7")}>
+        <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #d9d2ec")}>
           <div style={sx("padding:48px 16px 10px; display:flex; align-items:center; gap:11px")}>
             <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
             {avatar(38)}
@@ -1297,7 +1297,7 @@ export default function WellnessApp() {
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>마음과 대화</div>
-            <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>오늘의 마음카드</div>
+            <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #c9d6dc")}>오늘의 마음카드</div>
           </div>
         </div>
 
@@ -1331,7 +1331,7 @@ export default function WellnessApp() {
         <div style={sx("flex:none; background:#fff; border-top:1px solid #eaf2f5")}>
           {s.riskShown && (
             <div style={sx("padding:12px 14px 0")}>
-              <div onClick={() => patch({ consultOpen: true })} style={sx("cursor:pointer; text-align:center; border:1px solid #e0d9f2; background:#f8f5fd; color:#7a6bc4; font-size:13.5px; font-weight:700; padding:13px; border-radius:14px")}>🌿 마음쉼 상담 익명으로 신청하기</div>
+              <div onClick={() => patch({ consultOpen: true })} style={sx("cursor:pointer; text-align:center; border:1px solid #cfc5ea; background:#f8f5fd; color:#7a6bc4; font-size:13.5px; font-weight:700; padding:13px; border-radius:14px")}>🌿 마음쉼 상담 익명으로 신청하기</div>
             </div>
           )}
           <div style={sx("display:flex; align-items:center; gap:9px; padding:14px 14px 22px")}>
