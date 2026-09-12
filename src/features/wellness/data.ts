@@ -12,9 +12,12 @@ export type ContentState =
   | "RECOVERY_POOR"
   | "LOAD_ACCUMULATED";
 
+/** 그림 선택지의 결 — 6장 선택을 모아 종합 디렉팅을 만든다(directing.ts). 무게·정지·격동은 무거운 쪽. */
+export type Tone = "활력" | "안정" | "연결" | "무게" | "정지" | "격동";
 export interface ProbeOption {
   label: string;
   read: string;
+  tone: Tone;
 }
 export interface Probe {
   id: string;
@@ -33,10 +36,10 @@ export const PROBES: Probe[] = [
     question: "이 형태가 가장 먼저 떠오르게 하는 것은?",
     slotHint: "좌우대칭 나무·먹번짐 같은 추상 형태",
     options: [
-      { label: "뻗어나가는 힘", read: "안에 아직 밀고 나갈 힘이 남아 있어요." },
-      { label: "뿌리와 무게", read: "버티는 쪽에 마음이 쏠려 있는 시기예요." },
-      { label: "서로의 연결", read: "사람들 사이에 마음이 많이 놓여 있네요." },
-      { label: "조용한 정지", read: "지금은 멈춰 있고 싶은 마음이 커요." },
+      { label: "뻗어나가는 힘", read: "안에 아직 밀고 나갈 힘이 남아 있어요." , tone: "활력" },
+      { label: "뿌리와 무게", read: "버티는 쪽에 마음이 쏠려 있는 시기예요." , tone: "무게" },
+      { label: "서로의 연결", read: "사람들 사이에 마음이 많이 놓여 있네요." , tone: "연결" },
+      { label: "조용한 정지", read: "지금은 멈춰 있고 싶은 마음이 커요." , tone: "정지" },
     ],
   },
   {
@@ -46,10 +49,10 @@ export const PROBES: Probe[] = [
     question: "이 패턴이 주는 느낌은?",
     slotHint: "방사형·만다라 같은 패턴 이미지",
     options: [
-      { label: "질서와 균형", read: "흐트러진 것을 정돈하고 싶은 마음이 있어요." },
-      { label: "생동하는 움직임", read: "몸이 먼저 움직이고 싶어 하는 날 같아요." },
-      { label: "눈부신 소란", read: "주변의 자극이 조금 과하게 느껴지는 날이에요." },
-      { label: "고요한 중심", read: "겉이 소란해도 안쪽은 꽤 차분한 상태예요." },
+      { label: "질서와 균형", read: "흐트러진 것을 정돈하고 싶은 마음이 있어요." , tone: "안정" },
+      { label: "생동하는 움직임", read: "몸이 먼저 움직이고 싶어 하는 날 같아요." , tone: "활력" },
+      { label: "눈부신 소란", read: "주변의 자극이 조금 과하게 느껴지는 날이에요." , tone: "격동" },
+      { label: "고요한 중심", read: "겉이 소란해도 안쪽은 꽤 차분한 상태예요." , tone: "안정" },
     ],
   },
   {
@@ -59,10 +62,49 @@ export const PROBES: Probe[] = [
     question: "이 이미지를 보며 가장 먼저 드는 느낌은?",
     slotHint: "유체·대리석 결 같은 흐름 이미지",
     options: [
-      { label: "자연스러운 흐름", read: "흐름에 맡겨도 되는 날이에요." },
-      { label: "고요한 깊이", read: "말로 옮기기 전의 감정이 아래에 깔려 있어요." },
-      { label: "엉킨 결", read: "정리되지 않은 채 쌓인 것이 있는 것 같아요." },
-      { label: "강렬한 감정", read: "안에서 아직 식지 않은 감정이 있어요." },
+      { label: "자연스러운 흐름", read: "흐름에 맡겨도 되는 날이에요." , tone: "안정" },
+      { label: "고요한 깊이", read: "말로 옮기기 전의 감정이 아래에 깔려 있어요." , tone: "정지" },
+      { label: "엉킨 결", read: "정리되지 않은 채 쌓인 것이 있는 것 같아요." , tone: "무게" },
+      { label: "강렬한 감정", read: "안에서 아직 식지 않은 감정이 있어요." , tone: "격동" },
+    ],
+  },
+  {
+    id: "wave",
+    n: "4",
+    title: "잔잔한 물결",
+    question: "이 물결이 가장 먼저 건네는 느낌은?",
+    slotHint: "옅은 파랑·잔물결 같은 반복 곡선",
+    options: [
+      { label: "부드러운 리듬", read: "몸과 마음이 같은 박자로 가고 있어요.", tone: "안정" },
+      { label: "밀려오는 파도", read: "밖에서 오는 일이 계속 밀려드는 느낌이에요.", tone: "격동" },
+      { label: "멀리 가는 배", read: "누군가와 이어지고 싶은 마음이 있어요.", tone: "연결" },
+      { label: "가라앉은 바닥", read: "한동안 가만히 있고 싶은 시기예요.", tone: "정지" },
+    ],
+  },
+  {
+    id: "fog",
+    n: "5",
+    title: "짙은 안개",
+    question: "이 안개 너머에 무엇이 있을 것 같나요?",
+    slotHint: "흐린 회백색·윤곽이 지워진 풍경",
+    options: [
+      { label: "곧 걷힐 아침", read: "지금은 흐려도 지나갈 걸 알고 있어요.", tone: "활력" },
+      { label: "익숙한 길", read: "보이지 않아도 갈 길은 알고 있는 상태예요.", tone: "안정" },
+      { label: "무거운 공기", read: "말로 안 한 것이 가슴에 남아 있어요.", tone: "무게" },
+      { label: "멈춘 발걸음", read: "한 발 더 내딛기가 버거운 날이에요.", tone: "정지" },
+    ],
+  },
+  {
+    id: "ember",
+    n: "6",
+    title: "남은 불씨",
+    question: "이 빛은 지금 무엇을 하고 있나요?",
+    slotHint: "어두운 배경에 주황·붉은 빛 번짐",
+    options: [
+      { label: "다시 타오름", read: "안에 아직 쓸 힘이 남아 있어요.", tone: "활력" },
+      { label: "누군가를 비춤", read: "내 힘을 다른 사람에게 쓰고 있는 시기예요.", tone: "연결" },
+      { label: "타고 남은 재", read: "하루를 다 써 버린 느낌이 있어요.", tone: "무게" },
+      { label: "번져가는 열기", read: "감정이 아직 식지 않았어요.", tone: "격동" },
     ],
   },
 ];

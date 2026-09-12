@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, type CharacterId } from "./characters";
+import { directing, HEAVY_TONES } from "./directing";
 import { bodyEvidence, bodyLevel, change, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, flowText, HEAVY_PICKS, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion } from "./suggestion";
 import {
@@ -245,8 +246,10 @@ export default function WellnessApp() {
     // 컨디션 단계 — 재료는 이번 주 기록. ⚠ 걸음·움직인 시간은 아직 목업이라 '평소 수준'(0)으로 둔다(실데이터 연동 시 여기만 바꾼다).
     //   몸풀기 = 주간 목업(DONE_WEEK) + 이 세션에서 실제로 한 것. 오늘의 마음카드 = 목업 5일 + 오늘 3문항을 다 답했으면 +1일.
     //   대화는 횟수만(내용 안 봄). 지난주 단계·최근 4주는 목업 상수(CONDITION_HISTORY).
-    const todayPicked = answered === PROBES.length ? Object.values(st.answers) : [];
-    const heavyToday = todayPicked.some((v) => HEAVY_PICKS.some((h) => v.includes(h))) ? 1 : 0;
+    // 오늘 마음카드: 고른 순서대로 결(tone) — 6장 다 골랐을 때만 오늘 기록으로 친다. 무거운 결 3장 이상이면 heavy.
+    const todayTones = PROBES.flatMap((p) => { const a = st.answers[p.id]; const o = a ? p.options.find((x) => x.label === a) : null; return o ? [o.tone] : []; });
+    const todayPicked = answered === PROBES.length ? todayTones : [];
+    const heavyToday = todayPicked.length && todayPicked.filter((t) => HEAVY_TONES.includes(t)).length >= 3 ? 1 : 0;
     const heavyMock = MIND_DAYS.filter((d) => HEAVY_PICKS.some((h) => d.picked.includes(h))).length;
     const bodyIn = { stretchCount: totals.count + st.sessions.length, moveVsUsual: 0 as const, stepsVsUsual: 0 as const };
     const mindIn = { pictureDays: MIND_DAYS.length + (todayPicked.length ? 1 : 0), heavyDays: heavyMock + heavyToday, chatCount: st.chat.filter((m) => m.role === "me").length, riskFlagged: st.riskShown };
@@ -261,6 +264,7 @@ export default function WellnessApp() {
     const dayOverall = overallLevel(dayBody, dayMind, dayMindIn.riskFlagged);
     const weekFlow = [...WEEK_FLOW, dayOverall];
     const cond = {
+      todayTones,
       dayBodyIn, dayMindIn, dayBody, dayMind, dayOverall, weekFlow, yesterday: yesterdayLabel(st.now),
       bodyIn, mindIn, body, mind, overall, overallHistory,
       bodyChange: change(CONDITION_HISTORY.body[CONDITION_HISTORY.body.length - 1], body),
@@ -944,8 +948,16 @@ export default function WellnessApp() {
   }
 
   function renderPicture() {
+    // 그림 6장을 순서대로 한 장씩. 글자 문항 없이 그림 + 4지선다만(사용자 확정). 6장 다 고르면 종합 디렉팅 하나.
     const answered = v.answered;
-    const shown = PROBES.slice(0, Math.min(answered + 1, PROBES.length));
+    const done = answered >= PROBES.length;
+    const cur = done ? null : PROBES[answered];
+    const dir = done ? directing(v.cond.todayTones, v.cond.dayBody, v.slot) : null;
+    const back = () => patchFn((st) => {
+      // 한 장 뒤로: 마지막으로 고른 답을 지운다
+      const idx = Math.max(0, Math.min(answered, PROBES.length) - 1);
+      const next = { ...st.answers }; delete next[PROBES[idx].id]; return { answers: next };
+    });
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
@@ -963,52 +975,57 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        <div style={sx("flex:none; padding:16px 22px 12px; display:flex; flex-direction:column; gap:5px")}>
-          <div style={sx("font-size:13px; color:#8ba8b3; text-wrap:pretty")}>세 장을 보시고 지금 떠오르는 것을 골라주세요</div>
-        </div>
+        <div style={sx("flex:1; overflow-y:auto; padding:16px 18px 24px; display:flex; flex-direction:column; gap:14px")}>
+          {/* 진행 점 6개 */}
+          <div style={sx("display:flex; align-items:center; gap:6px; justify-content:center")}>
+            {PROBES.map((p, k) => (<div key={p.id} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === answered && !done ? 22 : 8, background: k < answered || done ? "#7a6bc4" : k === answered ? "#b9aee6" : "#dfe6ea" }} />))}
+          </div>
 
-        <div style={sx("flex:1; overflow-y:auto; padding:0 18px 20px; display:flex; flex-direction:column; gap:13px")}>
-          {shown.map((p) => {
-            const a = s.answers[p.id];
-            const o = a ? p.options.find((x) => x.label === a) : null;
-            return (
-              <div key={p.id} style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05); animation:wRise 0.42s cubic-bezier(0.22,0.9,0.3,1) both")}>
-                <div style={sx("display:flex; align-items:center; gap:9px")}>
-                  <div style={sx("width:26px; height:26px; flex:none; border-radius:9px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#7a6bc4")}>{p.n}</div>
-                  <div style={sx("flex:1; min-width:0; font-size:15px; font-weight:700; color:#2d5c6e")}>{p.title}</div>
-                  {a && (
-                    <div onClick={() => patchFn((st) => { const next = { ...st.answers }; PROBES.slice(PROBES.indexOf(p)).forEach((q) => { delete next[q.id]; }); return { answers: next }; })} style={sx("cursor:pointer; flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>다시 고르기</div>
-                  )}
-                </div>
-                <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{p.question}</div>
-                <div style={{ ...sx("position:relative; border-radius:15px; overflow:hidden; background:#f2f7f9; transition:height 0.4s cubic-bezier(0.22,0.9,0.3,1)"), height: a ? 108 : 168 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${IMG}/probe-${p.id}.png`} alt={p.slotHint} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                </div>
-                {!a && (
-                  <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:8px")}>
-                    {p.options.map((op) => (
-                      <div key={op.label} onClick={() => patchFn((st) => ({ answers: { ...st.answers, [p.id]: op.label } }))} style={sx("cursor:pointer; text-align:center; padding:13px 6px; border-radius:13px; background:#fff; border:1.5px solid #e3eef1; font-size:13.5px; font-weight:600; color:#2d5c6e; transition:all 0.18s; text-wrap:pretty")}>{op.label}</div>
-                    ))}
-                  </div>
-                )}
-                {a && (
-                  <div style={sx("display:flex; flex-direction:column; gap:10px; animation:wRise 0.4s cubic-bezier(0.22,0.9,0.3,1) both")}>
-                    <div style={sx("align-self:flex-start; padding:8px 14px; border-radius:999px; background:#f2edfa; font-size:12.5px; font-weight:700; color:#7a6bc4; white-space:nowrap")}>{a}</div>
-                    <div style={sx("font-size:14.5px; font-weight:500; line-height:1.65; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty")}>{o?.read}</div>
-                  </div>
-                )}
+          {cur && (
+            <div style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
+              <div style={sx("display:flex; align-items:center; justify-content:space-between")}>
+                <div style={sx("font-size:12.5px; color:#8ba8b3")}>{answered + 1} / {PROBES.length} · 가장 먼저 드는 느낌을 골라 주세요</div>
+                {answered > 0 && <div onClick={back} style={sx("cursor:pointer; font-size:12px; font-weight:700; color:#7a6bc4")}>‹ 이전 그림</div>}
               </div>
-            );
-          })}
+              <div style={sx("position:relative; border-radius:15px; overflow:hidden; background:#f2f7f9; aspect-ratio:16/10")}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`${IMG}/probe-${cur.id}.png`} alt={cur.slotHint} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              </div>
+              <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:8px")}>
+                {cur.options.map((op) => (
+                  <div key={op.label} onClick={() => patchFn((st) => ({ answers: { ...st.answers, [cur.id]: op.label } }))} style={sx("cursor:pointer; text-align:center; padding:13px 6px; border-radius:13px; background:#f7f9fb; border:1.5px solid #e3eef1; font-size:13.5px; font-weight:700; color:#2d5c6e; transition:all 0.18s")}>{op.label}</div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {answered === 0 && (
-            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:2px 16px; line-height:1.6; text-wrap:pretty")}>정확한 답이 아니어도 괜찮아요. 지금 느낌으로 골라주세요.</div>
+            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:2px 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 그림을 보고 지금 느낌으로 고르면 됩니다. 여섯 장이 끝나면 오늘의 디렉팅을 드려요.</div>
           )}
-          {answered >= PROBES.length && (
-            <div style={sx("flex:none; display:flex; flex-direction:column; gap:14px; padding:18px 17px; border-radius:20px; background:#f2edfa; border:1px solid #dbedf2; animation:wRise 0.45s cubic-bezier(0.22,0.9,0.3,1) both")}>
-              <div style={sx("font-size:15px; font-weight:600; line-height:1.65; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty")}>읽어내려 애쓰지 않으셔도 괜찮아요. 오늘은 이만큼만 알아두면 충분합니다.</div>
-              <div onClick={() => patch({ sheet: null, answers: {}, pickedToday: true })} style={sx("cursor:pointer; text-align:center; padding:15px; border-radius:16px; background:#fff; border:1px solid #dbedf2; font-size:14.5px; font-weight:700; color:#2d5c6e")}>오늘은 여기까지</div>
+
+          {done && dir && (
+            <div style={sx("flex:none; display:flex; flex-direction:column; gap:14px; animation:wRise 0.4s ease-out both")}>
+              {/* 고른 그림 6장 한 줄 */}
+              <div style={sx("display:grid; grid-template-columns:repeat(6,1fr); gap:6px")}>
+                {PROBES.map((p) => (
+                  <div key={p.id} style={sx("aspect-ratio:1; border-radius:10px; overflow:hidden; background:#eef3f5")}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${IMG}/probe-${p.id}.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  </div>
+                ))}
+              </div>
+              <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#f2edfa; border:1px solid #dbedf2")}>
+                <div style={sx("display:flex; align-items:center; gap:8px; flex-wrap:wrap")}>
+                  <div style={sx("font-size:13px; font-weight:800; color:#5f5397")}>오늘의 디렉팅</div>
+                  {dir.top.map((t) => (<div key={t} style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:4px 9px")}>{t}</div>))}
+                </div>
+                <div style={sx("font-size:15px; font-weight:500; line-height:1.7; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty")}>{dir.text}</div>
+                <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>읽어내려 애쓰지 않으셔도 괜찮아요. 오늘 고른 그림은 선생님만 봅니다.</div>
+              </div>
+              <div style={sx("display:flex; gap:8px")}>
+                <div onClick={() => patch({ answers: {} })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #e3eef1; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
+                <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
+              </div>
             </div>
           )}
         </div>
