@@ -1232,6 +1232,15 @@ export default function WellnessApp() {
                 );
               })}
             </div>
+            {/* 범례 — 단계 색 5개(사용자 지시). 바의 채움색과 같은 값(LEVEL_COLOR.fg). */}
+            <div style={sx("display:flex; flex-wrap:wrap; gap:6px 12px; padding-top:2px")}>
+              {([1, 2, 3, 4, 5] as const).map((l) => (
+                <div key={l} style={sx("display:flex; align-items:center; gap:5px")}>
+                  <div style={{ ...sx("width:14px; height:7px; border-radius:999px"), background: LEVEL_COLOR[l].fg }} />
+                  <div style={{ ...sx("font-size:10.5px; font-weight:600; opacity:0.85"), color: oc.fg }}>{LEVEL_LABEL[l]}</div>
+                </div>
+              ))}
+            </div>
             <div style={{ ...sx("font-size:11.5px; opacity:0.75; line-height:1.5"), color: oc.fg }}>종합은 신체와 마음의 가운데 값이에요. 둘이 갈리면 낮은 쪽으로 봅니다.</div>
           </div>
 
