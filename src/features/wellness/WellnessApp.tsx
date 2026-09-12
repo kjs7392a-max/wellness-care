@@ -729,7 +729,7 @@ export default function WellnessApp() {
         <div style={sx("font-size:13px; color:#8ba8b3; line-height:1.5; margin-bottom:2px")}>선생님만 볼 수 있어요. 학교와 교육청에는 어떤 형태로도 전달되지 않습니다.</div>
         <div style={sx("display:flex; gap:7px; padding-bottom:2px")}>
           <div onClick={() => patch({ recTab: "body" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: recIsBody ? "#f2edfa" : "#fff", color: recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: recIsBody ? "#7a6bc4" : "#c9d6dc" }}>신체 기록</div>
-          <div onClick={() => patch({ recTab: "mind" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: !recIsBody ? "#f2edfa" : "#fff", color: !recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: !recIsBody ? "#7a6bc4" : "#c9d6dc" }}>마음의 기록</div>
+          <div onClick={() => patch({ recTab: "mind" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: !recIsBody ? "#f2edfa" : "#fff", color: !recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: !recIsBody ? "#7a6bc4" : "#c9d6dc" }}>마음 기록</div>
         </div>
 
         {recIsBody ? (
