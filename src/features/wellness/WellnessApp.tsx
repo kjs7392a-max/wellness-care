@@ -560,7 +560,7 @@ export default function WellnessApp() {
           const flow = flowText(v.cond.weekFlow.slice(-3));
           const chip = (name: string, l: typeof lv) => {
             const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:1.5px solid rgba(45,92,110,0.45)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
+            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:2px solid rgba(45,92,110,0.6)"), background: "rgba(255,255,255,0.85)", color: cc.fg }}><span style={sx("color:#2d5c6e")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
           };
           return (
             <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.45); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
@@ -573,8 +573,8 @@ export default function WellnessApp() {
                 <div style={{ ...sx("flex:none; font-size:12px; font-weight:700; padding:7px 11px; border-radius:999px; border:1.5px solid rgba(45,92,110,0.45); background:rgba(255,255,255,0.7); white-space:nowrap"), color: c.fg }}>상세보기 ›</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
-                {chip("신체", v.cond.dayBody)}
-                {chip("마음", v.cond.dayMind)}
+                {chip("신체건강", v.cond.dayBody)}
+                {chip("마음건강", v.cond.dayMind)}
               </div>
             </div>
           );
@@ -714,7 +714,7 @@ export default function WellnessApp() {
         {(() => {
           const lv = v.cond.overall; const ch = v.cond.overallChange;
           const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
-          const chip = (name: string, l: typeof lv) => { const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" }; return <div style={{ ...sx("flex:1; display:flex; justify-content:space-between; padding:8px 11px; border-radius:11px; font-size:12px; font-weight:700; border:1.5px solid rgba(45,92,110,0.45)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>; };
+          const chip = (name: string, l: typeof lv) => { const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" }; return <div style={{ ...sx("flex:1; display:flex; justify-content:space-between; padding:8px 11px; border-radius:11px; font-size:12px; font-weight:700; border:2px solid rgba(45,92,110,0.6)"), background: "rgba(255,255,255,0.85)", color: cc.fg }}><span style={sx("color:#2d5c6e")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>; };
           return (
             <div style={{ ...sx("display:flex; flex-direction:column; gap:9px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: c.bg }}>
               <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>이번 주 종합 컨디션</div>
@@ -722,7 +722,7 @@ export default function WellnessApp() {
                 <div style={{ ...sx("font-size:22px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
                 <div style={{ ...sx("font-size:12px; opacity:0.85"), color: c.fg }}>{ch.dir === "up" ? "↑ " : ch.dir === "down" ? "↓ " : ""}{ch.text}</div>
               </div>
-              <div style={sx("display:flex; gap:8px")}>{chip("신체", v.cond.body)}{chip("마음", v.cond.mind)}</div>
+              <div style={sx("display:flex; gap:8px")}>{chip("신체건강", v.cond.body)}{chip("마음건강", v.cond.mind)}</div>
             </div>
           );
         })()}
@@ -1208,9 +1208,9 @@ export default function WellnessApp() {
     const axis = (name: string, l: (typeof v.cond)["overall"], evidence: string[], cta: { label: string; go: () => void } | null) => {
       const c = box(l);
       return (
-        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
+        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#fff; border:2px solid rgba(45,92,110,0.45)")}>
           <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:8px")}>
-            <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{name}</div>
+            <div style={sx("font-size:14.5px; font-weight:800; color:#2d5c6e")}>{name}</div>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; padding:6px 11px; border-radius:999px"), background: c.bg, color: c.fg }}>{l ? LEVEL_LABEL[l] : "기록 부족"}</div>
           </div>
           {evidence.map((e, i) => (<div key={i} style={sx("font-size:13.5px; color:#4d7c8c; line-height:1.55")}>· {e}</div>))}
@@ -1262,8 +1262,8 @@ export default function WellnessApp() {
             <div style={{ ...sx("font-size:11.5px; opacity:0.75; line-height:1.5"), color: oc.fg }}>종합은 신체와 마음의 가운데 값이에요. 둘이 갈리면 낮은 쪽으로 봅니다.</div>
           </div>
 
-          {axis("신체", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), null)}
-          {axis("마음", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), null)}
+          {axis("신체건강", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), null)}
+          {axis("마음건강", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), null)}
         </div>
       </div>
     );
