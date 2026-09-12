@@ -46,7 +46,7 @@ describe("directing — 사분면별 전략", () => {
     expect(d.quadrant).toBe("LN");
     expect(d.weight).toBe("heavy");
     expect(d.top).toEqual(["무게", "안정"]);
-    expect(d.text).toContain("쌓이고 눌린");
+    expect(d.text).toContain("쌓인 피로");
     expect(d.text).toContain("중심은 흔들리지"); // 둘째 결(안정)은 다른 사분면이라 짚어 준다
     expect(d.text).toContain("아주 작은 행동 하나");
     expect(d.text).not.toMatch(/\d점|등급|우울증|진단|각성 수준/);
@@ -54,7 +54,7 @@ describe("directing — 사분면별 전략", () => {
   it("고각성·불쾌(격동 우세): 식지 않은 감정 + 호흡으로 각성 낮추기", () => {
     const d = directing(["격동", "격동", "격동", "무게", "활력", "안정"], 4, 1);
     expect(d.quadrant).toBe("HN");
-    expect(d.text).toContain("식지 않은 감정");
+    expect(d.text).toContain("가라앉지 않은 감정");
     expect(d.text).toContain("숨 고르기");
   });
   it("몸이 지친 날엔 사분면과 무관하게 부담 낮은 제안", () => {
@@ -77,7 +77,7 @@ describe("directing — 사분면별 전략", () => {
     expect(directing(["활력", "활력", "활력", "안정", "연결", "활력"], null, 1).text).toContain("어제 몸 기록이 아직 없어서");
   });
   it("고르게 갈리면 섞임 문장, 아직 아무것도 안 골랐으면 빈 글", () => {
-    expect(directing(["활력", "안정", "연결", "무게", "정지", "격동"], 3, 1).text).toContain("고르게 갈렸어요");
+    expect(directing(["활력", "안정", "연결", "무게", "정지", "격동"], 3, 1).text).toContain("여러 갈래로 나뉘었어요");
     expect(directing([], 3, 1).text).toBe("");
   });
 });
