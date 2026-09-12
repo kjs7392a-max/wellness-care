@@ -84,7 +84,31 @@ const SECOND: Record<Tone, string> = {
   격동: "그리고 아직 가라앉지 않은 감정이 한켠에 있어요.",
 };
 
-const MIXED = "여섯 장이 고르게 갈렸어요. 한 가지로 정해지지 않는 날은 그 자체로 괜찮아요.";
+const MIXED = "여섯 장이 고르게 갈렸어요. 한 가지로 정해지지 않는 날은 그 자체로 괜찮아요. 여러 마음이 한꺼번에 있는 건 이상한 게 아니라, 하루가 그만큼 여러 장면으로 이루어져 있었다는 뜻이에요.";
+
+/** 사분면이 몸에서 어떻게 나타나는지 — 용어 없이, 사용자가 확인할 수 있는 감각으로 */
+const WHY: Record<Quadrant, string> = {
+  HP: "이런 날은 몸이 먼저 움직이고 싶어 하고, 생각도 빨리 돌아요. 다만 힘이 올라와 있을 때는 쉬는 타이밍을 놓치기 쉬워서, 저녁에 갑자기 방전되는 경우가 많아요.",
+  LP: "이런 날은 숨이 고르고 어깨가 내려가 있어요. 특별히 애쓰지 않아도 하루가 굴러가는 상태라, 오늘은 무언가를 더하기보다 이 결을 알아채 두는 게 의미가 있어요.",
+  HN: "이런 날은 어깨가 올라가고 턱에 힘이 들어가고, 같은 생각이 반복돼요. 마음이 아니라 몸이 먼저 긴장 상태에 들어가 있어서, 생각으로는 잘 안 풀리고 몸을 내려놓아야 생각도 따라 내려옵니다.",
+  LN: "이런 날은 몸이 무겁고, 해야 할 일이 평소보다 크게 보이고, 시작이 제일 어려워요. 마음이 게을러서가 아니라 에너지가 바닥에 가까워서 그런 거라, 의지로 밀기보다 아주 작은 움직임으로 시동을 거는 쪽이 통합니다.",
+};
+
+/** 어제 신체 컨디션을 한 줄로 엮는다 — 오늘 제안의 근거 */
+function bodyLine(body: Level | null): string {
+  if (body === null) return "어제 몸 기록이 아직 없어서, 오늘은 마음 쪽만 보고 제안드려요.";
+  if (body <= 2) return "어제 몸 컨디션은 낮은 쪽이었어요. 마음이 어떻든 오늘은 몸이 먼저 쉬어야 하는 날입니다.";
+  if (body === 3) return "어제 몸 컨디션은 보통이었어요. 무리하지 않는 선에서 조금 움직일 여유는 있어요.";
+  return "어제 몸 컨디션은 좋은 편이었어요. 몸에는 쓸 힘이 남아 있으니, 마음이 무거워도 몸부터 움직이는 길이 열려 있어요.";
+}
+
+/** 마지막 한 줄 — 안심. 사분면별. */
+const REASSURE: Record<Quadrant, string> = {
+  HP: "오늘의 힘을 다 쓰지 않아도 됩니다. 조금 남겨 두는 것도 잘하는 거예요.",
+  LP: "이런 날이 쌓이는 게 회복이에요. 지금처럼만 가면 됩니다.",
+  HN: "감정이 큰 건 그만큼 진심이었다는 뜻이에요. 지금은 판단하지 말고 내려놓는 것만 하면 됩니다.",
+  LN: "오늘 아무것도 못 했다고 느껴져도, 여기까지 온 것 자체가 한 일이에요. 작은 것 하나면 충분합니다.",
+};
 
 /**
  * 마무리 — 사분면별 정서조절 전략 + 어제 신체 컨디션. 지시가 아니라 제안 하나.
@@ -134,15 +158,17 @@ export function directing(picks: Tone[], body: Level | null, slot: number): Dire
   const weight = pickWeight(picks);
   const quad = dominantQuadrant(picks);
   if (r.length === 0 || quad === null) return { weight, quadrant: null, top: [], text: "" };
-  const parts: string[] = [];
+  // 문단 4~5개: ① 지금 마음(+둘째 결) ② 몸에서 어떻게 나타나는지 ③ 어제 몸과 엮기 ④ 오늘의 제안 ⑤ 안심 한 줄
+  const paras: string[] = [];
   const spread = r.length >= 4 && t[r[0]] <= 2;
-  if (spread) parts.push(MIXED);
+  if (spread) paras.push(MIXED);
   else {
-    parts.push(OPENING[quad]);
-    // 둘째 결이 우세 사분면과 다른 결이면 짚어 준다(같은 사분면 안의 결이면 첫 문장에 이미 담겼다)
-    const second = r.find((k) => TONE_QUADRANT[k] !== quad);
-    if (second) parts.push(SECOND[second]);
+    const second = r.find((k) => TONE_QUADRANT[k] !== quad); // 다른 사분면의 결만 따로 짚는다
+    paras.push([OPENING[quad], second ? SECOND[second] : ""].filter(Boolean).join(" "));
   }
-  parts.push(closing(quad, body, slot));
-  return { weight, quadrant: quad, top: r.slice(0, 2), text: parts.join(" ") };
+  paras.push(WHY[quad]);
+  paras.push(bodyLine(body));
+  paras.push(closing(quad, body, slot));
+  paras.push(REASSURE[quad]);
+  return { weight, quadrant: quad, top: r.slice(0, 2), text: paras.join("\n\n") };
 }

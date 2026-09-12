@@ -67,6 +67,15 @@ describe("directing — 사분면별 전략", () => {
     expect(d.text).toContain("좋은 흐름");
     expect(d.text).toContain("기록해 두면");
   });
+  it("문단 5개(마음·몸에서 나타남·어제 몸·제안·안심), 어제 몸이 없으면 그 문단이 말해 준다", () => {
+    const d = directing(["무게", "무게", "안정", "격동", "무게", "안정"], 4, 2);
+    const paras = d.text.split("\n\n");
+    expect(paras).toHaveLength(5);
+    expect(paras[1]).toContain("몸이 무겁고");
+    expect(paras[2]).toContain("어제 몸 컨디션은 좋은 편");
+    expect(paras[4]).toContain("여기까지 온 것 자체가");
+    expect(directing(["활력", "활력", "활력", "안정", "연결", "활력"], null, 1).text).toContain("어제 몸 기록이 아직 없어서");
+  });
   it("고르게 갈리면 섞임 문장, 아직 아무것도 안 골랐으면 빈 글", () => {
     expect(directing(["활력", "안정", "연결", "무게", "정지", "격동"], 3, 1).text).toContain("고르게 갈렸어요");
     expect(directing([], 3, 1).text).toBe("");

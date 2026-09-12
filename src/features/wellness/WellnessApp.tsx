@@ -1019,7 +1019,7 @@ export default function WellnessApp() {
                   <div style={sx("font-size:13px; font-weight:800; color:#5f5397")}>오늘의 디렉팅</div>
                   {dir.top.map((t) => (<div key={t} style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #e0d9f2; border-radius:999px; padding:4px 9px")}>{t}</div>))}
                 </div>
-                <div style={sx("font-size:15px; font-weight:500; line-height:1.7; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty")}>{dir.text}</div>
+                <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.text}</div>
                 <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>이 카드는 검사가 아니라, 지금 마음을 스스로 들여다보는 방법이에요. 오늘 고른 그림은 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
