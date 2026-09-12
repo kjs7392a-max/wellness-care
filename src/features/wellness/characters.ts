@@ -6,8 +6,8 @@ import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
  * 캐릭터에 개인 이름은 없다 — 이름은 전부 「마음과 대화」 하나다(2026-09-12 사용자 지시). 역할(옆반 동료 …)로만 구분한다.
  * 「선생님」 호칭은 역할에 안 붙인다(사용자 지시).
  * 페르소나는 말투·관점 한 단락만 다르고, 밑바닥 기법·금지 규칙(SYSTEM_CORE)·위험어 게이트는 네 명 공통이다.
- * 아바타: 옆반 동료 = 기존 마스코트(shimpyo.png). 나머지 셋은 같은 화풍(3D 애니메이션풍·정면 상반신·단색 배경)으로
- * 만들어 public/wellness/images/char-{id}.png 에 넣으면 뜬다. 파일이 없으면 화면이 역할 첫 글자 + 색으로 대신 그린다
+ * 아바타: 넷 다 같은 화풍(3D 애니메이션풍·정면 상반신·단색 배경)의 public/wellness/images/char-{id}.png
+ * (2026-09-12 옆반 동료도 마스코트 shimpyo.png 에서 char-peer.png 로 교체). 파일이 없으면 화면이 역할 첫 글자 + 색으로 대신 그린다
  * (StretchVideo 와 같은 방식 — 깨진 이미지 아이콘이 뜨지 않게 onError 로 폴백).
  */
 export type CharacterId = "peer" | "senior" | "buddy" | "counselor";
@@ -42,7 +42,7 @@ export const CHARACTERS: Character[] = [
     gender: "female",
     blurb: "오늘 있었던 일을 그대로 말해도 되는 사람. 마음부터 알아줘요.",
     color: "#f2c9b0",
-    avatar: "/wellness/images/shimpyo.png",
+    avatar: "/wellness/images/char-peer.png",
     intro: INTRO,
     persona: [
       "인물: 같은 학년 옆 반을 맡은 30대 여교사. 매일 같은 복도에서 마주치는 동료. 이름도 직함도 밝히지 않는다('옆반'·'옆 반'·'동료'·'복도에서 마주치는' 같은 자기소개 금지).",
