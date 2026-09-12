@@ -103,26 +103,27 @@ export const AREAS = [
 export interface Program extends StretchItem {
   id: string;
   area: string;
+  /** 한 편 길이(분). 영상 한 편 = 1분이고 앱이 1분에서 멈춘다 — 전부 1(2026-09-12 사용자 확정). 걷기도 기본 1분, 타이머에서 늘릴 수 있다. */
   min: number;
   place: "indoor" | "outdoor";
   low: boolean;
 }
 
 export const PROGRAMS: Program[] = [
-  { id: "p1", area: "neck", title: "목·어깨 긴장 이완", min: 3, place: "indoor", low: true, desc: "칠판 앞에 오래 서 계셨죠. 어깨부터 천천히 내려놓아 볼까요.", video: PROGRAM_VIDEOS.p1 },
+  { id: "p1", area: "neck", title: "목·어깨 긴장 이완", min: 1, place: "indoor", low: true, desc: "칠판 앞에 오래 서 계셨죠. 어깨부터 천천히 내려놓아 볼까요.", video: PROGRAM_VIDEOS.p1 },
   { id: "p2", area: "neck", title: "앉은 채로 목 천천히 풀기", min: 1, place: "indoor", low: true, desc: "의자에 앉은 그대로, 고개를 아주 천천히 기울이는 동작만 있어요.", video: PROGRAM_VIDEOS.p2 },
-  { id: "p3", area: "neck", title: "거북목 되돌리기", min: 5, place: "indoor", low: false, desc: "화면 쪽으로 나온 목을 제자리로 데려오는 동작이에요.", video: PROGRAM_VIDEOS.p3 },
-  { id: "p4", area: "back", title: "퇴근 전 허리 회복", min: 5, place: "indoor", low: false, desc: "하루 종일 앉아 있던 허리를 되돌리고 나가는 시간이에요.", video: PROGRAM_VIDEOS.p4 },
-  { id: "p5", area: "back", title: "앉은 자리 허리 부담 덜기", min: 3, place: "indoor", low: true, desc: "등을 의자에 붙이고 자세만 바로잡습니다. 일어서지 않아요.", video: PROGRAM_VIDEOS.p5 },
+  { id: "p3", area: "neck", title: "거북목 되돌리기", min: 1, place: "indoor", low: false, desc: "화면 쪽으로 나온 목을 제자리로 데려오는 동작이에요.", video: PROGRAM_VIDEOS.p3 },
+  { id: "p4", area: "back", title: "퇴근 전 허리 회복", min: 1, place: "indoor", low: false, desc: "하루 종일 앉아 있던 허리를 되돌리고 나가는 시간이에요.", video: PROGRAM_VIDEOS.p4 },
+  { id: "p5", area: "back", title: "앉은 자리 허리 부담 덜기", min: 1, place: "indoor", low: true, desc: "등을 의자에 붙이고 자세만 바로잡습니다. 일어서지 않아요.", video: PROGRAM_VIDEOS.p5 },
   { id: "p6", area: "eye", title: "30초 눈 쉬기", min: 1, place: "indoor", low: true, desc: "화면에서 잠깐만 눈을 떼면 됩니다. 자리에서 그대로 할 수 있어요.", video: PROGRAM_VIDEOS.p6 },
-  { id: "p7", area: "wrist", title: "손목·관절 보호 이완", min: 3, place: "indoor", low: true, desc: "반복해서 쓰신 손목을 쉬게 해주는 동작이에요.", video: PROGRAM_VIDEOS.p7 },
-  { id: "p8", area: "leg", title: "종아리 피로 풀기", min: 5, place: "indoor", low: false, desc: "오래 서 계셨죠. 종아리부터 천천히 풀어볼까요.", video: PROGRAM_VIDEOS.p8 },
-  { id: "p9", area: "leg", title: "앉아서 다리 부종 케어", min: 3, place: "indoor", low: true, desc: "의자에 앉아 발끝만 천천히 움직이면 됩니다.", video: PROGRAM_VIDEOS.p9 },
+  { id: "p7", area: "wrist", title: "손목·관절 보호 이완", min: 1, place: "indoor", low: true, desc: "반복해서 쓰신 손목을 쉬게 해주는 동작이에요.", video: PROGRAM_VIDEOS.p7 },
+  { id: "p8", area: "leg", title: "종아리 피로 풀기", min: 1, place: "indoor", low: false, desc: "오래 서 계셨죠. 종아리부터 천천히 풀어볼까요.", video: PROGRAM_VIDEOS.p8 },
+  { id: "p9", area: "leg", title: "앉아서 다리 부종 케어", min: 1, place: "indoor", low: true, desc: "의자에 앉아 발끝만 천천히 움직이면 됩니다.", video: PROGRAM_VIDEOS.p9 },
   { id: "p10", area: "breath", title: "수업 전 목소리 이완 호흡", min: 1, place: "indoor", low: true, desc: "교실에 들어가기 전 잠깐이면 돼요. 목을 열어두면 하루가 수월합니다.", video: PROGRAM_VIDEOS.p10 },
-  { id: "p11", area: "breath", title: "3분 숨 고르기", min: 3, place: "indoor", low: true, desc: "창가나 복도 끝, 어디든 좋아요. 숨만 천천히 쉬면 됩니다.", video: PROGRAM_VIDEOS.p11 },
-  { id: "p12", area: "breath", title: "잠들기 전 이완 호흡", min: 10, place: "indoor", low: true, desc: "누운 채로 할 수 있어요. 하루를 닫는 시간입니다.", video: PROGRAM_VIDEOS.p12 },
-  { id: "p13", area: "walk", title: "복도 한 바퀴 걷기", min: 5, place: "indoor", low: false, desc: "교실을 나와 복도 끝까지만 다녀오면 돼요." },
-  { id: "p14", area: "walk", title: "해 진 뒤 저녁 산책", min: 10, place: "outdoor", low: false, desc: "더위가 가신 시간에 천천히 걷는 코스예요." },
+  { id: "p11", area: "breath", title: "숨 고르기", min: 1, place: "indoor", low: true, desc: "창가나 복도 끝, 어디든 좋아요. 숨만 천천히 쉬면 됩니다.", video: PROGRAM_VIDEOS.p11 },
+  { id: "p12", area: "breath", title: "잠들기 전 이완 호흡", min: 1, place: "indoor", low: true, desc: "누운 채로 할 수 있어요. 하루를 닫는 시간입니다.", video: PROGRAM_VIDEOS.p12 },
+  { id: "p13", area: "walk", title: "복도 한 바퀴 걷기", min: 1, place: "indoor", low: false, desc: "교실을 나와 복도 끝까지만 다녀오면 돼요." },
+  { id: "p14", area: "walk", title: "해 진 뒤 저녁 산책", min: 1, place: "outdoor", low: false, desc: "더위가 가신 시간에 천천히 걷는 코스예요." },
   { id: "p15", area: "back", title: "전신 1분 기지개", min: 1, place: "indoor", low: true, desc: "자리에서 크게 한 번 펴는 것만으로 충분합니다.", video: PROGRAM_VIDEOS.p15 },
 ];
 
@@ -213,21 +214,20 @@ export const DONE_WEEK = [
 export function doneTotals() {
   let count = 0;
   let min = 0;
-  const byMin: Record<number, number> = {};
   for (const d of DONE_WEEK) {
     const pg = PROGRAMS.find((x) => x.id === d.id);
     if (!pg) continue;
     count += d.n;
     min += pg.min * d.n;
-    byMin[pg.min] = (byMin[pg.min] || 0) + d.n;
   }
-  return { count, min, byMin };
+  return { count, min };
 }
 
+// 한 편 = 1분이라 주별 합계 분 = 실행 횟수(2026-09-12 사용자: "현재는 전부 1분짜리").
 export const WEEKLY_PAST = [
-  { label: "3주 전", v: 51 },
-  { label: "2주 전", v: 38 },
-  { label: "지난주", v: 64 },
+  { label: "3주 전", v: 11 },
+  { label: "2주 전", v: 8 },
+  { label: "지난주", v: 16 },
 ];
 
 export interface ObStep {

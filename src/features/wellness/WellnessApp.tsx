@@ -240,7 +240,6 @@ export default function WellnessApp() {
       .filter((pg) => !(parqYes && !pg.low))
       .filter((pg) => !(wx.prefer === "indoor" && pg.place === "outdoor"));
     const totals = doneTotals();
-    const maxByMin = Math.max(...Object.values(totals.byMin), 1);
     const answered = samAnswered(st.sam);
     // 컨디션 단계 — 재료는 이번 주 기록. ⚠ 걸음·움직인 시간은 아직 목업이라 '평소 수준'(0)으로 둔다(실데이터 연동 시 여기만 바꾼다).
     //   몸풀기 = 주간 목업(DONE_WEEK) + 이 세션에서 실제로 한 것. 오늘의 마음카드 = 목업 5일 + 오늘 3문항을 다 답했으면 +1일.
@@ -269,7 +268,7 @@ export default function WellnessApp() {
       mindChange: change(CONDITION_HISTORY.mind[CONDITION_HISTORY.mind.length - 1], mind),
       overallChange: change(overallHistory[overallHistory.length - 1], overall),
     };
-    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, maxByMin, answered, cond };
+    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
   }
 
   const nowTime = `${s.now.getHours()}:${String(s.now.getMinutes()).padStart(2, "0")}`;
@@ -691,12 +690,6 @@ export default function WellnessApp() {
 
   function renderRecords() {
     const totals = v.totals;
-    const maxByMin = v.maxByMin;
-    const durationStats = [1, 3, 5, 10].map((m) => {
-      const c = totals.byMin[m] || 0;
-      // 한 편 길이(1·3·5·10분)별로 몇 번 했는가 — 오른쪽엔 횟수와 그 합계 분을 같이 적는다(「3분 · 4회」만 있으면 뭘 몇 분 한 건지 안 읽힌다, 사용자 지적).
-      return { label: m + "분짜리", count: c === 0 ? "0회" : `${c}회 · ${c * m}분`, pct: Math.round((c / maxByMin) * 100), bg: c === maxByMin ? "#7a6bc4" : c >= 2 ? "#a99ce0" : "#d8d0f2" };
-    });
     const weeklyBars = WEEKLY_PAST.concat([{ label: "이번 주", v: totals.min }]).map((w) => ({ label: w.label, value: w.v, h: Math.round(w.v * 0.75) + 8, bg: w.label === "이번 주" ? "#7a6bc4" : "#e6e2f7" }));
     const doneList = DONE_WEEK.map((d) => {
       const pg = PROGRAMS.find((x) => x.id === d.id)!;
@@ -704,7 +697,7 @@ export default function WellnessApp() {
     });
     const item = v.item;
     const recIsBody = s.recTab === "body";
-    const bodySolution = "이번 주는 3분짜리를 가장 자주 고르셨고, 오후 2시–4시에 앉아 계신 시간이 길었어요. 요즘처럼 더운 주에는 낮 시간대를 늘리기보다, 그 시간엔 실내에서 짧게 한 번 더 끼워 넣고 걷기는 해가 진 뒤로 옮기는 쪽이 잘 맞을 것 같아요.";
+    const bodySolution = "이번 주는 목·어깨 쪽을 가장 자주 고르셨고, 오후 2시–4시에 앉아 계신 시간이 길었어요. 요즘처럼 더운 주에는 낮 시간대를 늘리기보다, 그 시간엔 실내에서 1분짜리를 한 번 더 끼워 넣고 걷기는 해가 진 뒤로 옮기는 쪽이 잘 맞을 것 같아요.";
     const bodyActions = [
       { label: v.wx.prefer === "indoor" ? "낮에는 실내에서 3분 한 번 더" : "오후 3시에 3분 걷기 한 번 더", go: () => patch({ tab: "home" }) },
       { label: "오늘 " + v.itemTitle + " 해보기", go: () => patch({ sheet: "content" }) },
@@ -754,23 +747,6 @@ export default function WellnessApp() {
               </div>
             </div>
 
-            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
-              <div style={sx("display:flex; flex-direction:column; gap:2px")}>
-                <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72")}>몇 분짜리를 몇 번 하셨나요</div>
-                <div style={sx("font-size:11.5px; color:#8ba8b3")}>몸풀기 한 편의 길이 기준 · 횟수와 합계 시간</div>
-              </div>
-              {durationStats.map((d, i) => (
-                <div key={i} style={sx("display:flex; align-items:center; gap:11px")}>
-                  <div style={sx("flex:none; width:52px; font-size:12.5px; font-weight:700; color:#7a6bc4; white-space:nowrap")}>{d.label}</div>
-                  <div style={sx("flex:1; min-width:0; height:9px; border-radius:999px; background:#f0edf9; overflow:hidden")}>
-                    <div style={{ ...sx("height:100%; border-radius:999px"), width: d.pct + "%", background: d.bg }} />
-                  </div>
-                  <div style={sx("flex:none; width:64px; text-align:right; font-size:12px; font-weight:600; color:#8ba8b3; white-space:nowrap")}>{d.count}</div>
-                </div>
-              ))}
-              <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>3분짜리를 가장 자주 고르셨어요. 짧게 자주가 제일 잘 맞는 방식일 수 있어요.</div>
-            </div>
-
             <div style={sx("display:flex; flex-direction:column; gap:12px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
               <div style={sx("display:flex; align-items:baseline; gap:9px")}>
                 <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>어떤 걸 하셨나요</div>
@@ -791,7 +767,7 @@ export default function WellnessApp() {
             <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
               <div style={sx("display:flex; align-items:baseline; gap:9px")}>
                 <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>최근 4주 실행 시간</div>
-                <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>주별 합계 (분)</div>
+                <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>주별 합계 (분 · 한 편 1분)</div>
               </div>
               <div style={sx("display:flex; align-items:flex-end; gap:9px; height:88px")}>
                 {weeklyBars.map((w, i) => (
@@ -1125,7 +1101,7 @@ export default function WellnessApp() {
             <div style={sx(`width:38px; height:38px; border-radius:12px; flex:none; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:15px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
-              <div style={sx("font-size:11.5px; color:#9a5f4c")}>짧은 몸풀기 {v.libList.length}가지 · 1~10분</div>
+              <div style={sx("font-size:11.5px; color:#9a5f4c")}>짧은 몸풀기 {v.libList.length}가지 · 한 편 1분</div>
             </div>
           </div>
           <div style={sx("display:flex; gap:7px; overflow-x:auto; padding:0 16px 12px")}>
