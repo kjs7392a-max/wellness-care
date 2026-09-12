@@ -694,7 +694,8 @@ export default function WellnessApp() {
     const maxByMin = v.maxByMin;
     const durationStats = [1, 3, 5, 10].map((m) => {
       const c = totals.byMin[m] || 0;
-      return { label: m + "분", count: c + "회", pct: Math.round((c / maxByMin) * 100), bg: c === maxByMin ? "#7a6bc4" : c >= 2 ? "#a99ce0" : "#d8d0f2" };
+      // 한 편 길이(1·3·5·10분)별로 몇 번 했는가 — 오른쪽엔 횟수와 그 합계 분을 같이 적는다(「3분 · 4회」만 있으면 뭘 몇 분 한 건지 안 읽힌다, 사용자 지적).
+      return { label: m + "분짜리", count: c === 0 ? "0회" : `${c}회 · ${c * m}분`, pct: Math.round((c / maxByMin) * 100), bg: c === maxByMin ? "#7a6bc4" : c >= 2 ? "#a99ce0" : "#d8d0f2" };
     });
     const weeklyBars = WEEKLY_PAST.concat([{ label: "이번 주", v: totals.min }]).map((w) => ({ label: w.label, value: w.v, h: Math.round(w.v * 0.75) + 8, bg: w.label === "이번 주" ? "#7a6bc4" : "#e6e2f7" }));
     const doneList = DONE_WEEK.map((d) => {
@@ -754,14 +755,17 @@ export default function WellnessApp() {
             </div>
 
             <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
-              <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72")}>시간별로 얼마나 하셨나요</div>
+              <div style={sx("display:flex; flex-direction:column; gap:2px")}>
+                <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72")}>몇 분짜리를 몇 번 하셨나요</div>
+                <div style={sx("font-size:11.5px; color:#8ba8b3")}>몸풀기 한 편의 길이 기준 · 횟수와 합계 시간</div>
+              </div>
               {durationStats.map((d, i) => (
                 <div key={i} style={sx("display:flex; align-items:center; gap:11px")}>
-                  <div style={sx("flex:none; width:34px; font-size:12.5px; font-weight:700; color:#7a6bc4; white-space:nowrap")}>{d.label}</div>
+                  <div style={sx("flex:none; width:52px; font-size:12.5px; font-weight:700; color:#7a6bc4; white-space:nowrap")}>{d.label}</div>
                   <div style={sx("flex:1; min-width:0; height:9px; border-radius:999px; background:#f0edf9; overflow:hidden")}>
                     <div style={{ ...sx("height:100%; border-radius:999px"), width: d.pct + "%", background: d.bg }} />
                   </div>
-                  <div style={sx("flex:none; width:32px; text-align:right; font-size:12px; font-weight:600; color:#8ba8b3; white-space:nowrap")}>{d.count}</div>
+                  <div style={sx("flex:none; width:64px; text-align:right; font-size:12px; font-weight:600; color:#8ba8b3; white-space:nowrap")}>{d.count}</div>
                 </div>
               ))}
               <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>3분짜리를 가장 자주 고르셨어요. 짧게 자주가 제일 잘 맞는 방식일 수 있어요.</div>
