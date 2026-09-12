@@ -506,11 +506,6 @@ export default function WellnessApp() {
             : "공기가 좋으니 잠깐 창가나 복도에서 숨을 고르거나 짧게 걸어보셔도 좋아요.");
       return LEAD_IN[v.slot] + " " + body + close;
     })();
-    const postureLabel = v.roleKey === "admin" ? "앉아 있던 시간" : "서 있던 시간";
-    const postureValue = v.roleKey === "admin" ? "6시간 · 서 있던 2시간" : v.roleKey === "care" ? "6시간 30분 · 앉은 1시간 30분" : "5시간 · 앉은 2시간 30분";
-    const standFlex = v.roleKey === "admin" ? 1 : v.roleKey === "care" ? 4 : 2;
-    const sitFlex = v.roleKey === "admin" ? 3 : 1;
-    const postureNote = v.roleKey === "admin" ? "가장 길게 앉아 있던 구간은 오후 2시–4시였어요" : "가장 길게 서 계셨던 구간은 3–4교시였어요";
     // 걸음 반원 게이지 — 3단계·3색 구간(적음 0~40% · 평소 40~80% · 많음 80~100%) + 오늘 위치 노브.
     // ⚠ 등급이 아니라 '개인 평소 범위' 대비 편차다(제안서 일상변화 관점). 라벨도 적음/평소/많음(descriptive)만 쓴다.
     const stepFrac = 0.515; // 오늘 걸음의 게이지 위치(목업). 실데이터 연동 시 계산으로 대체.
@@ -573,6 +568,34 @@ export default function WellnessApp() {
           </div>
         </div>
 
+        {/* 종합 컨디션 카드 — 신체·마음을 합친 단계 하나가 주인공, 두 축은 칩으로. 숫자 없음(사용자 확정). 누르면 상세 시트. */}
+        {(() => {
+          const lv = v.cond.overall; const ch = v.cond.overallChange;
+          const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
+          const arrow = ch.dir === "up" ? "↑ " : ch.dir === "down" ? "↓ " : "";
+          const chip = (name: string, l: typeof lv) => {
+            const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
+            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700"), background: "rgba(255,255,255,0.55)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
+          };
+          return (
+            <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.28); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
+              <div style={sx("display:flex; align-items:flex-start; justify-content:space-between; gap:10px")}>
+                <div style={sx("display:flex; flex-direction:column; gap:4px")}>
+                  <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>이번 주 종합 컨디션</div>
+                  <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
+                  <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>{arrow}{ch.text}</div>
+                </div>
+                <div style={{ ...sx("flex:none; font-size:16px; opacity:0.6; padding-top:2px"), color: c.fg }}>›</div>
+              </div>
+              <div style={sx("display:flex; gap:8px")}>
+                {chip("신체", v.cond.body)}
+                {chip("마음", v.cond.mind)}
+              </div>
+              <div style={{ ...sx("font-size:13px; line-height:1.55; text-wrap:pretty"), color: c.fg }}>{suggestion(v.cond.body, v.cond.mind)}</div>
+            </div>
+          );
+        })()}
+
         {/* 2단 타일 */}
         <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
           <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
@@ -596,34 +619,6 @@ export default function WellnessApp() {
             </div>
           </div>
         </div>
-
-        {/* 종합 컨디션 카드 — 신체·마음을 합친 단계 하나가 주인공, 두 축은 칩으로. 숫자 없음(사용자 확정). 누르면 상세 시트. */}
-        {(() => {
-          const lv = v.cond.overall; const ch = v.cond.overallChange;
-          const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
-          const arrow = ch.dir === "up" ? "↑ " : ch.dir === "down" ? "↓ " : "";
-          const chip = (name: string, l: typeof lv) => {
-            const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700"), background: "rgba(255,255,255,0.55)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
-          };
-          return (
-            <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:1px solid rgba(45,92,110,0.06); box-shadow:0 2px 10px rgba(45,92,110,0.05)"), background: c.bg }}>
-              <div style={sx("display:flex; align-items:flex-start; justify-content:space-between; gap:10px")}>
-                <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-                  <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>이번 주 종합 컨디션</div>
-                  <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
-                  <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>{arrow}{ch.text}</div>
-                </div>
-                <div style={{ ...sx("flex:none; font-size:16px; opacity:0.6; padding-top:2px"), color: c.fg }}>›</div>
-              </div>
-              <div style={sx("display:flex; gap:8px")}>
-                {chip("신체", v.cond.body)}
-                {chip("마음", v.cond.mind)}
-              </div>
-              <div style={{ ...sx("font-size:13px; line-height:1.55; text-wrap:pretty"), color: c.fg }}>{suggestion(v.cond.body, v.cond.mind)}</div>
-            </div>
-          );
-        })()}
 
         {/* 오늘의 기록 */}
         <div style={sx("display:grid; gap:11px")}>
@@ -694,18 +689,6 @@ export default function WellnessApp() {
                 <div style={sx("font-size:11px; color:#8ba8b3; white-space:nowrap")}>걷기 34분 · 계단 8분</div>
               </div>
 
-              {/* 자세 (전폭, 직군별 반전) */}
-              <div style={sx("grid-column:span 2; display:flex; flex-direction:column; gap:11px; padding:16px 18px; border-radius:20px; background:#fff; border:1.5px solid #dcd6ee; box-shadow:0 10px 22px rgba(80,88,140,0.2), 0 2px 5px rgba(80,88,140,0.14)")}>
-                <div style={sx("display:flex; align-items:baseline; gap:9px")}>
-                  <div style={sx("flex:1; min-width:0; font-size:12px; font-weight:600; color:#8ba8b3")}>{postureLabel}</div>
-                  <div style={sx("flex:none; white-space:nowrap; font-size:13.5px; font-weight:700; color:#2d5c6e")}>{postureValue}</div>
-                </div>
-                <div style={sx("display:flex; gap:3px; height:11px; border-radius:999px; overflow:hidden")}>
-                  <div style={{ ...sx("background:#8a7cd0; border-radius:999px"), flex: standFlex }} />
-                  <div style={{ ...sx("background:#f5a98c; border-radius:999px"), flex: sitFlex }} />
-                </div>
-                <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>{postureNote}</div>
-              </div>
             </div>
           ) : (
             <div style={sx("display:flex; flex-direction:column; gap:13px; padding:18px; border-radius:20px; background:#fff; border:1px solid #e3eef1")}>
