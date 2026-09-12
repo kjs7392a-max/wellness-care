@@ -575,7 +575,7 @@ export default function WellnessApp() {
           const arrow = ch.dir === "up" ? "↑ " : ch.dir === "down" ? "↓ " : "";
           const chip = (name: string, l: typeof lv) => {
             const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700"), background: "rgba(255,255,255,0.55)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
+            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:1.5px solid rgba(45,92,110,0.28)"), background: "rgba(255,255,255,0.7)", color: cc.fg }}><span style={sx("opacity:0.8")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
           };
           return (
             <div onClick={() => patch({ sheet: "condition" })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.28); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
