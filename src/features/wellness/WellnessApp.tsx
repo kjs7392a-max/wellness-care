@@ -1259,7 +1259,13 @@ export default function WellnessApp() {
                 </div>
               ))}
             </div>
-            <div style={{ ...sx("font-size:11.5px; opacity:0.75; line-height:1.5"), color: oc.fg }}>종합은 신체와 마음의 가운데 값이에요. 둘이 갈리면 낮은 쪽으로 봅니다.</div>
+            {/* 각주 — 단계 이름이 왜 나오는지(levelFromSum·dayMindLevel·overallLevel 규칙을 말로). 규칙을 바꾸면 이 글도 같이 바꿀 것. */}
+            <div style={{ ...sx("display:flex; flex-direction:column; gap:6px; margin-top:4px; padding:12px 13px; border-radius:14px; background:rgba(255,255,255,0.6); border:1px solid rgba(45,92,110,0.25)"), color: oc.fg }}>
+              <div style={sx("font-size:12px; font-weight:800")}>어떻게 정했나요</div>
+              <div style={sx("font-size:11.5px; line-height:1.6; text-wrap:pretty")}><b>신체건강</b> — 스트레칭·움직인 시간·걸음 세 가지를 평소와 견줘요. 셋 다 평소만큼이면 <b>보통</b>, 하나가 평소보다 많으면 <b>좋음</b>, 둘 이상 많으면 <b>매우 좋음</b>. 반대로 하나가 적으면 <b>조금 지침</b>, 둘 이상 적으면 <b>휴식 필요</b>예요.</div>
+              <div style={sx("font-size:11.5px; line-height:1.6; text-wrap:pretty")}><b>마음건강</b> — 오늘의 마음카드로 봐요. 가벼운 쪽 그림을 골랐으면 <b>좋음</b>, 중간이면 <b>보통</b>, 무거운 쪽이면 <b>조금 지침</b>. 많이 힘든 말이 보인 날은 <b>휴식 필요</b>로 두고 쉬라고 권해요.</div>
+              <div style={sx("font-size:11.5px; line-height:1.6; text-wrap:pretty")}><b>종합</b> — 신체건강과 마음건강을 같이 봐요. 둘이 같으면 그대로, 다르면 낮은 쪽에 맞춰요.</div>
+            </div>
           </div>
 
           {axis("신체건강", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), null)}
