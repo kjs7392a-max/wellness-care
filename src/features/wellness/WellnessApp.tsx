@@ -1188,7 +1188,7 @@ export default function WellnessApp() {
       const names = ["일", "월", "화", "수", "목", "금", "토"];
       return flow.map((_, i) => names[(d.getDay() - (flow.length - 1 - i) + 14) % 7]);
     })();
-    const axis = (name: string, l: (typeof v.cond)["overall"], evidence: string[], cta: { label: string; go: () => void }) => {
+    const axis = (name: string, l: (typeof v.cond)["overall"], evidence: string[], cta: { label: string; go: () => void } | null) => {
       const c = box(l);
       return (
         <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 17px; border-radius:18px; background:#fff; border:1px solid #e3eef1")}>
@@ -1197,7 +1197,8 @@ export default function WellnessApp() {
             <div style={{ ...sx("font-size:12.5px; font-weight:700; padding:6px 11px; border-radius:999px"), background: c.bg, color: c.fg }}>{l ? LEVEL_LABEL[l] : "기록 부족"}</div>
           </div>
           {evidence.map((e, i) => (<div key={i} style={sx("font-size:13.5px; color:#4d7c8c; line-height:1.55")}>· {e}</div>))}
-          <div onClick={cta.go} style={sx("cursor:pointer; align-self:flex-start; font-size:12.5px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:7px 12px")}>{cta.label} ›</div>
+          {/* 위험어 주에만 마음쉼 안내 버튼. 평소 링크(몸풀기·대화)는 홈에 있어 여기선 뺐다(사용자 지시). */}
+          {cta && <div onClick={cta.go} style={sx("cursor:pointer; align-self:flex-start; font-size:12.5px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:7px 12px")}>{cta.label} ›</div>}
         </div>
       );
     };
@@ -1244,8 +1245,8 @@ export default function WellnessApp() {
             <div style={{ ...sx("font-size:11.5px; opacity:0.75; line-height:1.5"), color: oc.fg }}>종합은 신체와 마음의 가운데 값이에요. 둘이 갈리면 낮은 쪽으로 봅니다.</div>
           </div>
 
-          {axis("신체", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), { label: "몸풀기 하러 가기", go: () => patch({ sheet: "library" }) })}
-          {axis("마음", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), risk ? { label: "마음쉼 상담 익명으로 신청하기", go: () => patch({ sheet: "talk", consultOpen: true }) } : { label: "마음과 대화 열기", go: () => patch({ sheet: "talk" }) })}
+          {axis("신체", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), null)}
+          {axis("마음", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), risk ? { label: "마음쉼 상담 익명으로 신청하기", go: () => patch({ sheet: "talk", consultOpen: true }) } : null)}
         </div>
       </div>
     );
