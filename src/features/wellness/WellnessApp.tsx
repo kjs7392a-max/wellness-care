@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, type CharacterId } from "./characters";
-import { bodyEvidence, bodyLevel, change, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, flowText, HEAVY_PICKS, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, suggestion, yesterdayLabel } from "./condition";
+import { bodyEvidence, bodyLevel, change, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, flowText, HEAVY_PICKS, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion } from "./suggestion";
 import {
   AREAS, CHAT_BEATS, CONDITION_HISTORY, WEEK_FLOW, YESTERDAY, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
@@ -1229,11 +1229,6 @@ export default function WellnessApp() {
 
           {axis("신체", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), { label: "몸풀기 하러 가기", go: () => patch({ sheet: "library" }) })}
           {axis("마음", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), risk ? { label: "마음쉼 상담 익명으로 신청하기", go: () => patch({ sheet: "talk", consultOpen: true }) } : { label: "마음과 대화 열기", go: () => patch({ sheet: "talk" }) })}
-
-          <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px 17px; border-radius:18px; background:#f2edfa; border:1px solid #e0d9f2")}>
-            <div style={sx("font-size:13px; font-weight:700; color:#5f5397")}>오늘의 제안</div>
-            <div style={sx("font-size:14px; color:#2d5c6e; line-height:1.6; text-wrap:pretty")}>{suggestion(v.cond.dayBody, v.cond.dayMind)}</div>
-          </div>
         </div>
       </div>
     );
