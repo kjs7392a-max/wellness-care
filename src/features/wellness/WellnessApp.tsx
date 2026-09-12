@@ -586,7 +586,7 @@ export default function WellnessApp() {
                   <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
                   <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>최근 흐름 {flow}</div>
                 </div>
-                <div style={{ ...sx("flex:none; font-size:16px; opacity:0.6; padding-top:2px"), color: c.fg }}>›</div>
+                <div style={{ ...sx("flex:none; font-size:12px; font-weight:700; padding:7px 11px; border-radius:999px; border:1.5px solid rgba(45,92,110,0.25); background:rgba(255,255,255,0.7); white-space:nowrap"), color: c.fg }}>상세보기 ›</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
                 {chip("신체", v.cond.dayBody)}
@@ -646,9 +646,11 @@ export default function WellnessApp() {
               {/* 스트레칭 — 설명 없이 읽히게 「3번 / 오늘 총 7분」만(사용자: 점·배지·부위 개수 전부 뜻이 안 읽힘) */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px; border-right:1px solid #ece8f5")}>
                 <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>스트레칭</div>
-                <div style={sx("flex:1")} />
-                <div style={sx("font-size:19px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>3번</div>
-                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>오늘 총 7분</div>
+                <div style={sx("display:flex; flex-direction:column; gap:2px; align-items:center; padding-top:4px")}>
+                  <div style={sx("font-size:11px; color:#4d7c8c; white-space:nowrap")}>목풀기 2회</div>
+                  <div style={sx("font-size:11px; color:#4d7c8c; white-space:nowrap")}>어깨풀기 1회</div>
+                </div>
+                <div style={sx("font-size:17px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>총 3회 · 7분</div>
               </div>
               {/* 움직인 시간 */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px")}>
