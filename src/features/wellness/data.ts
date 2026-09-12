@@ -275,7 +275,7 @@ export const OB: ObStep[] = [
   { kicker: "동의·권한", title: "수집동의서 및 권한허용", body: "권한을 허용하지 않아도 나머지는 그대로 동작하지만 허용하시면 더 정확한 결과를 얻을 수 있습니다.", btn: "동의하고 계속" },
   { kicker: "직군", title: "어떤 일을 하고 계신가요?", body: "쌓이는 피로의 자리가 서로 달라서, 제안하는 내용도 달라집니다. 나중에 바꿀 수 있어요.", btn: "다음" },
   // 2026-09-12: 제목은 부드럽게, PAR-Q+ 는 표준 문항임을 앞세워 신뢰를 준다(사용자 지시).
-  { kicker: "PAR-Q+ · 신체활동 준비 질문지", title: "PAR-Q+를 통해 시작하기 전에 몸 상태를 잠깐 여쭤볼게요", body: "PAR-Q+(Physical Activity Readiness Questionnaire)는 캐나다운동생리학회가 만든 국제 표준 문항이에요. 일곱 가지 답에 따라 제안하는 강도만 달라지고, 몸에 무리가 가는 동작은 권하지 않습니다.", btn: "시작하기" },
+  { kicker: "PAR-Q+ · 신체활동 준비 질문지", title: "PAR-Q+를 통해 몸 상태를 잠깐 여쭤볼게요", body: "PAR-Q+(Physical Activity Readiness Questionnaire)는 캐나다운동생리학회가 만든 국제 표준 문항이에요. 일곱 가지 답에 따라 제안하는 강도만 달라지고, 몸에 무리가 가는 동작은 권하지 않습니다.", btn: "시작하기" },
 ];
 
 // 대화 첫 인사는 캐릭터마다 다르다 → characters.ts 의 intro.
