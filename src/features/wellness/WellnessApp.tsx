@@ -323,7 +323,7 @@ export default function WellnessApp() {
     const obBackLabel = s.parqOnly ? "취소" : s.ob === 0 ? "나중에 볼게요" : "이전";
     const obNext = () => {
       if (!canNext) return;
-      patchFn((st) => (st.parqOnly && st.ob === 4) ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= 5 ? -1 : st.ob + 1 });
+      patchFn((st) => (st.parqOnly && st.ob === 4) ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= 4 ? -1 : st.ob + 1 });
     };
     const obBack = () => patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 });
 
@@ -378,6 +378,23 @@ export default function WellnessApp() {
                   </div>
                 );
               })}
+              <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:8px 2px 0")}>권한</div>
+              {[
+                { name: "건강 데이터 (걸음)", note: "Health Connect를 통해 읽기만 합니다" },
+                { name: "활동 인식", note: "걷기·계단 같은 움직임만 구분합니다" },
+                { name: "알림", note: "정서와 관련된 제안은 알림으로 보내지 않아요" },
+              ].map((pm, i) => {
+                const on = s.perms[i] !== false;
+                return (
+                  <div key={i} onClick={() => patchFn((sti) => ({ perms: { ...sti.perms, [i]: !(sti.perms[i] !== false) } }))} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:15px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#c4b8ec" : "#e3eef1" }}>
+                    <div style={{ ...sx("width:22px; height:22px; border-radius:7px; flex:none; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#d9e7ec" }}>{on ? "✓" : ""}</div>
+                    <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
+                      <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{pm.name}</div>
+                      <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{pm.note}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -419,26 +436,6 @@ export default function WellnessApp() {
             </div>
           )}
 
-          {s.ob === 5 && (
-            <div style={sx("display:flex; flex-direction:column; gap:10px")}>
-              {[
-                { name: "건강 데이터 (걸음)", note: "Health Connect를 통해 읽기만 합니다" },
-                { name: "활동 인식", note: "걷기·계단 같은 움직임만 구분합니다" },
-                { name: "알림", note: "정서와 관련된 제안은 알림으로 보내지 않아요" },
-              ].map((pm, i) => {
-                const on = s.perms[i] !== false;
-                return (
-                  <div key={i} onClick={() => patchFn((sti) => ({ perms: { ...sti.perms, [i]: !(sti.perms[i] !== false) } }))} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:15px; background:#fff; border:1.5px solid; transition:border-color 0.2s"), borderColor: on ? "#c4b8ec" : "#e3eef1" }}>
-                    <div style={{ ...sx("width:22px; height:22px; border-radius:7px; flex:none; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#d9e7ec" }}>{on ? "✓" : ""}</div>
-                    <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
-                      <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{pm.name}</div>
-                      <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{pm.note}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 24px 28px; background:linear-gradient(180deg,rgba(246,250,251,0) 0%,#f6fafb 22%)")}>
