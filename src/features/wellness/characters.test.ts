@@ -20,6 +20,12 @@ describe("CHARACTERS", () => {
       }
     }
   });
+  it("인사말에 「안녕하세요」·역할 이름(옆반·수석교사·동기·상담교사·상담사)이 없고, 인물 설정이 직함을 밝히지 말라고 명시한다(사용자 지시)", () => {
+    for (const c of CHARACTERS) {
+      for (const w of ["안녕하세요", "옆반", "수석교사", "동기", "상담교사", "상담사"]) expect(c.intro, c.id).not.toContain(w);
+      expect(c.persona, c.id).toContain("직함도 밝히지 않는다");
+    }
+  });
   it("인물 설정에 임상 용어가 없다(화면·말투에서 상담 용어 금지)", () => {
     for (const c of CHARACTERS) {
       for (const w of ["우울증", "진단", "심리검사", "치료", "스트레스 지수"]) expect(c.persona, c.id).not.toContain(w);
