@@ -1178,7 +1178,6 @@ export default function WellnessApp() {
 
   function renderCondition() {
     const close = () => patch({ sheet: null });
-    const risk = v.cond.dayMindIn.riskFlagged;
     const box = (l: (typeof v.cond)["overall"]) => (l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" });
     const oc = box(v.cond.dayOverall);
     const flow = v.cond.weekFlow;
@@ -1197,7 +1196,7 @@ export default function WellnessApp() {
             <div style={{ ...sx("font-size:12.5px; font-weight:700; padding:6px 11px; border-radius:999px"), background: c.bg, color: c.fg }}>{l ? LEVEL_LABEL[l] : "기록 부족"}</div>
           </div>
           {evidence.map((e, i) => (<div key={i} style={sx("font-size:13.5px; color:#4d7c8c; line-height:1.55")}>· {e}</div>))}
-          {/* 위험어 주에만 마음쉼 안내 버튼. 평소 링크(몸풀기·대화)는 홈에 있어 여기선 뺐다(사용자 지시). */}
+          {/* 링크 없음 — 몸풀기·대화·마음쉼 안내는 홈·대화 화면에 있다(사용자 지시). 근거 문장만. */}
           {cta && <div onClick={cta.go} style={sx("cursor:pointer; align-self:flex-start; font-size:12.5px; font-weight:700; color:#7a6bc4; background:#f2edfa; border:1px solid #e0d9f2; border-radius:999px; padding:7px 12px")}>{cta.label} ›</div>}
         </div>
       );
@@ -1246,7 +1245,7 @@ export default function WellnessApp() {
           </div>
 
           {axis("신체", v.cond.dayBody, dayBodyEvidence(v.cond.dayBodyIn), null)}
-          {axis("마음", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), risk ? { label: "마음쉼 상담 익명으로 신청하기", go: () => patch({ sheet: "talk", consultOpen: true }) } : null)}
+          {axis("마음", v.cond.dayMind, dayMindEvidence(v.cond.dayMindIn), null)}
         </div>
       </div>
     );
