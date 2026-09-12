@@ -17,19 +17,23 @@ describe("guideStepAt", () => {
     expect(p.loop).toBe(0);
     expect(p.progress).toBe(0);
   });
-  it("경계: 9초는 1구간, 10초는 2구간(어깨 으쓱)", () => {
-    expect(guideStepAt(steps, 9).index).toBe(0);
-    expect(guideStepAt(steps, 10).index).toBe(1);
-    expect(guideStepAt(steps, 10).step.title).toBe("어깨 으쓱");
+  it("경계는 영상 실측값: 4초 으쓱 · 17초 돌리기 · 35초 오른쪽 · 46초 왼쪽 · 56초 마무리", () => {
+    expect(guideStepAt(steps, 3).index).toBe(0);
+    expect(guideStepAt(steps, 4).step.title).toBe("어깨 으쓱");
+    expect(guideStepAt(steps, 16).index).toBe(1);
+    expect(guideStepAt(steps, 17).step.title).toBe("어깨 뒤로 돌리기");
+    expect(guideStepAt(steps, 35).step.title).toBe("고개 오른쪽으로");
+    expect(guideStepAt(steps, 46).step.title).toBe("고개 왼쪽으로");
+    expect(guideStepAt(steps, 56).step.title).toBe("어깨 내려놓기");
   });
   it("구간 안 경과·진행률", () => {
-    const p = guideStepAt(steps, 17); // 10 + 7
+    const p = guideStepAt(steps, 11); // 4 + 7
     expect(p.index).toBe(1);
     expect(p.stepElapsed).toBe(7);
-    expect(p.progress).toBeCloseTo(7 / 15);
+    expect(p.progress).toBeCloseTo(7 / 13);
   });
-  it("마지막 구간 55~59초", () => {
-    expect(guideStepAt(steps, 55).index).toBe(5);
+  it("마지막 구간 56~59초", () => {
+    expect(guideStepAt(steps, 57).index).toBe(5);
     expect(guideStepAt(steps, 59).index).toBe(5);
   });
   it("60초부터 두 번째 반복 첫 구간 — 3·5·10분 선택 시 세트 반복", () => {
@@ -37,8 +41,8 @@ describe("guideStepAt", () => {
     expect(p.loop).toBe(1);
     expect(p.index).toBe(0);
     expect(guideStepAt(steps, 130).loop).toBe(2);
-    expect(guideStepAt(steps, 130).index).toBe(1); // 120 + 10 = 세트 안 10초 → 2구간 시작
-    expect(guideStepAt(steps, 129).index).toBe(0); // 120 + 9
+    expect(guideStepAt(steps, 124).index).toBe(1); // 120 + 4 = 세트 안 4초 → 2구간 시작
+    expect(guideStepAt(steps, 123).index).toBe(0); // 120 + 3
     expect(guideStepAt(steps, 599).index).toBe(5); // 10분 마지막 초
   });
   it("음수·NaN 은 0초로", () => {

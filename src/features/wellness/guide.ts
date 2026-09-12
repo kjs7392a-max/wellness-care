@@ -36,16 +36,21 @@ export function guideMaxSec(g: GuideVideo): number {
   return guideTotalSec(g.steps) * (g.playCount ?? 1);
 }
 
-/** 「퇴근 전 어깨·목 풀기」 — 힉스필드 제작본 stretch_60s_v2 (2026-09-12). 6구간 합계 60초. */
+/**
+ * 「퇴근 전 어깨·목 풀기」 — 힉스필드 제작본 stretch_60s_v2 (2026-09-12). 6구간 합계 60초.
+ * ⚠ 구간 초는 콘티(10/15/15/8/7/5)가 아니라 **영상을 프레임 단위로 재서** 맞춘 값이다(사용자 "자막이 부자연스럽다").
+ *   어깨 영역 움직임 에너지: 으쓱 3회 = 5.3·9.7·14.6초 / 돌리기 = 19~34초 연속 / 고개 오른쪽 = 35~46초 /
+ *   가운데 복귀 46~49 → 왼쪽 49~56 / 56초부터 정면. 영상을 다시 만들면 이 값을 다시 재야 한다(scratchpad 프레임 시트).
+ */
 export const SHOULDER_RELEASE: GuideVideo = {
   src: "/wellness/video/shoulder-release-1m.mp4",
   steps: [
-    { sec: 10, title: "어깨 힘 빼기", cue: "올려두었던 어깨, 내려놓을 시간이에요. 숨 한 번." },
-    { sec: 15, title: "어깨 으쓱", cue: "올릴 때 들이쉬고, 내릴 때 툭 — 세 번" },
-    { sec: 15, title: "어깨 뒤로 돌리기", cue: "천천히, 크게 — 네 번" },
-    { sec: 8, title: "고개 오른쪽으로", cue: "어깨는 그대로, 귀만 내려요" },
-    { sec: 7, title: "고개 왼쪽으로", cue: "반대쪽도 똑같이" },
-    { sec: 5, title: "어깨 내려놓기", cue: "오늘 몫은 여기까지로 충분해요" },
+    { sec: 4, title: "어깨 힘 빼기", cue: "올려두었던 어깨, 내려놓을 시간이에요. 숨 한 번." },
+    { sec: 13, title: "어깨 으쓱", cue: "올릴 때 들이쉬고, 내릴 때 툭 — 세 번" },
+    { sec: 18, title: "어깨 뒤로 돌리기", cue: "천천히, 크게" },
+    { sec: 11, title: "고개 오른쪽으로", cue: "어깨는 그대로, 귀만 내려요" },
+    { sec: 10, title: "고개 왼쪽으로", cue: "가운데로 돌아왔다가, 반대쪽도 똑같이" },
+    { sec: 4, title: "어깨 내려놓기", cue: "오늘 몫은 여기까지로 충분해요" },
   ],
 };
 
@@ -94,19 +99,23 @@ export function guideStepAt(steps: GuideStep[], elapsed: number): GuidePosition 
 function demo(file: string, title: string, cue: string, fit?: "cover" | "contain"): GuideVideo {
   return { src: "/wellness/video/" + file, steps: [{ sec: 20, title, cue }], playCount: 3, ...(fit ? { fit } : {}) };
 }
+/** 클립 2개(10초+10초)로 만든 편 — 실측상 전환이 정확히 10초(프레임 움직임 에너지 스파이크). 좌·우 안내를 갈라 띄운다. */
+function demo2(file: string, a: [string, string], b: [string, string], fit?: "cover" | "contain"): GuideVideo {
+  return { src: "/wellness/video/" + file, steps: [{ sec: 10, title: a[0], cue: a[1] }, { sec: 10, title: b[0], cue: b[1] }], playCount: 3, ...(fit ? { fit } : {}) };
+}
 
 export const PROGRAM_VIDEOS: Record<string, GuideVideo> = {
   p1: SHOULDER_RELEASE,
-  p2: demo("p2-neck-tilt.mp4", "고개 옆으로 기울이기", "어깨는 그대로, 귀만 천천히 내려요"),
+  p2: demo2("p2-neck-tilt.mp4", ["고개 오른쪽으로", "어깨는 그대로, 귀만 천천히 내려요"], ["고개 왼쪽으로", "가운데로 돌아왔다가, 반대쪽도 똑같이"]),
   p3: demo("p3-chin-tuck.mp4", "턱 당기기", "턱을 뒤로 당겨 3초, 천천히 풀어요"),
-  p4: demo("p4-seated-twist.mp4", "앉아서 허리 비틀기", "숨을 내쉬며 천천히 돌리고, 끝에서 잠깐 머물러요"),
+  p4: demo2("p4-seated-twist.mp4", ["오른쪽으로 비틀기", "숨을 내쉬며 천천히 돌리고, 끝에서 잠깐 머물러요"], ["왼쪽으로 비틀기", "가운데로 돌아왔다가, 반대쪽도 똑같이"]),
   p5: demo("p5-pelvic-tilt.mp4", "골반 기울이기", "등을 등받이에 붙이고, 허리만 살짝 세웠다 풀어요"),
   p6: demo("p6-eye-rest.mp4", "눈 쉬기", "손바닥으로 눈을 덮고, 멀리 한 번 봐요"),
-  p7: demo("p7-wrist.mp4", "손목 이완", "손가락을 당겨 5초, 손등을 눌러 5초"),
-  p8: demo("p8-calf.mp4", "종아리 늘리기", "뒤꿈치를 바닥에 붙이고, 종아리가 늘어나는 걸 느껴요", "contain"), // 전신·발이 보여야 한다
+  p7: demo2("p7-wrist.mp4", ["손가락 당기기", "팔을 뻗고 손가락을 몸 쪽으로 천천히"], ["손등 누르기", "손을 뒤집어 손등을 아래로 지그시"]),
+  p8: demo2("p8-calf.mp4", ["오른쪽 종아리", "뒤꿈치를 바닥에 붙이고, 종아리가 늘어나는 걸 느껴요"], ["왼쪽 종아리", "발을 바꿔 똑같이"], "contain"), // 전신·발이 보여야 한다
   p9: demo("p9-ankle-pump.mp4", "발끝 당기고 뻗기", "발끝을 당겼다 뻗어요. 천천히", "contain"), // 무릎~발 프레이밍
   p10: demo("p10-voice-breath.mp4", "목소리 이완 호흡", "코로 4초, 입으로 6초"),
   p11: demo("p11-breath.mp4", "숨 고르기", "배에 손을 얹고, 숨이 손을 밀어 올리게"),
   p12: demo("p12-night-breath.mp4", "이완 호흡", "4초 들이쉬고, 8초 길게 내쉬어요"),
-  p15: demo("p15-reach-up.mp4", "기지개", "팔을 위로, 숨을 크게 한 번"),
+  p15: demo2("p15-reach-up.mp4", ["팔 위로 뻗기", "깍지 끼고 위로, 숨을 크게 한 번"], ["옆으로 기울이기", "오른쪽, 왼쪽 천천히. 팔 내리며 끝"]),
 };
