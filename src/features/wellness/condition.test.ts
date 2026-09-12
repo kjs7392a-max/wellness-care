@@ -32,7 +32,7 @@ describe("mindLevel", () => {
     const b = mindLevel({ pictureDays: 4, heavyDays: 0, chatCount: 7, riskFlagged: false });
     expect(a).toBe(b);
   });
-  it("무거운 결 목록은 실제 「오늘의 그림」 선택지와 글자가 같다", () => {
+  it("무거운 결 목록은 실제 「오늘의 마음카드」 선택지와 글자가 같다", () => {
     const labels = new Set(PROBES.flatMap((p) => p.options.map((o) => o.label)));
     for (const h of HEAVY_PICKS) expect(labels.has(h), h).toBe(true);
   });
@@ -101,6 +101,6 @@ describe("하루 단위(어제)", () => {
     expect(flowText([3, 4, 3])).toBe("보통 → 좋음 → 보통");
     expect(flowText([null, 4])).toBe("— → 좋음");
     expect(dayBodyEvidence({ stretchCount: 2, moveVsUsual: 0, stepsVsUsual: 0 })[0]).toBe("스트레칭 2번");
-    expect(dayMindEvidence({ pick: "light", chatCount: 1, riskFlagged: false })).toEqual(["오늘의 그림: 가벼운 결", "마음과 대화 1번"]);
+    expect(dayMindEvidence({ pick: "light", chatCount: 1, riskFlagged: false })).toEqual(["오늘의 마음카드: 가벼운 결", "마음과 대화 1번"]);
   });
 });

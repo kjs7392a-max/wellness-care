@@ -243,7 +243,7 @@ export default function WellnessApp() {
     const maxByMin = Math.max(...Object.values(totals.byMin), 1);
     const answered = PROBES.filter((p) => st.answers[p.id]).length;
     // 컨디션 단계 — 재료는 이번 주 기록. ⚠ 걸음·움직인 시간은 아직 목업이라 '평소 수준'(0)으로 둔다(실데이터 연동 시 여기만 바꾼다).
-    //   몸풀기 = 주간 목업(DONE_WEEK) + 이 세션에서 실제로 한 것. 오늘의 그림 = 목업 5일 + 오늘 3문항을 다 답했으면 +1일.
+    //   몸풀기 = 주간 목업(DONE_WEEK) + 이 세션에서 실제로 한 것. 오늘의 마음카드 = 목업 5일 + 오늘 3문항을 다 답했으면 +1일.
     //   대화는 횟수만(내용 안 봄). 지난주 단계·최근 4주는 목업 상수(CONDITION_HISTORY).
     const todayPicked = answered === PROBES.length ? Object.values(st.answers) : [];
     const heavyToday = todayPicked.some((v) => HEAVY_PICKS.some((h) => v.includes(h))) ? 1 : 0;
@@ -678,7 +678,7 @@ export default function WellnessApp() {
             </div>
             <div style={sx("display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:14.5px; font-weight:700; color:#4a3f80")}>마음 건강</div>
-              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5")}>대화 · 오늘의 그림</div>
+              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5")}>대화 · 오늘의 마음카드</div>
             </div>
           </div>
         </div>
@@ -708,7 +708,7 @@ export default function WellnessApp() {
     ];
     const mindActions = [
       { label: "마음과 대화에 이번 주 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
-      { label: "오늘의 그림으로 지금 마음 확인하기", go: () => patch({ sheet: "picture", answers: {} }) },
+      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", answers: {} }) },
     ];
 
     return (
@@ -959,7 +959,7 @@ export default function WellnessApp() {
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
             <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>마음과 대화</div>
-            <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>오늘의 그림</div>
+            <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>오늘의 마음카드</div>
           </div>
         </div>
 
@@ -1164,8 +1164,8 @@ export default function WellnessApp() {
           <div onClick={() => patch({ sheet: "picture", answers: {} })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 17px; border-radius:20px; background:#fff; border:1px solid #e3eef1; box-shadow:0 2px 10px rgba(45,92,110,0.05)")}>
             <div style={sx(`width:48px; height:48px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/probe-mood.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>오늘의 그림</div>
-              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>말로 꺼내기 어려운 날엔 그림으로 골라보세요</div>
+              <div style={sx("font-size:15.5px; font-weight:700; color:#2d5c6e")}>오늘의 마음카드</div>
+              <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>말로 꺼내기 어려운 날엔 끌리는 그림을 하나 골라 보세요</div>
             </div>
             <div style={sx("flex:none; font-size:16px; color:#b5c8d0")}>›</div>
           </div>
@@ -1287,7 +1287,7 @@ export default function WellnessApp() {
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>마음과 대화</div>
-            <div onClick={() => patch({ sheet: "picture", answers: {} })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>오늘의 그림</div>
+            <div onClick={() => patch({ sheet: "picture", answers: {} })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #e3eef1")}>오늘의 마음카드</div>
           </div>
         </div>
 

@@ -13,7 +13,7 @@
 | 파일 | 역할 |
 |---|---|
 | `src/app/wellness/{layout,page}.tsx` | 라우트·폰 프레임·키프레임(웰니스 전용, ERP와 격리) |
-| `src/features/wellness/WellnessApp.tsx` | 전체 화면 상태머신 (로그인·온보딩·홈·기록·설정·라이브러리·타이머·마음·대화·오늘의 그림) |
+| `src/features/wellness/WellnessApp.tsx` | 전체 화면 상태머신 (로그인·온보딩·홈·기록·설정·라이브러리·타이머·마음·대화·오늘의 마음카드) |
 | `src/features/wellness/data.ts` | 프로그램·문항·직군·날씨·넛지 등 상수 (임상/디자인 감수값, 임의 수정 금지) |
 | `src/features/wellness/risk.ts` | 위험어 판정(`riskLevel`)·고정 응답(`RISK_REPLY`)·시스템 프롬프트(`SYSTEM`) — 클라/서버 공용 |
 | `src/features/wellness/sx.ts` | 인라인 CSS 문자열 → React style 객체 (디자인 픽셀 재현용) |

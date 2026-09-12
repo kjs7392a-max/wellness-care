@@ -43,7 +43,7 @@ export interface BodyInput {
 }
 
 export interface MindInput {
-  /** 이번 주 「오늘의 그림」을 기록한 날 수 */
+  /** 이번 주 「오늘의 마음카드」을 기록한 날 수 */
   pictureDays: number;
   /** 그중 무거운 결(엉킨 결·강렬한 감정·조용한 정지·눈부신 소란)을 고른 날 수 */
   heavyDays: number;
@@ -53,7 +53,7 @@ export interface MindInput {
   riskFlagged: boolean;
 }
 
-/** 「오늘의 그림」 선택지 중 무거운 결로 보는 것 — PROBES 의 label 과 글자가 같아야 한다 */
+/** 「오늘의 마음카드」 선택지 중 무거운 결로 보는 것 — PROBES 의 label 과 글자가 같아야 한다 */
 export const HEAVY_PICKS = ["엉킨 결", "강렬한 감정", "조용한 정지", "눈부신 소란"];
 
 export function stretchSignal(n: number): Signal { return n >= 3 ? 1 : n >= 1 ? 0 : -1; }
@@ -122,7 +122,7 @@ export function bodyEvidence(b: BodyInput, prevStretch: number | null): string[]
 export function mindEvidence(m: MindInput): string[] {
   if (m.riskFlagged) return ["이번 주는 쉬어가도 되는 주예요."];
   return [
-    `오늘의 그림 ${m.pictureDays}일 기록`,
+    `오늘의 마음카드 ${m.pictureDays}일 기록`,
     `무거운 결 ${m.heavyDays}일`,
     `마음과 대화 ${m.chatCount}번`,
   ];
@@ -152,7 +152,7 @@ export interface DayBodyInput {
   stepsVsUsual: Signal;
 }
 export interface DayMindInput {
-  /** 어제 「오늘의 그림」 결 — heavy(무거운 결) / light(가벼운 결) / none(기록 없음) */
+  /** 어제 「오늘의 마음카드」 결 — heavy(무거운 결) / light(가벼운 결) / none(기록 없음) */
   pick: "heavy" | "light" | "none";
   chatCount: number;
   riskFlagged: boolean;
@@ -177,7 +177,7 @@ export function dayBodyEvidence(b: DayBodyInput): string[] {
 }
 export function dayMindEvidence(m: DayMindInput): string[] {
   if (m.riskFlagged) return ["어제는 많이 힘든 날이었어요. 오늘은 쉬어가도 됩니다."];
-  const pick = m.pick === "heavy" ? "오늘의 그림: 무거운 결" : m.pick === "light" ? "오늘의 그림: 가벼운 결" : "오늘의 그림: 기록 없음";
+  const pick = m.pick === "heavy" ? "오늘의 마음카드: 무거운 결" : m.pick === "light" ? "오늘의 마음카드: 가벼운 결" : "오늘의 마음카드: 기록 없음";
   return [pick, `마음과 대화 ${m.chatCount}번`];
 }
 
