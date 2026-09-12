@@ -10,9 +10,10 @@ import { resolveSuggestion } from "./suggestion";
 import {
   AREAS, CHAT_BEATS, CONDITION_HISTORY, WEEK_FLOW, YESTERDAY, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
   NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROGRAMS, ROLES,
-  TEMP, WEATHER, WEEK_TEMP, WEEKLY_PAST, type ContentState, type Role, type WeatherKey,
+  TEMP, WEATHER, WEEK_TEMP, type ContentState, type Role, type WeatherKey,
 } from "./data";
 import { riskLevel, RISK_REPLY } from "./risk";
+import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
 const IMG = "/wellness/images";
 
@@ -55,6 +56,8 @@ interface State {
   consultOpen: boolean;
   live: { key: WeatherKey; temp: number; feels: number } | null;
   recTab: "body" | "mind";
+  /** 나의 기록에서 보고 있는 달(기본 = 이번 달). 화살표로 첫 기록 달까지. */
+  recMonth: YearMonth;
   riskShown: boolean;
   /** 「마음과 대화」 상대. 바꾸면 대화가 새로 시작된다. */
   character: CharacterId;
@@ -80,7 +83,7 @@ export default function WellnessApp() {
     sam: EMPTY_SAM, minutes: 3, remaining: 180, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
-    beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", riskShown: false,
+    beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
     character: DEFAULT_CHARACTER, avatarMissing: {},
   }));
 
@@ -689,40 +692,89 @@ export default function WellnessApp() {
   }
 
   function renderRecords() {
-    const totals = v.totals;
-    const weeklyBars = WEEKLY_PAST.concat([{ label: "이번 주", v: totals.min }]).map((w) => ({ label: w.label, value: w.v, h: Math.round(w.v * 0.75) + 8, bg: w.label === "이번 주" ? "#7a6bc4" : "#e6e2f7" }));
-    const doneList = DONE_WEEK.map((d) => {
-      const pg = PROGRAMS.find((x) => x.id === d.id)!;
-      return { title: pg.title, n: d.n };
-    });
-    const item = v.item;
+    // 월별 기록장 — 원장(하루 한 줄)에서 고른 달만 모아 요약. 규칙은 monthly.ts(condition.ts 주간 규칙 재사용).
+    const records = mockRecordsUntil(s.now);
+    const range = monthRange(records, s.now);
+    const ym = s.recMonth;
+    const M = monthSummary(records, ym);
+    const prevOk = canGoPrev(ym, range), nextOk = canGoNext(ym, range);
+    const isThisMonth = !nextOk;
     const recIsBody = s.recTab === "body";
-    const bodySolution = "이번 주는 목·어깨 쪽을 가장 자주 고르셨고, 오후 2시–4시에 앉아 계신 시간이 길었어요. 요즘처럼 더운 주에는 낮 시간대를 늘리기보다, 그 시간엔 실내에서 1분짜리를 한 번 더 끼워 넣고 걷기는 해가 진 뒤로 옮기는 쪽이 잘 맞을 것 같아요.";
+    const card = "display:flex; flex-direction:column; gap:12px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #c9d6dc";
+    const maxWeek = Math.max(1, ...M.weeks.map((w) => w.stretch));
+    const top = M.byProgram[0];
+    const bodySolution = M.days === 0 ? "" : top
+      ? `${ym.m}월엔 「${top.title}」을 가장 자주 고르셨어요(${top.n}회). 짧게 자주가 잘 맞는 방식일 수 있어요. 아직 안 열어 본 동작이 있으면 한 번쯤 열어보셔도 좋아요.`
+      : `${ym.m}월엔 아직 몸풀기 기록이 없어요. 1분 기지개 하나면 충분합니다.`;
     const bodyActions = [
       { label: v.wx.prefer === "indoor" ? "낮에는 실내에서 1분 한 번 더" : "오후 3시에 복도 한 바퀴 한 번 더", go: () => patch({ tab: "home" }) },
       { label: "오늘 " + v.itemTitle + " 해보기", go: () => patch({ sheet: "content" }) },
     ];
     const mindActions = [
-      { label: "마음과 대화에 이번 주 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
+      { label: "마음과 대화에 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
       { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM }) },
     ];
+    const heavyRatio = M.pictureDays ? M.heavyDays / M.pictureDays : 0;
+    const mindSolution = M.pictureDays === 0 ? `${ym.m}월엔 마음카드 기록이 아직 없어요. 말로 꺼내기 어려운 날, 그림 하나만 골라도 기록이 남아요.`
+      : heavyRatio >= 0.4 ? "무거운 날이 꽤 있었어요. 이런 달에는 무언가를 더 하기보다 하루의 끝을 조금 일찍 닫아두는 편이 도움이 되더라고요. 퇴근 후 처음 30분은 아무 일정도 넣지 않는 쪽으로 잡아보시면 어떨까요."
+      : heavyRatio >= 0.2 ? "가벼운 날과 무거운 날이 섞여 있었어요. 무거웠던 날이 어떤 날이었는지 한 번만 돌아봐도 다음 달이 조금 수월해져요."
+      : "대체로 가벼운 쪽에 있던 달이에요. 지금 하던 대로만 이어가 보세요.";
+    const arrow = (ok: boolean, go: () => void, ch: string) => (
+      <div onClick={ok ? go : undefined} style={{ ...sx("width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; border:1.5px solid #c9d6dc; background:#fff"), color: ok ? "#2d5c6e" : "#c9d6dc", cursor: ok ? "pointer" : "default" }}>{ch}</div>
+    );
+    const levelChip = (name: string, l: typeof M.overall) => { const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" }; return <div style={{ ...sx("flex:1; display:flex; justify-content:space-between; padding:8px 11px; border-radius:11px; font-size:12px; font-weight:700; border:2px solid rgba(45,92,110,0.6)"), background: "rgba(255,255,255,0.85)", color: cc.fg }}><span style={sx("color:#2d5c6e")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>; };
+    const actionList = (items: { label: string; go: () => void }[], dot: string, border: string, ink: string) => (
+      <div style={sx("display:flex; flex-direction:column; gap:9px")}>
+        {items.map((it, i) => (
+          <div key={i} onClick={it.go} style={sx(`cursor:pointer; display:flex; align-items:center; gap:11px; min-height:52px; padding:0 15px; border-radius:15px; background:#fff; border:1px solid ${border}`)}>
+            <div style={sx(`flex:none; width:7px; height:7px; border-radius:50%; background:${dot}`)} />
+            <div style={sx(`flex:1; min-width:0; font-size:13.5px; font-weight:600; color:${ink}; text-wrap:pretty`)}>{it.label}</div>
+            <div style={sx("flex:none; font-size:14px; color:#c9b6b6")}>›</div>
+          </div>
+        ))}
+      </div>
+    );
 
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:13px; padding:14px 20px 96px")}>
         <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>나의 기록</div>
-        {/* 이번 주 종합 컨디션 — 주간은 여기(홈은 어제). 지난주 대비 변화 + 신체·마음. */}
+
+        {/* 월 넘기기 — 첫 기록 달 ~ 이번 달 */}
+        <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:10px")}>
+          {arrow(prevOk, () => patch({ recMonth: ymAdd(ym, -1) }), "‹")}
+          <div style={sx("display:flex; flex-direction:column; align-items:center; gap:2px")}>
+            <div style={sx("font-size:17px; font-weight:800; color:#2d5c6e; letter-spacing:-0.02em")}>{ymLabel(ym)}</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>{M.days === 0 ? "기록 없음" : `${M.days}일 기록` + (isThisMonth ? " · 어제까지" : "")}</div>
+          </div>
+          {arrow(nextOk, () => patch({ recMonth: ymAdd(ym, 1) }), "›")}
+        </div>
+
+        {/* 그 달 종합 컨디션 + 주차별 흐름 */}
         {(() => {
-          const lv = v.cond.overall; const ch = v.cond.overallChange;
+          const lv = M.overall;
           const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
-          const chip = (name: string, l: typeof lv) => { const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" }; return <div style={{ ...sx("flex:1; display:flex; justify-content:space-between; padding:8px 11px; border-radius:11px; font-size:12px; font-weight:700; border:2px solid rgba(45,92,110,0.6)"), background: "rgba(255,255,255,0.85)", color: cc.fg }}><span style={sx("color:#2d5c6e")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>; };
           return (
-            <div style={{ ...sx("display:flex; flex-direction:column; gap:9px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: c.bg }}>
-              <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>이번 주 종합 컨디션</div>
-              <div style={sx("display:flex; align-items:baseline; gap:10px")}>
-                <div style={{ ...sx("font-size:22px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
-                <div style={{ ...sx("font-size:12px; opacity:0.85"), color: c.fg }}>{ch.dir === "up" ? "↑ " : ch.dir === "down" ? "↓ " : ""}{ch.text}</div>
-              </div>
-              <div style={sx("display:flex; gap:8px")}>{chip("신체건강", v.cond.body)}{chip("마음건강", v.cond.mind)}</div>
+            <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: c.bg }}>
+              <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>{ym.m}월 종합 컨디션</div>
+              <div style={{ ...sx("font-size:22px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
+              <div style={sx("display:flex; gap:8px")}>{levelChip("신체건강", M.body)}{levelChip("마음건강", M.mind)}</div>
+              {M.weeks.length > 0 && (
+                <div style={sx("display:flex; flex-direction:column; gap:6px; padding-top:4px")}>
+                  <div style={{ ...sx("font-size:11.5px; font-weight:700; opacity:0.8"), color: c.fg }}>주차별 흐름</div>
+                  {M.weeks.map((w) => {
+                    const hc = w.overall ? LEVEL_COLOR[w.overall] : { bg: "#eef3f5", bar: "#d5dde2", fg: "#8ba8b3" };
+                    return (
+                      <div key={w.week} style={sx("display:flex; align-items:center; gap:9px")}>
+                        <div style={{ ...sx("flex:none; width:34px; font-size:11.5px; font-weight:700; text-align:right"), color: c.fg }}>{w.week}주차</div>
+                        <div style={sx("flex:1; height:9px; border-radius:999px; background:rgba(255,255,255,0.75); overflow:hidden")}>
+                          <div style={{ ...sx("height:100%; border-radius:999px"), width: w.overall ? `${w.overall * 20}%` : "0%", background: hc.bar }} />
+                        </div>
+                        <div style={{ ...sx("flex:none; width:58px; font-size:11.5px; font-weight:700; white-space:nowrap"), color: hc.fg }}>{w.overall ? LEVEL_LABEL[w.overall] : "기록 없음"}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -732,101 +784,122 @@ export default function WellnessApp() {
           <div onClick={() => patch({ recTab: "mind" })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:13px; font-size:13.5px; font-weight:700; border:1.5px solid; transition:all 0.18s"), background: !recIsBody ? "#f2edfa" : "#fff", color: !recIsBody ? "#7a6bc4" : "#8ba8b3", borderColor: !recIsBody ? "#7a6bc4" : "#c9d6dc" }}>마음 기록</div>
         </div>
 
-        {recIsBody ? (
+        {M.days === 0 ? (
+          <div style={sx(card + "; align-items:center; text-align:center; padding:28px 16px; gap:6px")}>
+            <div style={sx("font-size:14px; font-weight:700; color:#3a4a72")}>{ym.m}월엔 기록이 없어요</div>
+            <div style={sx("font-size:12.5px; color:#8ba8b3; line-height:1.5")}>몸풀기·마음카드·대화를 하면 그날부터 여기에 쌓여요.</div>
+          </div>
+        ) : recIsBody ? (
           <div style={sx("display:flex; flex-direction:column; gap:12px")}>
             <div style={sx("display:flex; gap:11px")}>
               <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:20px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #efc3b6")}>
-                <div style={sx("font-size:11.5px; font-weight:700; color:#9a5f4c")}>이번 주 걸음</div>
-                <div style={sx("font-size:23px; font-weight:700; color:#8a4a3c; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>28,940</div>
-                <div style={sx("font-size:11px; color:#9a5f4c; white-space:nowrap")}>하루 평균 4,134</div>
+                <div style={sx("font-size:11.5px; font-weight:700; color:#9a5f4c")}>{ym.m}월 걸음</div>
+                <div style={sx("font-size:23px; font-weight:700; color:#8a4a3c; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>{M.steps.toLocaleString()}</div>
+                <div style={sx("font-size:11px; color:#9a5f4c; white-space:nowrap")}>하루 평균 {M.stepsPerDay.toLocaleString()}</div>
               </div>
               <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:20px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #c7c0e8")}>
-                <div style={sx("font-size:11.5px; font-weight:700; color:#5f5397")}>이번 주 실행</div>
-                <div style={sx("font-size:23px; font-weight:700; color:#4a3f80; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>{totals.count}회</div>
-                <div style={sx("font-size:11px; color:#5f5397; white-space:nowrap")}>모두 {totals.min}분</div>
+                <div style={sx("font-size:11.5px; font-weight:700; color:#5f5397")}>{ym.m}월 실행</div>
+                <div style={sx("font-size:23px; font-weight:700; color:#4a3f80; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>{M.stretch}회</div>
+                <div style={sx("font-size:11px; color:#5f5397; white-space:nowrap")}>모두 {M.stretch}분 · 한 편 1분</div>
               </div>
             </div>
 
-            <div style={sx("display:flex; flex-direction:column; gap:12px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #c9d6dc")}>
+            <div style={sx(card)}>
               <div style={sx("display:flex; align-items:baseline; gap:9px")}>
                 <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>어떤 걸 하셨나요</div>
-                <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>{DONE_WEEK.length} / {PROGRAMS.length}가지</div>
+                <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>{M.byProgram.length} / {PROGRAMS.length}가지</div>
               </div>
-              {/* 스트레칭 이름 + 몇 회 — 분 칩·점 대신 글자로(사용자 지시). 전부 1분이라 분은 안 적는다. */}
-              {doneList.map((dn, i) => (
-                <div key={i} style={sx("display:flex; align-items:center; gap:11px")}>
-                  <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:600; color:#3a4a72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap")}>{dn.title}</div>
-                  <div style={sx("flex:none; font-size:13px; font-weight:800; color:#7a6bc4; white-space:nowrap")}>{dn.n}회</div>
+              {M.byProgram.length === 0 && <div style={sx("font-size:12.5px; color:#8ba8b3")}>이 달엔 몸풀기 기록이 없어요.</div>}
+              {M.byProgram.map((p) => (
+                <div key={p.id} style={sx("display:flex; align-items:center; gap:11px")}>
+                  <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:600; color:#3a4a72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap")}>{p.title}</div>
+                  <div style={sx("flex:none; font-size:13px; font-weight:800; color:#7a6bc4; white-space:nowrap")}>{p.n}회</div>
                 </div>
               ))}
-              <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>목·어깨와 호흡 쪽으로 손이 많이 가셨어요. 손목과 다리는 아직 안 해보셨는데, 한 번쯤 열어보셔도 좋아요.</div>
             </div>
 
-            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #c9d6dc")}>
+            <div style={sx(card)}>
               <div style={sx("display:flex; align-items:baseline; gap:9px")}>
-                <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>최근 4주 실행 시간</div>
-                <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>주별 합계 (분 · 한 편 1분)</div>
+                <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3a4a72")}>주차별 실행</div>
+                <div style={sx("flex:none; white-space:nowrap; font-size:11.5px; font-weight:600; color:#8ba8b3")}>회 (= 분)</div>
               </div>
               <div style={sx("display:flex; align-items:flex-end; gap:9px; height:88px")}>
-                {weeklyBars.map((w, i) => (
-                  <div key={i} style={sx("flex:1; display:flex; flex-direction:column; align-items:center; gap:6px")}>
-                    <div style={sx("font-size:11px; font-weight:700; color:#8ba8b3; white-space:nowrap")}>{w.value}</div>
-                    <div style={{ ...sx("width:100%; border-radius:7px 7px 3px 3px"), height: w.h, background: w.bg }} />
-                    <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{w.label}</div>
+                {M.weeks.map((w) => (
+                  <div key={w.week} style={sx("flex:1; display:flex; flex-direction:column; align-items:center; gap:6px")}>
+                    <div style={sx("font-size:11px; font-weight:700; color:#8ba8b3; white-space:nowrap")}>{w.stretch}</div>
+                    <div style={{ ...sx("width:100%; border-radius:7px 7px 3px 3px"), height: Math.round((w.stretch / maxWeek) * 56) + 8, background: "#7a6bc4" }} />
+                    <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{w.week}주차</div>
                   </div>
                 ))}
               </div>
-              <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이번 주는 지난주와 비슷한 정도예요.</div>
+            </div>
+
+            {/* 날짜별 기록 — 말 그대로 기록장. 최근 날이 위. */}
+            <div style={sx(card)}>
+              <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72")}>날짜별 기록</div>
+              {M.days_.map((d) => (
+                <div key={d.date} style={sx("display:flex; align-items:flex-start; gap:11px; padding-top:9px; border-top:1px solid #eef3f5")}>
+                  <div style={sx("flex:none; width:58px; font-size:12.5px; font-weight:700; color:#6b8c9a; white-space:nowrap; padding-top:1px")}>{d.label}</div>
+                  <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
+                    <div style={sx("font-size:13px; color:#3a4a72; line-height:1.5; text-wrap:pretty")}>{d.done.length ? d.done.map((x) => `${x.title} ${x.n}회`).join(" · ") : "몸풀기 없음"}</div>
+                    <div style={sx("font-size:12px; color:#8ba8b3")}>{d.steps.toLocaleString()}걸음</div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px 17px; border-radius:22px; background:linear-gradient(140deg,#fff1e4 0%,#f6edfa 60%,#eaf3fb 100%); border:1px solid #f0e0e0; box-shadow:0 4px 16px rgba(196,150,140,0.14)")}>
               <div style={sx("display:flex; align-items:center; gap:9px")}>
-                <div style={sx("flex:none; padding:5px 11px; border-radius:999px; background:rgba(255,255,255,0.75); font-size:10.5px; font-weight:800; color:#8a4a3c; white-space:nowrap; letter-spacing:0.02em")}>AI 주간 제안</div>
-                <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#8a4a3c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>이번 주 기록을 바탕으로</div>
+                <div style={sx("flex:none; padding:5px 11px; border-radius:999px; background:rgba(255,255,255,0.75); font-size:10.5px; font-weight:800; color:#8a4a3c; white-space:nowrap; letter-spacing:0.02em")}>AI 이달의 제안</div>
+                <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#8a4a3c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{ym.m}월 기록을 바탕으로</div>
               </div>
               <div style={sx("font-size:14.5px; color:#5a4a58; line-height:1.75; font-weight:500; text-wrap:pretty")}>{bodySolution}</div>
-              <div style={sx("display:flex; flex-direction:column; gap:9px")}>
-                {bodyActions.map((ba, i) => (
-                  <div key={i} onClick={ba.go} style={sx("cursor:pointer; display:flex; align-items:center; gap:11px; min-height:52px; padding:0 15px; border-radius:15px; background:#fff; border:1px solid #f0e2e6")}>
-                    <div style={sx("flex:none; width:7px; height:7px; border-radius:50%; background:#e0876c")} />
-                    <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:600; color:#5a4a58; text-wrap:pretty")}>{ba.label}</div>
-                    <div style={sx("flex:none; font-size:14px; color:#c9b6b6")}>›</div>
-                  </div>
-                ))}
-              </div>
-              <div style={sx("font-size:12.5px; color:#6b5560; line-height:1.6; text-wrap:pretty")}>이 제안은 이 기기 안의 기록만 보고 만들어졌어요. 맞지 않으면 그냥 지나치셔도 됩니다.</div>
+              {isThisMonth && actionList(bodyActions, "#e0876c", "#f0e2e6", "#5a4a58")}
+              <div style={sx("font-size:12.5px; color:#6b5560; line-height:1.6; text-wrap:pretty")}>이 제안은 선생님의 기록만 보고 만들어졌어요. 맞지 않으면 그냥 지나치셔도 됩니다.</div>
             </div>
           </div>
         ) : (
           <div style={sx("display:flex; flex-direction:column; gap:12px")}>
-            <div style={sx("display:flex; flex-direction:column; gap:13px; padding:17px 16px; border-radius:20px; background:linear-gradient(140deg,#f3eefb 0%,#eaf3fb 100%); border:1px solid #c9d6dc")}>
-              <div style={sx("font-size:13.5px; font-weight:700; color:#4a3f80")}>이번 주 마음은 이런 모양이었어요</div>
-              <div style={sx("font-size:14px; color:#4d5578; line-height:1.7; text-wrap:pretty")}>주 초에는 버티는 쪽에 마음이 쏠려 있었고, 주 중반부터는 조금씩 정돈되는 쪽으로 옮겨갔어요. 읽어내려 애쓰지 않으셔도 괜찮아요.</div>
-            </div>
-            {MIND_DAYS.map((md, i) => (
-              <div key={i} style={sx("display:flex; align-items:flex-start; gap:13px; padding:16px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
-                <div style={sx("flex:none; width:34px; padding-top:1px; font-size:12.5px; font-weight:700; color:#6b8c9a; white-space:nowrap")}>{md.day}</div>
-                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:7px")}>
-                  <div style={sx("font-size:13.5px; color:#3a4a72; line-height:1.6; font-weight:500; text-wrap:pretty")}>{md.reading}</div>
-                  <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>하늘 {AXES[0].labels[md.valence - 1]} · 물 {AXES[1].labels[md.arousal - 1]}</div>
+            <div style={sx("display:flex; gap:11px")}>
+              {[
+                { k: "마음카드", v: `${M.pictureDays}일` },
+                { k: "무거운 날", v: `${M.heavyDays}일` },
+                { k: "마음과 대화", v: `${M.chats}번` },
+              ].map((x) => (
+                <div key={x.k} style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; padding:14px 12px; border-radius:18px; background:linear-gradient(150deg,#f3eefb 0%,#eaf3fb 100%); border:1px solid #c7c0e8")}>
+                  <div style={sx("font-size:11px; font-weight:700; color:#5f5397; white-space:nowrap")}>{x.k}</div>
+                  <div style={sx("font-size:19px; font-weight:800; color:#4a3f80; letter-spacing:-0.02em; line-height:1; white-space:nowrap")}>{x.v}</div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* 날짜별 마음 — 그날 고른 그림 이름표 + 한 문장 */}
+            <div style={sx(card)}>
+              <div style={sx("font-size:13.5px; font-weight:700; color:#3a4a72")}>날짜별 마음</div>
+              {M.days_.map((d) => (
+                <div key={d.date} style={sx("display:flex; align-items:flex-start; gap:11px; padding-top:9px; border-top:1px solid #eef3f5")}>
+                  <div style={sx("flex:none; width:58px; font-size:12.5px; font-weight:700; color:#6b8c9a; white-space:nowrap; padding-top:1px")}>{d.label}</div>
+                  <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
+                    {d.sam ? (
+                      <>
+                        <div style={sx("font-size:13px; color:#3a4a72; line-height:1.5; text-wrap:pretty")}>{d.sam.reading}</div>
+                        <div style={sx("font-size:12px; color:#8ba8b3")}>하늘 {d.sam.sky} · 물 {d.sam.water}{d.chats ? ` · 대화 ${d.chats}번` : ""}</div>
+                      </>
+                    ) : (
+                      <div style={sx("font-size:12.5px; color:#8ba8b3")}>마음카드 없음{d.chats ? ` · 대화 ${d.chats}번` : ""}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px 17px; border-radius:22px; background:linear-gradient(140deg,#f0eafc 0%,#eaf1fb 60%,#fdf0f4 100%); border:1px solid #e2e0f2; box-shadow:0 4px 16px rgba(122,107,196,0.14)")}>
               <div style={sx("display:flex; align-items:center; gap:9px")}>
-                <div style={sx("flex:none; padding:5px 11px; border-radius:999px; background:rgba(255,255,255,0.8); font-size:10.5px; font-weight:800; color:#4a3f80; white-space:nowrap; letter-spacing:0.02em")}>AI 주간 제안</div>
-                <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#4a3f80; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>이번 주 고르신 것을 바탕으로</div>
+                <div style={sx("flex:none; padding:5px 11px; border-radius:999px; background:rgba(255,255,255,0.8); font-size:10.5px; font-weight:800; color:#4a3f80; white-space:nowrap; letter-spacing:0.02em")}>AI 이달의 제안</div>
+                <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#4a3f80; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{ym.m}월 고르신 것을 바탕으로</div>
               </div>
-              <div style={sx("font-size:14.5px; color:#454767; line-height:1.75; font-weight:500; text-wrap:pretty")}>이런 주에는 무언가를 더 하기보다, 하루의 끝을 조금 일찍 닫아두는 편이 도움이 되더라고요. 퇴근 후 처음 30분은 아무 일정도 넣지 않는 쪽으로 다음 주를 잡아보시면 어떨까요.</div>
-              <div style={sx("display:flex; flex-direction:column; gap:9px")}>
-                {mindActions.map((ma, i) => (
-                  <div key={i} onClick={ma.go} style={sx("cursor:pointer; display:flex; align-items:center; gap:11px; min-height:52px; padding:0 15px; border-radius:15px; background:#fff; border:1px solid #e6e2f2")}>
-                    <div style={sx("flex:none; width:7px; height:7px; border-radius:50%; background:#8a7cd0")} />
-                    <div style={sx("flex:1; min-width:0; font-size:13.5px; font-weight:600; color:#454767; text-wrap:pretty")}>{ma.label}</div>
-                    <div style={sx("flex:none; font-size:14px; color:#bdb6d6")}>›</div>
-                  </div>
-                ))}
-              </div>
+              <div style={sx("font-size:14.5px; color:#454767; line-height:1.75; font-weight:500; text-wrap:pretty")}>{mindSolution}</div>
+              {isThisMonth && actionList(mindActions, "#8a7cd0", "#e6e2f2", "#454767")}
               <div style={sx("font-size:12.5px; color:#5f5b7d; line-height:1.6; text-wrap:pretty")}>해석이 아니라 제안이에요. 맞지 않으면 그냥 지나치셔도 됩니다.</div>
             </div>
           </div>
