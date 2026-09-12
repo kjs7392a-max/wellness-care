@@ -636,12 +636,12 @@ export default function WellnessApp() {
                 <div style={sx("font-size:19px; font-weight:700; color:#2d5c6e; letter-spacing:-0.03em; line-height:1; font-variant-numeric:tabular-nums; margin-top:-6px")}>4,120</div>
                 <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{stepZoneLabel}</div>
               </div>
-              {/* 몸풀기 — 점·부위 개수는 뜻이 안 읽혀서(사용자) 「오늘 몫 완료」 배지 + 횟수·시간 + 설명 한 줄로 */}
+              {/* 스트레칭 — 설명 없이 읽히게 「3번 / 오늘 총 7분」만(사용자: 점·배지·부위 개수 전부 뜻이 안 읽힘) */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px; border-right:1px solid #ece8f5")}>
-                <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>몸풀기</div>
-                <div style={sx("margin:6px 0 2px; padding:4px 9px; border-radius:999px; background:#dff2e6; color:#2f6a4a; font-size:10.5px; font-weight:700; white-space:nowrap")}>오늘 몫 완료</div>
-                <div style={sx("font-size:19px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>3회 · 7분</div>
-                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>함께한 스트레칭</div>
+                <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>스트레칭</div>
+                <div style={sx("flex:1")} />
+                <div style={sx("font-size:19px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>3번</div>
+                <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>오늘 총 7분</div>
               </div>
               {/* 움직인 시간 */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px")}>
