@@ -1001,12 +1001,13 @@ export default function WellnessApp() {
                 <div style={sx("font-size:11.5px; color:#8ba8b3")}>{x.hint} · 지금 느낌에 가장 가까운 그림을 골라 주세요</div>
                 <div style={sx("display:flex; flex-direction:column; gap:8px")}>
                   {([1, 2, 3, 4, 5] as SamScore[]).map((n) => (
-                    <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:6px; border-radius:16px; border:1.5px solid #e3eef1; background:#fff; transition:all 0.18s")}>
-                      <div style={sx("width:132px; height:84px; border-radius:12px; overflow:hidden; flex:none; background:#eef3f5")}>
+                    <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; padding:8px 8px 9px; border-radius:16px; border:1.5px solid #e3eef1; background:#fff; transition:all 0.18s")}>
+                      {/* 그림을 가운데 크게, 이름표는 아래(사용자 지시) */}
+                      <div style={sx("width:100%; max-width:220px; aspect-ratio:2/1; border-radius:12px; overflow:hidden; background:#eef3f5")}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={`${IMG}/sam-${x.key}-${n}.png`} alt={x.labels[n - 1]} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       </div>
-                      <div style={sx("flex:1; min-width:0; font-size:14px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.labels[n - 1]}</div>
+                      <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e; text-align:center")}>{x.labels[n - 1]}</div>
                     </div>
                   ))}
                 </div>
