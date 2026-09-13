@@ -7,9 +7,12 @@ import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, typ
 import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, flowText, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion } from "./suggestion";
+import { buildDaySolution } from "./daySolution";
 import {
-  AREAS, CHAT_BEATS, CONDITION_HISTORY, WEEK_FLOW, YESTERDAY, COLLECT, DONE_WEEK, doneTotals, LEAD_IN, MIND_DAYS,
-  NUDGE, NUDGE_LOW, OB, PARQ, PRINCIPLES, PROGRAMS, ROLES,
+  AREAS, CHAT_BEATS, CONDITION_HISTORY, WEEK_FLOW, YESTERDAY, COLLECT, DONE_WEEK, doneTotals, MIND_DAYS,
+  // ⚠ NUDGE·NUDGE_LOW 는 아직 어느 화면에도 안 붙어 있다(CONTENT_STATE 별 넛지 문구·낮은 강도판).
+  //    지우지 않고 둔 것은 데이터가 이미 다 쓰여 있어서다 — 넛지를 켤 때 여기서부터 시작하면 된다.
+  NUDGE, NUDGE_LOW, OB, OB_AT, PARQ, PRINCIPLES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, type ContentState, type Role, type WeatherKey,
 } from "./data";
 import { riskLevel, RISK_REPLY } from "./risk";
@@ -17,8 +20,9 @@ import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, ymAdd
 
 const IMG = "/wellness/images";
 
-// 온보딩 마지막 장(PAR-Q+)의 번호. 단계를 합치거나 늘려도 여기가 따라오도록 OB 에서 파생시킨다.
-// 2026-09-13: 「모으는 것」을 「수집동의서 및 권한허용」에 합치며 4 → 3 이 됐고, 그때 흩어진 숫자 4 를 이 하나로 모았다.
+// 온보딩 마지막 장의 번호(= 여기서 「시작하기」를 누르면 앱으로 들어간다).
+// 2026-09-13: 장 번호를 손으로 적지 말 것 — 순서가 바뀌면 조용히 엉뚱한 장을 가리킨다.
+//   어느 장인지를 말해야 할 때는 OB_AT.parq 처럼 **이름**으로 부른다(data.ts).
 const OB_LAST = OB.length - 1;
 
 // 프로토타입 Tweaks 기본값(고정). 실제 데이터 연동 전까지 신체 지표는 목 데이터.
@@ -284,8 +288,8 @@ export default function WellnessApp() {
   const chatDateLabel = `${s.now.getFullYear()}년 ${s.now.getMonth() + 1}월 ${s.now.getDate()}일 ${days[s.now.getDay()]}요일`;
 
   const step = OB[Math.max(0, s.ob)] || OB[0];
-  // 온보딩 단계: 0 약속 · 1 수집동의서 및 권한허용(모으는 것 포함) · 2 직군 · 3 PAR-Q+
-  const canNext = s.ob === 1 ? s.consent[0] : s.ob === OB_LAST ? v.parqAll : true;
+  // 온보딩 단계: 약속 → 수집동의서 및 권한허용(모으는 것 포함) → PAR-Q+ → 직군 (2026-09-13 사용자 지시로 PAR-Q+ 가 직군 앞)
+  const canNext = s.ob === OB_AT.consent ? s.consent[0] : s.ob === OB_AT.parq ? v.parqAll : true;
 
   // ---- 렌더 ----
   return (
@@ -350,12 +354,12 @@ export default function WellnessApp() {
 
   function renderOnboarding() {
     const steps = s.parqOnly ? [{ bg: "#7a6bc4" }] : OB.map((_, i) => ({ bg: i <= s.ob ? "#7a6bc4" : "#dbe8ec" }));
-    const obBtn = s.parqOnly && s.ob === OB_LAST ? "저장하고 돌아가기" : step.btn;
+    const obBtn = s.parqOnly ? "저장하고 돌아가기" : step.btn;
     const obBtnBg = canNext ? "#7a6bc4" : "#cdc3ea";
-    const obBackLabel = s.parqOnly ? "취소" : s.ob === 0 ? "나중에 볼게요" : "이전";
+    const obBackLabel = s.parqOnly ? "취소" : s.ob === OB_AT.promise ? "나중에 볼게요" : "이전";
     const obNext = () => {
       if (!canNext) return;
-      patchFn((st) => (st.parqOnly && st.ob === OB_LAST) ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
+      patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
     };
     const obBack = () => patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 });
 
@@ -372,7 +376,7 @@ export default function WellnessApp() {
             {step.body && <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{step.body}</div>}
           </div>
 
-          {s.ob === 0 && (
+          {step.id === "promise" && (
             <div style={sx("display:flex; flex-direction:column; gap:9px")}>
               {PRINCIPLES.map((text, i) => (
                 <div key={i} style={sx("display:flex; gap:11px; align-items:flex-start; padding:15px 16px; border-radius:15px; background:#fff; border:1px solid #c9d6dc")}>
@@ -383,7 +387,7 @@ export default function WellnessApp() {
             </div>
           )}
 
-          {s.ob === 1 && (
+          {step.id === "consent" && (
             <div style={sx("display:flex; flex-direction:column; gap:11px")}>
               {/* 2026-09-13: 옛 「모으는 것은 이만큼이 전부예요」 장. 무엇을 모으는지 보여준 뒤 그 자리에서 동의·권한까지 받는다. */}
               <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:0 2px")}>모으는 것은 이만큼이 전부예요</div>
@@ -428,7 +432,7 @@ export default function WellnessApp() {
             </div>
           )}
 
-          {s.ob === 2 && (
+          {step.id === "role" && (
             <div style={sx("display:flex; flex-direction:column; gap:10px")}>
               {(Object.keys(ROLES) as Role[]).map((k) => {
                 const on = v.roleKey === k && !!s.role;
@@ -436,13 +440,20 @@ export default function WellnessApp() {
                   <div key={k} onClick={() => patch({ role: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:5px; padding:17px 18px; border-radius:16px; border:1.5px solid; transition:all 0.2s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#c4b8ec" : "#c9d6dc" }}>
                     <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{ROLES[k].label}</div>
                     <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ROLES[k].hint}</div>
+                    {/* 2026-09-13: 고른 자리에서 바로 "무엇이 달라지는가"를 말한다. 색만 살짝 바뀌면 고른 티가 안 난다(사용자 지적). */}
+                    {on && (
+                      <div style={sx("display:flex; align-items:center; gap:7px; margin-top:4px; padding-top:9px; border-top:1px solid #cfc5ea")}>
+                        <div style={sx("flex:none; width:18px; height:18px; border-radius:50%; background:#7a6bc4; color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center")}>✓</div>
+                        <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:600; color:#5a4a9c; line-height:1.5; text-wrap:pretty")}>{ROLES[k].picked}</div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
 
-          {s.ob === OB_LAST && (
+          {step.id === "parq" && (
             <div style={sx("display:flex; flex-direction:column; gap:9px")}>
               {PARQ.map((text, i) => {
                 const val = s.parq[i];
@@ -480,46 +491,20 @@ export default function WellnessApp() {
     const wx = v.wx;
     const item = v.item;
     const greeting = EMPTY_STATE ? "천천히 시작해요" : "오늘도 한 걸음 왔네요";
-    // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 맥락에 맞춰 조합한다.
+    // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★PAR-Q+ 강도. 조립은 daySolution.ts(순수·테스트).
     // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
     //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
+    // 🚫 이 문구를 화면 안에서 다시 조립하지 말 것 — 2026-09-13 까지 여기 있던 판이 PAR-Q+ 답을 보지 않아,
+    //    "낮은 강도만 제안한다"고 약속한 분께 같은 화면이 걷기를 권하고 있었다.
     const isWeekend = v.isWeekend;
-    const daySolution = (() => {
-      if (isWeekend) {
-        const rest = "오늘은 쉬는 날이네요. 학교 일은 잠시 내려놓으셔도 돼요. 몸이 뻐근하면 그때 잠깐만 움직여도 충분해요. ";
-        const close = wx.prefer === "indoor"
-          ? "바깥은 " + v.feelsTxt + "라 무리한 외출은 권하지 않아요. 집에서 3분만 가볍게 풀어보는 건 어떨까요?"
-          : "날이 좋으니 잠깐 바깥 공기를 쐬며 걸어보기에도 좋은 날이에요.";
-        return rest + close;
-      }
-      // 평일 — 시간대별 본문(추정형) + 직군
-      const BODY: Record<Role, string[]> = {
-        teacher: [
-          "수업이 시작되기 전에 목·어깨를 미리 풀어두면 하루가 한결 수월해요. ",
-          "오전 수업으로 목과 어깨가 뭉치기 쉬운 시간대예요. 점심 전후로 잠깐 풀어볼까요. ",
-          "오후엔 오래 서 계셨을 시간대라 어깨가 굳기 쉬워요. ",
-        ],
-        admin: [
-          "오전 화면 작업이 길어지기 쉬운 시간대예요. 시작 전에 눈과 손목을 잠깐 풀어두면 좋아요. ",
-          "오전 내내 앉아 계시기 쉬운 시간대예요. 점심 전후로 잠깐 일어나 몸을 풀어볼까요. ",
-          "오늘은 자리에 앉아 계신 시간이 길기 쉬운 하루죠. 걸음도 평소보다 적기 쉬워요. ",
-        ],
-        care: [
-          "오전 준비로 분주하기 쉬운 시간대예요. 시작 전에 손목과 다리를 가볍게 풀어두면 좋아요. ",
-          "오전 입식 근무로 다리가 뻐근하기 쉬운 시간대예요. 잠깐 앉아 풀어볼까요. ",
-          "오래 서서 일하신 시간대라 다리가 뻐근하기 쉬워요. ",
-        ],
-      };
-      const body = BODY[v.roleKey][v.slot];
-      const close = v.slot === 2
-        ? (wx.prefer === "indoor"
-            ? "바깥은 " + v.feelsTxt + "라 나가시는 건 권하지 않아요. 대신 시원한 실내에서 3분만 풀어두시고, 걷고 싶으시면 해가 진 뒤가 좋겠어요."
-            : "공기가 좋은 날이니 퇴근 전 복도 창가까지만 천천히 걸어보셔도 좋아요. 5분이면 충분합니다.")
-        : (wx.prefer === "indoor"
-            ? "바깥은 " + v.feelsTxt + "라 낮 외출은 권하지 않아요. 시원한 실내에서 3분이면 충분해요."
-            : "공기가 좋으니 잠깐 창가나 복도에서 숨을 고르거나 짧게 걸어보셔도 좋아요.");
-      return LEAD_IN[v.slot] + " " + body + close;
-    })();
+    const daySolution = buildDaySolution({
+      role: v.roleKey,
+      slot: v.slot,
+      isWeekend,
+      low: v.parqYes > 0,
+      weatherPrefer: wx.prefer,
+      feelsTxt: v.feelsTxt,
+    });
     // 걸음 반원 게이지 — 3단계·3색 구간(적음 0~40% · 평소 40~80% · 많음 80~100%) + 오늘 위치 노브.
     // ⚠ 등급이 아니라 '개인 평소 범위' 대비 편차다(제안서 일상변화 관점). 라벨도 적음/평소/많음(descriptive)만 쓴다.
     const stepFrac = 0.515; // 오늘 걸음의 게이지 위치(목업). 실데이터 연동 시 계산으로 대체.
@@ -942,7 +927,7 @@ export default function WellnessApp() {
             <div style={sx("flex:1; font-size:14px; font-weight:600; color:#2d5c6e")}>직군</div>
             <div style={sx("font-size:13px; color:#6b8c9a; flex:none; white-space:nowrap")}>{v.role.label}</div>
           </div>
-          <div onClick={() => patch({ ob: OB_LAST, parq: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
+          <div onClick={() => patch({ ob: OB_AT.parq, parq: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
               <div style={sx("font-size:14px; font-weight:600; color:#2d5c6e")}>안전 확인 다시 답하기</div>
               <div style={sx("font-size:12px; color:#8ba8b3")}>PAR-Q+ 7문항 · 활동 강도 기준</div>
