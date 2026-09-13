@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDaySolution, type DaySolutionArgs } from "./daySolution";
+import { buildDaySolution, parqNotice, type DaySolutionArgs } from "./daySolution";
 import { WEATHER, type Role, type WeatherKey } from "./data";
 
 const ROLES: Role[] = ["teacher", "admin", "care"];
@@ -91,5 +91,24 @@ describe("buildDaySolution — 기존 동작 유지", () => {
   it("직군마다 평일 본문이 다르다", () => {
     const mk = (role: Role) => buildDaySolution({ role, slot: 2, isWeekend: false, low: false, weatherPrefer: "outdoor", feelsTxt: "체감 22°" });
     expect(new Set(ROLES.map(mk)).size).toBe(3);
+  });
+});
+
+describe("parqNotice — PAR-Q+ 안내가 온보딩에서 끝나지 않게", () => {
+  it("「예」가 하나도 없으면 아무것도 안 붙인다", () => {
+    expect(parqNotice(0)).toBeNull();
+  });
+
+  it("「예」가 하나라도 있으면 낮은 강도라는 사실과 상담 안내를 함께 말한다", () => {
+    const txt = parqNotice(1);
+    expect(txt).toContain("낮은 강도");
+    expect(txt).toContain("주치의");
+  });
+
+  // 2026-09-13 사용자 확정: 시연용이라 개수로 가르지 않는다. 정식 발매 전 임상 감수에서 정한다.
+  // 이 테스트는 "그렇게 하기로 했다"는 사실을 못박는 것이지, 그것이 임상적으로 옳다는 뜻이 아니다.
+  it("지금은 1개든 7개든 같은 안내다(가중·게이팅 없음)", () => {
+    const all = [1, 2, 3, 4, 5, 6, 7].map(parqNotice);
+    expect(new Set(all).size).toBe(1);
   });
 });

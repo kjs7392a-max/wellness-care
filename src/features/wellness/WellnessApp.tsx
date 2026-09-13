@@ -7,7 +7,7 @@ import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, typ
 import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, flowText, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion } from "./suggestion";
-import { buildDaySolution } from "./daySolution";
+import { buildDaySolution, parqNotice } from "./daySolution";
 import {
   AREAS, CHAT_BEATS, CONDITION_HISTORY, WEEK_FLOW, YESTERDAY, COLLECT, DONE_WEEK, doneTotals, MIND_DAYS,
   // ⚠ NUDGE·NUDGE_LOW 는 아직 어느 화면에도 안 붙어 있다(CONTENT_STATE 별 넛지 문구·낮은 강도판).
@@ -470,7 +470,7 @@ export default function WellnessApp() {
               {v.parqAll && (
                 <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #c9d6dc; animation:wRise 0.4s ease-out both")}>
                   <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.parqYes ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
-                  <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{v.parqYes ? "해당되는 항목이 있어 앉은 자리에서 하는 낮은 강도만 제안해 드립니다. 새로운 운동을 시작하기 전에는 주치의와 한 번 상의해 주세요." : "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
+                  <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.parqYes) ?? "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
                 </div>
               )}
               <div style={sx("font-size:13px; color:#2d5c6e; font-weight:600; line-height:1.65; padding:2px; text-wrap:pretty")}>PAR-Q+ (Physical Activity Readiness Questionnaire)는 캐나다운동생리학회가 만든 국제 표준 문항으로, 건강검진이나 진단이 아닙니다. 이 답은 활동 강도를 정하는 데만 쓰이고, 본인 외에는 누구도 볼 수 없습니다. 설정에서 언제든 다시 답할 수 있어요.</div>
@@ -649,6 +649,13 @@ export default function WellnessApp() {
             </div>
             <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
           </div>
+          {/* 2026-09-13: PAR-Q+ 안내가 온보딩에서 한 번 스쳐 지나가고 끝이었다 → 제안을 읽는 그 자리에 상시로 둔다. */}
+          {parqNotice(v.parqYes) && (
+            <div style={sx("display:flex; gap:9px; align-items:flex-start; padding:12px 13px; border-radius:14px; background:rgba(255,255,255,0.72); border:1px solid #c4b8ec")}>
+              <div style={sx("flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; background:#7a6bc4; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center")}>!</div>
+              <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4a3f80; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.parqYes)}</div>
+            </div>
+          )}
         </div>
 
         {/* 2단 타일 */}
