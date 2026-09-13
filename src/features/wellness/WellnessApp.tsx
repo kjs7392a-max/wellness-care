@@ -373,7 +373,8 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:9px")}>
             <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>{step.kicker}</div>
             <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>{step.title}</div>
-            {step.body && <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{step.body}</div>}
+            {/* 직군 장은 카드에서 설명을 걷어냈으므로(위 주석) 이 한 줄이 설명의 전부다 → 진하게(사용자 지시). */}
+            {step.body && <div style={{ ...sx("font-size:14px; line-height:1.65; text-wrap:pretty"), color: step.id === "role" ? "#2d5c6e" : "#6b8c9a", fontWeight: step.id === "role" ? 600 : 400 }}>{step.body}</div>}
           </div>
 
           {step.id === "promise" && (
@@ -443,17 +444,9 @@ export default function WellnessApp() {
                   <div key={k} onClick={() => patch({ role: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:5px; padding:17px 18px; border-radius:16px; border:2px solid; transition:all 0.2s"), background: on ? ac.line + "14" : "#fff", borderColor: on ? ac.line : ac.line + "b3" }}>
                     <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{ROLES[k].label}</div>
                     <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ROLES[k].hint}</div>
-                    {/* 2026-09-13: 고른 자리에서 바로 "무엇이 달라지는가"를 말한다. 색만 살짝 바뀌면 고른 티가 안 난다(사용자 지적). */}
-                    {on && (
-                      <div style={{ ...sx("display:flex; align-items:flex-start; gap:7px; margin-top:4px; padding-top:9px; border-top:1px solid"), borderTopColor: ac.line + "59" }}>
-                        <div style={{ ...sx("flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center"), background: ac.text }}>✓</div>
-                        <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
-                          <div style={{ ...sx("font-size:12.5px; font-weight:600; line-height:1.5; text-wrap:pretty"), color: ac.text }}>{ROLES[k].picked}</div>
-                          {/* 실제로 받게 될 제안 이름을 그대로 보여준다 — 데이터에서 뽑으므로 화면과 어긋날 수 없다. */}
-                          <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>예 · 「{resolveSuggestion({ role: k, parqYes: v.parqYes, hour: s.now.getHours(), dow: s.now.getDay() }).item.title}」</div>
-                        </div>
-                      </div>
-                    )}
+                    {/* 🚫 2026-09-13: 여기에 「이런 걸 제안해 드려요」를 적지 말 것(사용자 지시로 삭제).
+                        이 시점엔 걸음도 기록도 아무것도 없다 — 직군만 고른 상태에서 제안부터 말하면 말이 안 된다.
+                        고른 티는 테두리·배경색이 낸다. 무엇이 달라지는지는 위 본문 한 줄이 말한다. */}
                   </div>
                 );
               })}
