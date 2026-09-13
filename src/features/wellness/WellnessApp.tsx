@@ -555,8 +555,11 @@ export default function WellnessApp() {
           const lv = v.cond.dayOverall;
           const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
           const flow = flowText(v.cond.weekFlow.slice(-3));
-          const navChip = (label: string, go: () => void, fg: string) => (
-            <div onClick={go} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:11px 10px; border-radius:12px; font-size:13px; font-weight:800; border:2px solid rgba(45,92,110,0.45); background:rgba(255,255,255,0.85); white-space:nowrap"), color: fg }}>{label} ›</div>
+          // 2026-09-13 사용자 지시: 위 「신체건강·마음건강」 칩과 **한눈에 갈려야 한다**.
+          //   읽는 칩 = 흰 배경 + 테두리 · 누르는 칩 = 앱의 행동색(#7a6bc4)으로 **채운다**(「지금 바로 시작하기」와 같은 색).
+          //   🚫 둘 다 흰 알약으로 되돌리지 말 것 — 그래서 구분이 안 갔다.
+          const navChip = (label: string, go: () => void) => (
+            <div onClick={go} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 10px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; white-space:nowrap; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>{label} ›</div>
           );
           const chip = (name: string, l: typeof lv) => {
             const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
@@ -578,8 +581,8 @@ export default function WellnessApp() {
                   월간은 홈에 그대로 머문 채 시트로 띄운다(사용자 지시 "기록 보기로 가는 게 아니고 내용만 가져오게").
                   ★그 시트는 「기록」 탭과 **같은 renderRecords** 를 부른다 — 같은 화면을 한 번 더 만들면 두 곳이 갈린다. */}
               <div style={sx("display:flex; gap:8px")}>
-                {navChip("주간 기록 보기", () => patch({ sheet: "condition" }), c.fg)}
-                {navChip("월간 기록 보기", () => patch({ sheet: "month" }), c.fg)}
+                {navChip("주간 기록 보기", () => patch({ sheet: "condition" }))}
+                {navChip("월간 기록 보기", () => patch({ sheet: "month" }))}
               </div>
             </div>
           );
