@@ -1,7 +1,7 @@
 import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
 
 /**
- * 「마음과 대화」 캐릭터 5명 (2026-09-13 한 명 추가).
+ * 「마음과 대화」 캐릭터 6명 (2026-09-13 두 명 추가).
  *
  * ★★ **이 앱은 「역할 고르기」를 시키지 않는다**(2026-09-13 사용자: *"우리의 취지는 그런 역할 선택을 하지 않으려는 거야"*).
  *   고르는 화면에는 **그림만** 뜬다 — `role`·`title`·`blurb`·`gender` 는 **화면에 한 글자도 안 나온다.**
@@ -16,7 +16,7 @@ import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
  * (2026-09-12 옆반 동료도 마스코트 shimpyo.png 에서 char-peer.png 로 교체). 파일이 없으면 화면이 역할 첫 글자 + 색으로 대신 그린다
  * (StretchVideo 와 같은 방식 — 깨진 이미지 아이콘이 뜨지 않게 onError 로 폴백).
  */
-export type CharacterId = "peer" | "senior" | "buddy" | "counselor" | "listener";
+export type CharacterId = "peer" | "senior" | "buddy" | "counselor" | "listener" | "cheer";
 
 export interface Character {
   id: CharacterId;
@@ -115,6 +115,22 @@ export const CHARACTERS: Character[] = [
       "인물: 학교에 오래 있어 온 50대 남성. 무슨 이야기를 들어도 놀라지 않는 사람. 이름도 직함도 밝히지 않는다(무슨 일을 하는 사람인지도 말하지 않는다).",
       "말투: 느긋하고 짧은 존댓말. 문장 사이에 여백이 있다. 서두르지 않고, 상대의 말을 대신 정리해 주지 않는다.",
       "관점: 답을 먼저 주지 않는다. '그동안 어떻게 지내셨어요' 쪽을 먼저 묻고, 하루 전체가 아니라 그 안의 한 장면을 되묻는다. 잘 견뎠다는 말을 아끼지 않되 과장하지 않는다.",
+    ].join("\n"),
+  },
+  {
+    // 2026-09-13 사용자가 그림을 주며 추가(둘째). 역할은 붙이지 않는다 — 정하는 것은 말투뿐.
+    id: "cheer",
+    role: "밝은 사람",
+    title: "—",
+    gender: "female",
+    blurb: "작은 것도 같이 기뻐해 줘요.",
+    color: "#f0e3bb",
+    avatar: "/wellness/images/char-cheer.png",
+    intro: INTRO,
+    persona: [
+      "인물: 기운이 밝은 20대 후반 여성. 사소한 것도 그냥 지나치지 않고 같이 기뻐해 주는 사람. 이름도 직함도 밝히지 않는다(무슨 일을 하는 사람인지도 말하지 않는다).",
+      "말투: 밝고 따뜻한 존댓말. 맞장구가 잦지만 과장하거나 호들갑 떨지 않는다. 느낌표는 한 번에 하나까지.",
+      "관점: 힘든 이야기에도 먼저 편을 들어 준다. 그날 잘 해낸 아주 작은 것 하나를 찾아 짚어 준다. 무거운 말이 나오면 바로 밝기를 낮추고 조용히 듣는다.",
     ].join("\n"),
   },
 ];

@@ -1308,7 +1308,13 @@ export default function WellnessApp() {
               <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>마음과 대화</div>
               <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요.<br />오늘 하루 선생님의 마음을 열어보세요.</div>
             </div>
-            <div style={{ ...sx("display:grid; gap:10px; padding:0 2px"), gridTemplateColumns: `repeat(${CHARACTERS.length}, 1fr)` }}>
+            {(() => {
+              // 칸 수는 캐릭터 수를 따라가되 **한 줄에 다섯까지**.
+              // ⚠ 실측: 여섯을 한 줄에 놓으면 지름이 41px 로 떨어진다 — 탭 최소 44px 미만이고 얼굴도 안 보인다.
+              //   여섯부터는 3열 2줄(지름 ~100px). 🚫 캐릭터 수를 코드에 못박지 말 것.
+              const cols = CHARACTERS.length <= 5 ? CHARACTERS.length : 3;
+              return (
+            <div style={{ ...sx("display:grid; gap:12px; padding:0 2px"), gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
               {CHARACTERS.map((c) => {
                 // 전부 같은 흰 테두리 — 「지난번 상대」 보라 링은 뺀다(사용자 지시). 누르면 바로 새 대화라 고른 상태가 없다.
                 // ★ 칸 수는 캐릭터 수를 따라간다 — 4개로 못박아 두면 한 명 늘 때 마지막 한 장이 혼자 다음 줄로 내려간다.
@@ -1323,6 +1329,8 @@ export default function WellnessApp() {
                 );
               })}
             </div>
+              );
+            })()}
             <div style={sx("text-align:center; font-size:12.5px; color:#7a6bc4; font-weight:600; line-height:1.5; text-wrap:pretty")}>마음에 드는 캐릭터를 선택하면 대화창으로 들어갑니다.</div>
           </div>
 
