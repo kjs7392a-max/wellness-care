@@ -8,9 +8,9 @@
  * ⚠ 지금은 실데이터가 없어 `mockRecordsUntil(now)` 가 두 달 전 1일 ~ 어제까지 규칙적으로 만든 목업이다.
  *   실데이터가 붙으면 DayRecord[] 를 주는 쪽만 바꾸면 되고 이 파일의 요약 함수는 그대로다.
  */
-import { bodyLevel, heavySignal, levelFromSum, mindLevel, overallLevel, recordSignal, type Level } from "./condition";
+import { bodyLevel, dayBodyEvidence, dayBodyLevel, dayMindEvidence, dayMindLevel, heavySignal, levelFromSum, mindLevel, overallLevel, recordSignal, type Level } from "./condition";
 import { AXES, quadrantOf, samWeight, type Quadrant, type SamScore } from "./sam";
-import { PROGRAMS } from "./data";
+import { PROGRAMS, YESTERDAY } from "./data";
 
 export interface DayRecord {
   /** YYYY-MM-DD */
@@ -194,11 +194,85 @@ export function mockDay(date: string): DayRecord {
   return { date, steps, done, sam: hasSam ? { valence: v, arousal: a } : null, chats };
 }
 
-/** 두 달 전 1일 ~ 어제. 오늘은 아직 안 끝났으니 원장에 없다. */
+/** 마음카드 결 → SAM 기분 점수(목업). heavy ≤2 · neutral 3 · light ≥4 — `samWeight` 의 경계와 같은 값. */
+const VALENCE_OF: Record<string, SamScore | null> = { heavy: 2, neutral: 3, light: 4, none: null };
+
+/**
+ * 두 달 전 1일 ~ 어제. 오늘은 아직 안 끝났으니 원장에 없다.
+ *
+ * ★★ **마지막 줄(어제)은 `YESTERDAY` 와 같은 값으로 못박는다.** 2026-09-13 실측 —
+ *   홈 카드는 `YESTERDAY`(좋음), 같은 화면의 하루씩 보기는 이 원장(보통)을 보고 있어
+ *   **한 화면이 같은 날을 두 가지로 말했다.** 목업 원장이 둘이었던 것이 그때 드러났다.
+ * 🚫 어제 값을 두 곳에 적지 말 것 — 고치려면 `YESTERDAY` 하나만 고친다.
+ */
 export function mockRecordsUntil(now: Date): DayRecord[] {
   const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   const out: DayRecord[] = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) out.push(mockDay(dateKey(d)));
+  const last = out[out.length - 1];
+  if (last) {
+    const v = VALENCE_OF[YESTERDAY.mind.pick];
+    out[out.length - 1] = {
+      ...last,
+      done: YESTERDAY.body.stretchCount > 0 ? [{ id: "p1", n: YESTERDAY.body.stretchCount }] : [],
+      sam: v === null ? null : { valence: v, arousal: 3 },
+      chats: YESTERDAY.mind.chatCount,
+    };
+  }
   return out;
+}
+
+/* ── 주간(일별) 보기 ───────────────────────────────────────────────────────────
+ * 2026-09-13 사용자 지시: 홈 「어제 종합 컨디션」의 상세보기를 없애고 **「주간 기록 보기」**로 바꾼다.
+ *   "어제 것만 보여주는 게 아니고 전주를 일별로 보여주고".
+ * ★ 단계 판정은 새로 쓰지 않는다 — 하루 규칙(`dayBodyLevel`·`dayMindLevel`·`overallLevel`)을 그대로 쓴다.
+ *   여기서 하는 일은 「원장 한 줄(DayRecord) → 하루 판정 입력」 변환뿐이다.
+ */
+export interface DayCondition {
+  date: string;
+  /** "9/12 (금)" */
+  label: string;
+  body: Level;
+  mind: Level | null;
+  overall: Level | null;
+  bodyEvidence: string[];
+  mindEvidence: string[];
+  steps: number;
+  stretch: number;
+  chats: number;
+}
+
+/** 원장 한 줄을 하루 판정 입력으로. ⚠ 걸음·움직인 시간은 아직 목업이라 '평소 수준'(0)으로 둔다(홈과 같은 전제). */
+export function dayConditionOf(r: DayRecord): DayCondition {
+  const stretch = r.done.reduce((a, d) => a + d.n, 0);
+  const bodyIn = { stretchCount: stretch, moveVsUsual: 0 as const, stepsVsUsual: 0 as const };
+  const pick = r.sam ? samWeight(r.sam.valence) : ("none" as const);
+  const mindIn = { pick, chatCount: r.chats, riskFlagged: false };
+  const body = dayBodyLevel(bodyIn);
+  const mind = dayMindLevel(mindIn);
+  return {
+    date: r.date,
+    label: dayLabel(r.date),
+    body,
+    mind,
+    overall: overallLevel(body, mind),
+    bodyEvidence: dayBodyEvidence(bodyIn),
+    mindEvidence: dayMindEvidence(mindIn),
+    steps: r.steps,
+    stretch,
+    chats: r.chats,
+  };
+}
+
+/**
+ * 어제까지의 마지막 `days` 일을 **최근이 위로** 돌려준다(기본 7일 = 지난 한 주).
+ * 원장은 오늘을 담지 않으므로(`mockRecordsUntil`) 자르기만 하면 된다.
+ */
+export function weekConditions(records: DayRecord[], days = 7): DayCondition[] {
+  return [...records]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-days)
+    .reverse()
+    .map(dayConditionOf);
 }

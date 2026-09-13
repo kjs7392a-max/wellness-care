@@ -264,8 +264,9 @@ export const YESTERDAY = {
   body: { stretchCount: 2, moveVsUsual: 0 as const, stepsVsUsual: 0 as const },
   mind: { pick: "light" as "heavy" | "light" | "none", chatCount: 1 },
 };
-/** 이번 주 흐름(목업) — 월요일부터 그저께까지의 종합 단계. 어제는 YESTERDAY 로 계산해 뒤에 붙인다. */
-export const WEEK_FLOW: (1 | 2 | 3 | 4 | 5)[] = [3, 2, 3, 4];
+// ⚠ 2026-09-13: 옛 `WEEK_FLOW`(이번 주 흐름 목업 상수)를 지웠다 — 같은 화면의 「하루씩 보기」가 원장을 보는데
+//    바 그래프만 별도 상수를 보고 있어 **한 화면이 서로 다른 주를 말했다**. 이제 흐름도 원장에서 뽑는다.
+//    🚫 되살리지 말 것(WellnessApp `weekDays` 참고).
 
 export const DONE_WEEK = [
   { id: "p1", n: 4 },

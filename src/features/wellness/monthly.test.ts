@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { canGoNext, canGoPrev, mockDay, mockRecordsUntil, monthRange, monthSummary, weekOfMonth, ymAdd, ymLabel, type DayRecord } from "./monthly";
+import { canGoNext, canGoPrev, dayConditionOf, mockDay, mockRecordsUntil, monthRange, monthSummary, weekConditions, weekOfMonth, ymAdd, ymLabel, type DayRecord } from "./monthly";
+import { dayBodyLevel, dayMindLevel, overallLevel } from "./condition";
+import { samWeight } from "./sam";
+import { YESTERDAY } from "./data";
 
 const NOW = new Date(2026, 8, 12); // 2026-09-12
 
@@ -81,5 +84,74 @@ describe("월 요약", () => {
     expect(m.overall).toBeNull();
     expect(m.weeks).toEqual([]);
     expect(m.days_).toEqual([]);
+  });
+});
+
+describe("weekConditions — 주간 일별 보기 (2026-09-13)", () => {
+  const now = new Date(2026, 8, 13); // 9/13
+  const records = mockRecordsUntil(now);
+
+  it("어제까지 7일을 최근이 위로 돌려준다", () => {
+    const w = weekConditions(records);
+    expect(w).toHaveLength(7);
+    expect(w[0].date).toBe("2026-09-12"); // 어제가 맨 위
+    expect(w[6].date).toBe("2026-09-06");
+    // 내림차순
+    for (let i = 1; i < w.length; i++) expect(w[i].date < w[i - 1].date).toBe(true);
+  });
+
+  it("오늘은 들어가지 않는다 — 아직 끝나지 않은 하루다", () => {
+    expect(weekConditions(records).some((d) => d.date === "2026-09-13")).toBe(false);
+  });
+
+  // ★ 단계는 새로 쓰지 않고 하루 규칙을 그대로 쓴다 — 홈 카드와 갈리면 안 된다.
+  it("하루 판정 규칙(dayBodyLevel·dayMindLevel·overallLevel)과 같은 값이 나온다", () => {
+    for (const d of weekConditions(records)) {
+      const r = records.find((x) => x.date === d.date)!;
+      const stretch = r.done.reduce((a, x) => a + x.n, 0);
+      const body = dayBodyLevel({ stretchCount: stretch, moveVsUsual: 0, stepsVsUsual: 0 });
+      const mind = dayMindLevel({ pick: r.sam ? samWeight(r.sam.valence) : "none", chatCount: r.chats, riskFlagged: false });
+      expect(d.body).toBe(body);
+      expect(d.mind).toBe(mind);
+      expect(d.overall).toBe(overallLevel(body, mind));
+      expect(d.stretch).toBe(stretch);
+    }
+  });
+
+  // 마음카드 3점(neutral)을 「기록 없음」으로 적을 뻔했다 — 근거 문장이 그날을 맞게 말해야 한다.
+  it("마음카드 3점인 날은 「그저 그런 결」로 적는다(기록 없음이 아니다)", () => {
+    const d = dayConditionOf({ date: "2026-09-01", steps: 3000, done: [], sam: { valence: 3, arousal: 3 }, chats: 0 });
+    expect(d.mindEvidence[0]).toBe("오늘의 마음카드: 그저 그런 결");
+    expect(d.mind).toBe(3);
+  });
+
+  it("마음 기록이 하나도 없는 날은 단계가 없다", () => {
+    const d = dayConditionOf({ date: "2026-09-01", steps: 3000, done: [], sam: null, chats: 0 });
+    expect(d.mind).toBeNull();
+  });
+
+  it("날짜 이름표가 「9/12 (토)」 꼴이다", () => {
+    expect(weekConditions(records)[0].label).toBe("9/12 (토)");
+  });
+});
+
+describe("원장의 어제 = 홈 카드의 어제 (2026-09-13 실측으로 드러난 갈림)", () => {
+  // 한 화면(주간 기록)에서 위 카드는 YESTERDAY 를, 아래 하루씩 보기는 원장을 보고 있어
+  // 같은 날을 「좋음」과 「보통」으로 동시에 말했다. 목업 원장이 둘이었다.
+  it("원장 마지막 줄의 판정이 YESTERDAY 로 낸 판정과 같다", () => {
+    const now = new Date(2026, 8, 13);
+    const y = weekConditions(mockRecordsUntil(now))[0];
+    const body = dayBodyLevel(YESTERDAY.body);
+    const mind = dayMindLevel({ ...YESTERDAY.mind, riskFlagged: false });
+    expect(y.body).toBe(body);
+    expect(y.mind).toBe(mind);
+    expect(y.overall).toBe(overallLevel(body, mind));
+  });
+
+  it("마음카드 결도 같다 — heavy/light 를 바꾸면 원장도 따라온다", () => {
+    const now = new Date(2026, 8, 13);
+    const y = weekConditions(mockRecordsUntil(now))[0];
+    const word = YESTERDAY.mind.pick === "light" ? "가벼운 결" : YESTERDAY.mind.pick === "heavy" ? "무거운 결" : "";
+    if (word) expect(y.mindEvidence[0]).toContain(word);
   });
 });

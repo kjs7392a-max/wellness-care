@@ -150,8 +150,11 @@ export interface DayBodyInput {
   stepsVsUsual: Signal;
 }
 export interface DayMindInput {
-  /** 어제 「오늘의 마음카드」(SAM 기분) — heavy(≤2) / light(≥4) / none(기록 없음). 그저 그럼(3)은 none 이 아니라 chatCount 와 함께 보통 */
-  pick: "heavy" | "light" | "none";
+  /**
+   * 그날 「오늘의 마음카드」(SAM 기분) — heavy(≤2) / neutral(3) / light(≥4) / none(기록 없음).
+   * ★ 낱말은 `samWeight` 와 같은 것을 쓴다(2026-09-13 주간 일별 보기에서 3점 날을 「기록 없음」으로 적을 뻔했다).
+   */
+  pick: "heavy" | "neutral" | "light" | "none";
   chatCount: number;
   riskFlagged: boolean;
 }
@@ -164,7 +167,7 @@ export function dayBodyLevel(b: DayBodyInput): Level {
 export function dayMindLevel(m: DayMindInput): Level | null {
   if (m.riskFlagged) return 1;
   if (m.pick === "none" && m.chatCount <= 0) return null;
-  const pickSignal: Signal = m.pick === "heavy" ? -1 : m.pick === "light" ? 1 : 0;
+  const pickSignal: Signal = m.pick === "heavy" ? -1 : m.pick === "light" ? 1 : 0; // neutral·none 은 0
   // 하루엔 재료가 하나뿐이라 ±1 이 곧 단계 한 칸(보통 기준 좋음/조금 지침). 매우 좋음·휴식 필요는 하루로는 안 나온다.
   return levelFromSum(pickSignal);
 }
@@ -175,7 +178,10 @@ export function dayBodyEvidence(b: DayBodyInput): string[] {
 }
 export function dayMindEvidence(m: DayMindInput): string[] {
   if (m.riskFlagged) return ["어제는 많이 힘든 날이었어요. 오늘은 쉬어가도 됩니다."];
-  const pick = m.pick === "heavy" ? "오늘의 마음카드: 무거운 결" : m.pick === "light" ? "오늘의 마음카드: 가벼운 결" : "오늘의 마음카드: 기록 없음";
+  const pick = m.pick === "heavy" ? "오늘의 마음카드: 무거운 결"
+    : m.pick === "light" ? "오늘의 마음카드: 가벼운 결"
+    : m.pick === "neutral" ? "오늘의 마음카드: 그저 그런 결"
+    : "오늘의 마음카드: 기록 없음";
   return [pick, `마음과 대화 ${m.chatCount}번`];
 }
 
