@@ -17,6 +17,10 @@ import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, ymAdd
 
 const IMG = "/wellness/images";
 
+// 온보딩 마지막 장(PAR-Q+)의 번호. 단계를 합치거나 늘려도 여기가 따라오도록 OB 에서 파생시킨다.
+// 2026-09-13: 「모으는 것」을 「수집동의서 및 권한허용」에 합치며 4 → 3 이 됐고, 그때 흩어진 숫자 4 를 이 하나로 모았다.
+const OB_LAST = OB.length - 1;
+
 // 프로토타입 Tweaks 기본값(고정). 실제 데이터 연동 전까지 신체 지표는 목 데이터.
 const DEFAULT_ROLE: Role = "teacher";
 const CONTENT_STATE: ContentState = "STABLE";
@@ -280,7 +284,8 @@ export default function WellnessApp() {
   const chatDateLabel = `${s.now.getFullYear()}년 ${s.now.getMonth() + 1}월 ${s.now.getDate()}일 ${days[s.now.getDay()]}요일`;
 
   const step = OB[Math.max(0, s.ob)] || OB[0];
-  const canNext = s.ob === 2 ? s.consent[0] : s.ob === 4 ? v.parqAll : true;
+  // 온보딩 단계: 0 약속 · 1 수집동의서 및 권한허용(모으는 것 포함) · 2 직군 · 3 PAR-Q+
+  const canNext = s.ob === 1 ? s.consent[0] : s.ob === OB_LAST ? v.parqAll : true;
 
   // ---- 렌더 ----
   return (
@@ -345,12 +350,12 @@ export default function WellnessApp() {
 
   function renderOnboarding() {
     const steps = s.parqOnly ? [{ bg: "#7a6bc4" }] : OB.map((_, i) => ({ bg: i <= s.ob ? "#7a6bc4" : "#dbe8ec" }));
-    const obBtn = s.parqOnly && s.ob === 4 ? "저장하고 돌아가기" : step.btn;
+    const obBtn = s.parqOnly && s.ob === OB_LAST ? "저장하고 돌아가기" : step.btn;
     const obBtnBg = canNext ? "#7a6bc4" : "#cdc3ea";
     const obBackLabel = s.parqOnly ? "취소" : s.ob === 0 ? "나중에 볼게요" : "이전";
     const obNext = () => {
       if (!canNext) return;
-      patchFn((st) => (st.parqOnly && st.ob === 4) ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= 4 ? -1 : st.ob + 1 });
+      patchFn((st) => (st.parqOnly && st.ob === OB_LAST) ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
     };
     const obBack = () => patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 });
 
@@ -379,18 +384,16 @@ export default function WellnessApp() {
           )}
 
           {s.ob === 1 && (
-            <div style={sx("display:flex; flex-direction:column; gap:10px")}>
+            <div style={sx("display:flex; flex-direction:column; gap:11px")}>
+              {/* 2026-09-13: 옛 「모으는 것은 이만큼이 전부예요」 장. 무엇을 모으는지 보여준 뒤 그 자리에서 동의·권한까지 받는다. */}
+              <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:0 2px")}>모으는 것은 이만큼이 전부예요</div>
               {COLLECT.map((ci, i) => (
                 <div key={i} style={sx("display:flex; flex-direction:column; gap:4px; padding:16px; border-radius:15px; background:#fff; border:1px solid #c9d6dc")}>
                   <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{ci.name}</div>
                   <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ci.why}</div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {s.ob === 2 && (
-            <div style={sx("display:flex; flex-direction:column; gap:11px")}>
+              <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:8px 2px 0")}>동의</div>
               {[
                 { title: "수집·이용 동의 (필수)", desc: "걸음·움직인 시간·앱에서 함께한 몸풀기 기록은 암호화되어 본인 계정에만 저장되며, 본인 외에는 누구도 열어볼 수 없습니다." },
               ].map((c, i) => {
@@ -425,7 +428,7 @@ export default function WellnessApp() {
             </div>
           )}
 
-          {s.ob === 3 && (
+          {s.ob === 2 && (
             <div style={sx("display:flex; flex-direction:column; gap:10px")}>
               {(Object.keys(ROLES) as Role[]).map((k) => {
                 const on = v.roleKey === k && !!s.role;
@@ -439,7 +442,7 @@ export default function WellnessApp() {
             </div>
           )}
 
-          {s.ob === 4 && (
+          {s.ob === OB_LAST && (
             <div style={sx("display:flex; flex-direction:column; gap:9px")}>
               {PARQ.map((text, i) => {
                 const val = s.parq[i];
@@ -939,7 +942,7 @@ export default function WellnessApp() {
             <div style={sx("flex:1; font-size:14px; font-weight:600; color:#2d5c6e")}>직군</div>
             <div style={sx("font-size:13px; color:#6b8c9a; flex:none; white-space:nowrap")}>{v.role.label}</div>
           </div>
-          <div onClick={() => patch({ ob: 4, parq: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
+          <div onClick={() => patch({ ob: OB_LAST, parq: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
               <div style={sx("font-size:14px; font-weight:600; color:#2d5c6e")}>안전 확인 다시 답하기</div>
               <div style={sx("font-size:12px; color:#8ba8b3")}>PAR-Q+ 7문항 · 활동 강도 기준</div>
