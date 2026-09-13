@@ -314,7 +314,8 @@ export default function WellnessApp() {
           {v.onboarding && renderOnboarding()}
           {v.authed && !v.onboarding && s.tab === "home" && renderHome()}
           {v.authed && !v.onboarding && s.tab === "daily" && renderDaily()}
-          {v.authed && !v.onboarding && s.tab === "my" && renderCondition(true)}
+          {/* my = 월간 기록(2026-09-13 사용자 지시로 주간 → 월간). 주간은 홈 카드의 「주간 기록 보기」 칩이 연다. */}
+          {v.authed && !v.onboarding && s.tab === "my" && renderRecords()}
           {v.authed && !v.onboarding && renderTabs()}
 
           {s.sheet === "picture" && renderPicture()}
@@ -690,10 +691,7 @@ export default function WellnessApp() {
     );
   }
 
-  /**
-   * 월별 기록장. `inSheet` 면 홈 위에 덮는 시트 모양으로.
-   * ⚠ 2026-09-13 에 「기록」 탭이 없어져 지금은 **시트로만** 불린다(`inSheet=false` 경로는 탭을 되살릴 때를 위해 남겨 둔다).
-   */
+  /** 월별 기록장. `inSheet` 면 홈 카드의 칩이 띄우는 시트로, 아니면 **my 탭**의 화면으로. 내용은 같은 코드다. */
   /**
    * 데일리케어 — 신체 건강·마음 건강으로 들어가는 자리(2026-09-13 사용자 지시로 홈에서 옮겨 왔다).
    * 🚫 홈에 같은 카드를 다시 두지 말 것.
@@ -705,26 +703,24 @@ export default function WellnessApp() {
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
         </div>
-        <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
-          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
-            <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
-              <div style={sx(`width:36px; height:36px; flex:none; border-radius:11px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
-              <div style={sx("flex:1; text-align:right; font-size:15px; color:#e0876c")}>↗</div>
+        {/* 2026-09-13 사용자 지시: 나란히가 아니라 **위아래로**. */}
+        <div style={sx("display:flex; flex-direction:column; gap:12px")}>
+          {/* 가로로 길어졌으므로 아이콘 → 글 → 화살표 **한 줄**로. 세로 2열 시절의 「아이콘 위 / 글 아래」는 옆이 텅 빈다. */}
+          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
+            <div style={sx(`width:48px; height:48px; flex:none; border-radius:14px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
+              <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.5; text-wrap:pretty")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
             </div>
-            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
-              <div style={sx("font-size:12px; color:#9a5f4c; line-height:1.5; text-wrap:pretty")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
-            </div>
+            <div style={sx("flex:none; font-size:17px; color:#e0876c")}>↗</div>
           </div>
-          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
-            <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
-              <div style={sx(`width:36px; height:36px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
-              <div style={sx("flex:1; text-align:right; font-size:15px; color:#8a7cd0")}>↗</div>
+          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 18px; border-radius:22px; background:linear-gradient(120deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
+            <div style={sx(`width:48px; height:48px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>마음 건강</div>
+              <div style={sx("font-size:12.5px; color:#5f5397; line-height:1.5; text-wrap:pretty")}>마음건강을 위한 짧은 대화와 마음카드</div>
             </div>
-            <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#4a3f80")}>마음 건강</div>
-              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5; text-wrap:pretty")}>마음건강을 위한 짧은 대화와 마음카드</div>
-            </div>
+            <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
           </div>
         </div>
       </div>
@@ -1339,11 +1335,8 @@ export default function WellnessApp() {
     );
   }
 
-  /**
-   * 주간 기록. `asTab` 이면 아래 탭(my)의 화면으로 — 홈에서 칩으로 열면 시트, my 탭에서는 그대로 한 장.
-   * 내용은 **같은 코드**다(2026-09-13 사용자 지시로 my 탭이 이 화면을 쓴다).
-   */
-  function renderCondition(asTab = false) {
+  /** 주간 기록 — 홈 카드의 「주간 기록 보기」 칩이 띄우는 시트. (2026-09-13: 잠깐 my 탭이 이걸 썼다가 월간으로 바뀌었다.) */
+  function renderCondition() {
     const close = () => patch({ sheet: null });
     const box = (l: (typeof v.cond)["overall"]) => (l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" });
     const oc = box(v.cond.dayOverall);
@@ -1356,7 +1349,7 @@ export default function WellnessApp() {
     })();
     // ⚠ 어제 한 장만 그리던 `axis` 헬퍼는 2026-09-13 일별 보기로 바뀌며 지웠다(같은 것을 두 모양으로 두지 않는다).
     const inner = (
-      <div style={{ ...sx("flex:1; overflow-y:auto; padding:18px 18px; display:flex; flex-direction:column; gap:14px"), paddingBottom: asTab ? 96 : 28 }}>
+      <div style={sx("flex:1; overflow-y:auto; padding:18px 18px 28px; display:flex; flex-direction:column; gap:14px")}>
           {/* 종합 */}
           <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:18px 18px 16px; border-radius:20px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: oc.fg }}>{v.cond.yesterday}</div>
@@ -1423,17 +1416,6 @@ export default function WellnessApp() {
           </div>
         </div>
     );
-    if (asTab) {
-      return (
-        <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
-          <div style={sx("flex:none; padding:14px 20px 8px; display:flex; flex-direction:column; gap:4px")}>
-            <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>주간 기록</div>
-            <div style={sx("font-size:12.5px; color:#8ba8b3")}>지난 7일을 하루씩 · 단계는 선생님만 봅니다</div>
-          </div>
-          {inner}
-        </div>
-      );
-    }
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
