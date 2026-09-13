@@ -698,27 +698,31 @@ export default function WellnessApp() {
    */
   function renderDaily() {
     return (
-      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 96px")}>
-        <div style={sx("display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
+      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
         </div>
-        {/* 2026-09-13 사용자 지시: 나란히가 아니라 **위아래로**. */}
-        <div style={sx("display:flex; flex-direction:column; gap:12px")}>
+        {/* 2026-09-13 사용자 지시: 나란히가 아니라 **위아래로**, 그리고 **가운데로**.
+            이 탭엔 카드 둘뿐이라 위에 붙여 두면 아래가 통째로 빈다 → 제목은 위에 두고 카드는 남은 높이의 가운데.
+            ⚠ 카드를 더 키워도 봤는데(아이콘 60px) **부제가 두 줄로 접혀** 되돌렸다 — 폭이 좁아 「…운동 / · 15가지」처럼 꼬리만 남는다.
+            화면이 짧으면 `overflow-y:auto` 로 그대로 스크롤된다. */}
+        <div style={sx("flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; padding:12px 0 28px")}>
           {/* 가로로 길어졌으므로 아이콘 → 글 → 화살표 **한 줄**로. 세로 2열 시절의 「아이콘 위 / 글 아래」는 옆이 텅 빈다. */}
-          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
-            <div style={sx(`width:48px; height:48px; flex:none; border-radius:14px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
+          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
+            <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
-              <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.5; text-wrap:pretty")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
+              {/* ⚠ 한글은 아무 데서나 끊긴다 — 「15 / 가지」로 갈라졌었다. keep-all 로 낱말을 붙여 둔다. */}
+              <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
             </div>
             <div style={sx("flex:none; font-size:17px; color:#e0876c")}>↗</div>
           </div>
-          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 18px; border-radius:22px; background:linear-gradient(120deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
-            <div style={sx(`width:48px; height:48px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
+          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
+            <div style={sx(`width:50px; height:50px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>마음 건강</div>
-              <div style={sx("font-size:12.5px; color:#5f5397; line-height:1.5; text-wrap:pretty")}>마음건강을 위한 짧은 대화와 마음카드</div>
+              <div style={sx("font-size:12.5px; color:#5f5397; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>마음건강을 위한 짧은 대화와 마음카드</div>
             </div>
             <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
           </div>
