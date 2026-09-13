@@ -62,7 +62,7 @@ export const ROLES: Record<Role, RoleContent> = {
     picked: "앞으로 눈·손목·허리 쪽을 먼저 챙겨 드릴게요.",
     items: [
       { title: "문서작업 중간 30초 눈 운동", desc: "화면에서 잠깐만 눈을 떼면 됩니다. 자리에서 그대로 할 수 있어요." },
-      { title: "손목·거북목 예방 3분 스트레칭", desc: "자판 앞에 오래 계셨죠. 손목과 목을 함께 풀어봐요." },
+      { title: "손목·거북목 예방 스트레칭", desc: "자판 앞에 오래 계셨죠. 손목과 목을 함께 풀어봐요." },
       { title: "퇴근 전 허리 회복 스트레칭", desc: "하루 종일 앉아 있던 허리를 되돌리고 나가는 시간이에요.", video: PROGRAM_VIDEOS.p4 },
     ],
     low: [
@@ -92,7 +92,7 @@ export const NUDGE: Record<ContentState, string> = {
   STABLE: "잠깐 몸을 풀고 갈 여유는 있으실까요?",
   SEDENTARY_LONG: "한 시간 반째 자리에 앉아 계셨어요. 따뜻한 물 한 잔 마시러 가면서 가볍게 몸을 털어볼까요?",
   ACTIVITY_LOW: "이번 주는 걸음이 평소보다 뜸했어요. 잠깐 걸어볼까요? 휴게실 앞 복도 창가도 좋은 코스예요.",
-  RECOVERY_POOR: "요 며칠은 쉬어가는 시간이 뜸했어요. 오늘 3분 호흡부터 어떠세요?",
+  RECOVERY_POOR: "요 며칠은 쉬어가는 시간이 뜸했어요. 오늘 1분 호흡부터 어떠세요?",
   LOAD_ACCUMULATED: "이번 주는 평소보다 많이 움직이셨어요. 오늘은 쉬어가는 쪽으로 가볼까요?",
 };
 
@@ -100,7 +100,7 @@ export const NUDGE_LOW: Record<ContentState, string> = {
   STABLE: "의자에 기대앉은 그대로, 어깨만 천천히 내려놓아 볼까요?",
   SEDENTARY_LONG: "한 자리에 오래 앉아 계셨네요. 일어나지 않으셔도 돼요. 앉은 채로 목만 아주 천천히 돌려볼까요?",
   ACTIVITY_LOW: "오늘은 창밖만 잠깐 바라보는 것도 좋아요. 먼 곳을 30초만 보면 눈이 한결 편해집니다.",
-  RECOVERY_POOR: "요 며칠 쉬어가는 시간이 뜸했어요. 앉은 자리에서 3분 호흡부터 어떠세요?",
+  RECOVERY_POOR: "요 며칠 쉬어가는 시간이 뜸했어요. 앉은 자리에서 1분 호흡부터 어떠세요?",
   LOAD_ACCUMULATED: "이번 주는 꽤 애쓰셨어요. 오늘은 앉은 채로 숨만 고르는 쪽으로 가볼까요?",
 };
 

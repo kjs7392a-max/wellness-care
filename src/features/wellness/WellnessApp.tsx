@@ -88,7 +88,7 @@ export default function WellnessApp() {
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     parq: {}, parqOnly: false, perms: {}, area: "all", program: null,
     authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: EMPTY_SAM, minutes: 3, remaining: 180, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
@@ -593,14 +593,15 @@ export default function WellnessApp() {
                 <div style={sx("font-size:19px; font-weight:700; color:#2d5c6e; letter-spacing:-0.03em; line-height:1; font-variant-numeric:tabular-nums; margin-top:-6px")}>4,120</div>
                 <div style={sx("font-size:10.5px; color:#8ba8b3; white-space:nowrap")}>{stepZoneLabel}</div>
               </div>
-              {/* 스트레칭 — 설명 없이 읽히게 「3번 / 오늘 총 7분」만(사용자: 점·배지·부위 개수 전부 뜻이 안 읽힘) */}
+              {/* 스트레칭 — 설명 없이 읽히게 「몇 번 / 오늘 총 몇 분」만(사용자: 점·배지·부위 개수 전부 뜻이 안 읽힘)
+                  ⚠ 한 편 = 1분이므로 회수와 분이 같아야 한다(2026-09-13: 「3회 · 7분」으로 어긋나 있었다). */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px; border-right:1px solid #ece8f5")}>
                 <div style={sx("font-size:11.5px; font-weight:600; color:#8ba8b3")}>스트레칭</div>
                 <div style={sx("display:flex; flex-direction:column; gap:2px; align-items:center; padding-top:4px")}>
                   <div style={sx("font-size:11px; color:#4d7c8c; white-space:nowrap")}>목풀기 2회</div>
                   <div style={sx("font-size:11px; color:#4d7c8c; white-space:nowrap")}>어깨풀기 1회</div>
                 </div>
-                <div style={sx("font-size:17px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>총 3회 · 7분</div>
+                <div style={sx("font-size:17px; font-weight:700; color:#3a4a72; letter-spacing:-0.03em; line-height:1; white-space:nowrap")}>총 3회 · 3분</div>
               </div>
               {/* 움직인 시간 */}
               <div style={sx("display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:4px; padding:0 4px")}>
@@ -1131,7 +1132,7 @@ export default function WellnessApp() {
         <div style={sx("flex:1; display:flex; flex-direction:column; gap:24px; padding:8px 24px 32px")}>
           <div style={sx("display:flex; flex-direction:column; gap:8px")}>
             <div style={sx("font-size:23px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{v.itemTitle}</div>
-            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>{item.desc + " 10분을 고르셔도 1분만 채우면 오늘 몫은 다 한 거예요."}</div>
+            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>{item.desc + " 1분만 채워도 오늘 몫은 다 한 거예요. 더 걷고 싶으시면 시간을 늘리셔도 좋아요."}</div>
           </div>
 
           <div style={sx("display:flex; gap:8px")}>

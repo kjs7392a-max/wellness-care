@@ -51,9 +51,10 @@ describe("buildDaySolution — PAR-Q+ 낮은 강도", () => {
     }
   });
 
-  it("평소 강도에서는 날이 좋으면 걷기를 권한다(대조군 — 위 가드가 통째로 문구를 죽인 게 아님)", () => {
-    const walked = allCases(false).filter((c) => buildDaySolution(c).includes("걸어"));
-    expect(walked.length).toBeGreaterThan(0);
+  // 대조군 — 위 가드들이 문구를 통째로 죽인 게 아니라는 확인(날씨 문구는 여전히 본문에 들어간다).
+  it("실내를 권하는 날씨면 평소 강도에서도 체감 문구가 들어간다", () => {
+    const withFeels = allCases(false).filter((c) => buildDaySolution({ ...c, weatherPrefer: "indoor" }).includes("체감 25°"));
+    expect(withFeels.length).toBeGreaterThan(0);
   });
 
   it("같은 상황이라도 낮은 강도면 문구가 달라진다", () => {
@@ -134,6 +135,33 @@ describe("buildDaySolution — 마무리 문장은 부위를 말하지 않는다
               expect(tail, `low=${low}/slot${slot}/${isWeekend ? "주말" : "평일"}/${weatherPrefer} → ${tail}`).not.toContain(part);
             }
           }
+        }
+      }
+    }
+  });
+});
+
+describe("buildDaySolution — 카드 안에서 서로 다른 말을 하지 않게 (2026-09-13 사용자 지적)", () => {
+  // ① 이 문구 바로 아래 버튼은 늘 「몸풀기(스트레칭)」다. 본문이 걷기를 권하면 한 카드가 두 가지를 말한다.
+  it("어느 강도에서도 걷기·산책을 권하지 않는다", () => {
+    for (const low of [false, true]) {
+      for (const c of allCases(low)) {
+        const txt = buildDaySolution(c);
+        for (const w of ["걸어", "걷고", "산책"]) {
+          expect(txt, `low=${low}/${c.role}/slot${c.slot}/${c.isWeekend ? "주말" : "평일"}/${c.weatherPrefer} → ${txt}`).not.toContain(w);
+        }
+      }
+    }
+  });
+
+  // ② 한 편은 1분이고 영상도 1분에서 멈춘다. 본문이 3·5·10분을 말하면 앱이 못 지키는 약속이 된다.
+  it("1분 말고 다른 시간을 말하지 않는다", () => {
+    for (const low of [false, true]) {
+      for (const c of allCases(low)) {
+        const txt = buildDaySolution(c);
+        const mins = txt.match(/\d+\s*분/g) ?? [];
+        for (const m of mins) {
+          expect(m.replace(/\s/g, ""), `low=${low}/${c.role}/slot${c.slot} → ${txt}`).toBe("1분");
         }
       }
     }
