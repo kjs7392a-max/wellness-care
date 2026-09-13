@@ -62,10 +62,12 @@ describe("change / suggestion / evidence", () => {
 import { overallLevel } from "./condition";
 describe("overallLevel — 종합", () => {
   it("평균, 어중간하면 낮은 쪽(좋음+보통 = 보통)", () => {
+    // 둘이 같으면 그대로, 다르면 낮은 쪽 — 화면 각주 「어떻게 정했나요」가 약속하는 규칙 그대로.
     expect(overallLevel(4, 3)).toBe(3);
     expect(overallLevel(4, 4)).toBe(4);
-    expect(overallLevel(5, 2)).toBe(3);
-    expect(overallLevel(1, 5)).toBe(3);
+    expect(overallLevel(5, 2)).toBe(2);
+    expect(overallLevel(1, 5)).toBe(1);
+    expect(overallLevel(2, 4)).toBe(2); // 가운데 값이었다면 3 — 한 주가 「보통」으로 뭉개지던 자리
   });
   it("한쪽이 없으면 있는 쪽, 둘 다 없으면 없음, 위험어 주는 무조건 휴식 필요", () => {
     expect(overallLevel(4, null)).toBe(4);

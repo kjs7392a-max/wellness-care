@@ -131,12 +131,24 @@ export function mindEvidence(m: MindInput): string[] {
  * 규칙: 두 단계의 평균, 어중간하면 낮은 쪽으로(좋음 4 + 보통 3 = 3.5 → 보통). 한쪽이 없으면 있는 쪽.
  * 위험어 안내가 뜬 주는 마음이 1 이라 종합도 낮아진다 — 그 위에 따로 무조건 1 로 못박는다.
  */
+/**
+ * 종합 = **둘이 같으면 그대로, 다르면 낮은 쪽.**
+ *
+ * ⚠★ 2026-09-13 까지 여기가 `Math.floor((body + mind) / 2)`(가운데 값)였다.
+ *   그런데 화면의 「어떻게 정했나요」 각주는 그때도 **"다르면 낮은 쪽에 맞춰요"** 라고 적고 있었다 —
+ *   **앱이 설명하는 규칙과 앱이 쓰는 규칙이 달랐다.** 주간 일별 보기를 만들고 나서야 드러났다
+ *   (신체 조금 지침 + 마음 좋음 → 각주대로면 「조금 지침」인데 화면은 「보통」이라 적었고,
+ *    가운데 값이라 한 주가 통째로 「보통」으로 뭉개졌다 — 사용자 지적 "주간이 전부 보통").
+ * 🚫 가운데 값으로 되돌리지 말 것. 되돌린다면 각주 문장도 같이 고쳐야 한다.
+ *
+ * 낮은 쪽을 쓰는 이유 = 몸이 지쳤으면 마음이 가벼워도 오늘은 지친 날로 본다(쉬라고 권하는 쪽으로 기운다).
+ */
 export function overallLevel(body: Level | null, mind: Level | null, riskFlagged = false): Level | null {
   if (riskFlagged) return 1;
   if (body === null && mind === null) return null;
   if (body === null) return mind;
   if (mind === null) return body;
-  return Math.floor((body + mind) / 2) as Level;
+  return Math.min(body, mind) as Level;
 }
 
 // ── 하루 단위 (홈 = 어제) ─────────────────────────────────────────────────────────────
