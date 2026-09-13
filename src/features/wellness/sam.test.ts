@@ -42,13 +42,33 @@ describe("directing", () => {
     expect(d.text).toContain("숨 고르기");
     expect(d.text).not.toMatch(/\d점|등급|우울증|진단|각성/);
   });
-  it("잠·통제감이 좋으면 5문단, 잠이 나쁘면 잠 문단이 먼저 끼고, 통제감 낮으면 작은 선택 문단이 낀다(최대 7)", () => {
-    expect(directing(full(4, 2), 4, 1).text.split("\n\n")).toHaveLength(5);
-    const bad = directing(full(2, 4, 1, 1), 4, 1);
-    const paras = bad.text.split("\n\n");
-    expect(paras).toHaveLength(7);
-    expect(paras[2]).toContain("어젯밤은 뒤척인 밤");
-    expect(paras[3]).toContain("아주 작은 선택 하나");
+  // 2026-09-13 사용자 지시로 **하나의 디렉팅**이 됐다 — 문항마다 문단을 세우지 않는다.
+  // 전에는 5~7문단이었고 「어젯밤은 …」·「오늘은 …처럼 흘러갔다고 하셨어요」처럼 답을 하나씩 되읽어 줬다.
+  it("답이 무엇이든 문단은 항상 셋 — 지금 상태 · 오늘 한 가지 · 안심", () => {
+    for (const [v, a, d, sl] of [[4, 2, 4, 4], [2, 4, 1, 1], [5, 5, 3, 3], [3, 3, 2, 2]] as const) {
+      for (const body of [4, 1, null] as const) {
+        const paras = directing(full(v, a, d, sl), body, 1).text.split("\n\n");
+        expect(paras, `v${v}a${a}d${d}s${sl}/body${body}`).toHaveLength(3);
+      }
+    }
+  });
+
+  it("잠·통제감·어제 몸은 첫 문단 안에서 「이유」로 엮인다(문단을 따로 세우지 않는다)", () => {
+    const bad = directing(full(2, 4, 1, 1), 1, 1);
+    const [state, advice] = bad.text.split("\n\n");
+    expect(state).toContain("어젯밤 잠이 뒤척인 밤");
+    expect(state).toContain("떠내려가는 종이배");
+    expect(state).toContain("어제 몸 컨디션이 낮은 쪽");
+    // 🚫 답을 되읽어 주는 옛 말투로 돌아가지 말 것
+    for (const o of ["어젯밤은 ", "흘러갔다고 하셨어요", "어제 몸 컨디션은 "]) expect(bad.text).not.toContain(o);
+    // 통제감이 낮을 때의 「작은 선택」은 제안 문단 뒤에 붙는다
+    expect(advice).toContain("아주 작은 선택 하나");
+  });
+
+  it("잠·통제감이 좋으면 그 이유 문장이 아예 안 나온다", () => {
+    const good = directing(full(4, 2, 5, 5), 3, 1).text;
+    expect(good).not.toContain("어젯밤 잠이");
+    expect(good).not.toContain("아주 작은 선택 하나");
   });
   it("LN 은 아주 작은 행동, HP 는 힘 쓸 곳, LP 는 유지·기록, 몸 낮으면 부담 낮게, 몸 기록 없으면 그 문단이 말해 준다", () => {
     expect(directing(full(2, 1), 4, 1).text).toContain("아주 작은 행동 하나");

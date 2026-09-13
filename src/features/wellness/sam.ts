@@ -96,32 +96,31 @@ function opening(q: Quadrant, v: SamScore, a: SamScore): string {
 /** 사분면이 몸에서 어떻게 나타나는지 — 사용자가 확인할 수 있는 감각으로 */
 const WHY: Record<Quadrant, string> = {
   HP: "이런 날은 몸이 먼저 움직이고 싶어 하고, 생각도 빨라져요. 다만 힘이 올라와 있을 때는 쉬는 타이밍을 놓치기 쉬워서, 저녁에 갑자기 방전되는 경우가 많아요.",
-  LP: "이런 날은 숨이 고르고 어깨에 힘이 빠져 있어요. 특별히 애쓰지 않아도 하루가 잘 흘러가는 상태라, 무언가를 더 하기보다 지금 이 상태를 기억해 두는 게 좋아요.",
+  // ⚠ 앞 문장(opening)이 이미 "애쓰지 않아도 하루가 잘 흘러가는 상태"라고 말한다 — 한 문단으로 합치면서 같은 말이 두 번 나오던 것을 줄였다.
+  LP: "숨이 고르고 어깨에 힘이 빠져 있어요.",
   HN: "이런 날은 어깨가 올라가고 턱에 힘이 들어가고, 같은 생각이 반복돼요. 몸이 먼저 긴장하고 있어서 생각으로는 잘 풀리지 않아요. 몸의 긴장을 풀어야 생각도 함께 가라앉습니다.",
   LN: "이런 날은 몸이 무겁고, 해야 할 일이 평소보다 크게 보이고, 시작이 제일 어려워요. 게을러서가 아니라 에너지가 바닥에 가까워서 그래요. 의지로 밀어붙이기보다 아주 작은 움직임으로 시동을 거는 게 효과가 있어요.",
 };
 
-/** 통제감이 낮을 때만 — 내가 정하는 아주 작은 선택 하나(통제감 회복) */
-function dominanceLine(d: SamScore): string | null {
-  if (d >= 3) return null;
-  return `오늘은 ${L("dominance", d)}처럼 흘러갔다고 하셨어요. 하루가 나를 끌고 간 날엔 큰 결정보다 아주 작은 선택 하나가 통제감을 돌려줍니다 — 퇴근길 음악을 고르는 것, 저녁 메뉴를 내가 정하는 것 정도면 돼요.`;
+/**
+ * 잠·통제감·어제 몸 — **문항마다 문단을 세우지 않는다**(2026-09-13 사용자 지시 "모두 통합해서 하나의 디렉팅으로").
+ * 「어젯밤은 …이었어요」처럼 답을 되읽어 주는 대신, **지금 그렇게 느껴지는 이유**로 한 문단 안에 엮는다.
+ * 🚫 여기서 제안을 하지 말 것 — 제안은 뒤 문단(closing) 하나로 모은다.
+ */
+function reasonClauses(ans: SamAnswerDone, body: Level | null): string[] {
+  const out: string[] = [];
+  if (ans.sleep <= 2) out.push(`어젯밤 잠이 ${L("sleep", ans.sleep)}이었던 것도 한몫해요 — 잠이 모자라면 기분도 긴장도 실제보다 나쁘게 느껴지거든요.`);
+  if (ans.dominance <= 2) out.push(`하루가 ${L("dominance", ans.dominance)}처럼 흘러갔다는 것도 그렇고요.`);
+  if (body === null) out.push("어제 몸 기록이 아직 없어서 오늘은 마음 쪽만 보고 말씀드려요.");
+  else if (body <= 2) out.push("어제 몸 컨디션이 낮은 쪽이었던 것까지 겹쳐 있어요.");
+  else if (body >= 4) out.push("그래도 어제 몸에는 힘이 남아 있어요.");
+  return out;
 }
 
-/** 잠이 나빴으면 무엇보다 먼저 — 회복 우선 */
-function sleepLine(sl: SamScore): string | null {
-  if (sl >= 3) return null;
-  return `어젯밤은 ${L("sleep", sl)}이었어요. 잠이 모자란 날은 기분도 긴장도 실제보다 나쁘게 느껴져요. 오늘 무엇을 하든 이 점을 먼저 감안하고, 저녁엔 잠들기 전 이완 호흡으로 밤을 챙기는 게 가장 큰 회복입니다.`;
-}
-
-/** 어제 신체 컨디션을 한 줄로 엮는다 */
-function bodyLine(body: Level | null): string {
-  if (body === null) return "어제 몸 기록이 아직 없어서, 오늘은 마음 쪽만 보고 제안드려요.";
-  if (body <= 2) return "어제 몸 컨디션은 낮은 쪽이었어요. 마음이 어떻든 오늘은 몸이 먼저 쉬어야 하는 날입니다.";
-  if (body === 3) return "어제 몸 컨디션은 보통이었어요. 무리하지 않는 선에서 조금 움직일 여유는 있어요.";
-  return "어제 몸 컨디션은 좋은 편이었어요. 몸에 힘이 남아 있으니, 마음이 무거워도 몸부터 움직여 볼 수 있어요.";
-}
-
-/** 제안 — 사분면별 정서조절 전략 하나. HN 긴장 낮추기 / LN 아주 작은 행동 / HP 힘 쓸 곳 / LP 유지·기록 */
+/**
+ * 제안 — 사분면별 정서조절 전략 **하나**. HN 긴장 낮추기 / LN 아주 작은 행동 / HP 힘 쓸 곳 / LP 유지·기록.
+ * 통제감이 낮은 날의 「아주 작은 선택」은 `directing` 이 이 문단 뒤에 한 문장으로 붙인다(별도 문단으로 세우지 않는다).
+ */
 function closing(q: Quadrant, body: Level | null, slot: number): string {
   const evening = slot === 2;
   const tired = body !== null && body <= 2;
@@ -165,17 +164,20 @@ export interface Directing {
   text: string;
 }
 
-/** 다섯 답 → 문단 5~7개(지금 상태 · 몸에서 나타남 · [잠] · [통제감] · 어제 몸 · 제안 · 안심) */
-export function directing(ans: Required<{ [K in AxisKey]: SamScore }>, body: Level | null, slot: number): Directing {
+type SamAnswerDone = Required<{ [K in AxisKey]: SamScore }>;
+
+/**
+ * 다섯 답 → **문단 셋**: ①지금 상태와 그 이유 ②오늘 한 가지 ③안심.
+ *
+ * ⚠ 2026-09-13 까지는 문단이 5~7개였고 **문항마다 한 문단씩**이었다(「어젯밤은 …」·「오늘은 …처럼 흘러갔다고 하셨어요」·
+ *   「어제 몸 컨디션은 …」). 답을 하나씩 되읽어 주는 보고서처럼 읽혀서, 사용자 지시로 **하나의 디렉팅**으로 합쳤다.
+ * 🚫 문항별로 문단을 다시 늘리지 말 것 — `sam.test.ts` 가 문단 수를 3으로 못박는다.
+ */
+export function directing(ans: SamAnswerDone, body: Level | null, slot: number): Directing {
   const q = quadrantOf(ans.valence, ans.arousal);
-  const paras = [
-    opening(q, ans.valence, ans.arousal),
-    WHY[q],
-    sleepLine(ans.sleep),
-    dominanceLine(ans.dominance),
-    bodyLine(body),
-    closing(q, body, slot),
-    REASSURE[q],
-  ].filter((p): p is string => !!p);
-  return { quadrant: q, weight: samWeight(ans.valence), text: paras.join("\n\n") };
+  const state = [opening(q, ans.valence, ans.arousal), WHY[q], ...reasonClauses(ans, body)].join(" ");
+  const advice = closing(q, body, slot) + (ans.dominance <= 2
+    ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
+    : "");
+  return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join("\n\n") };
 }
