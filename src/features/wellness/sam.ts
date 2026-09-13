@@ -167,11 +167,13 @@ export interface Directing {
 type SamAnswerDone = Required<{ [K in AxisKey]: SamScore }>;
 
 /**
- * 다섯 답 → **문단 셋**: ①지금 상태와 그 이유 ②오늘 한 가지 ③안심.
+ * 다섯 답 → **글 하나**. 지금 상태와 그 이유 → 오늘 한 가지 → 안심이 **한 덩어리로 이어진다.**
  *
- * ⚠ 2026-09-13 까지는 문단이 5~7개였고 **문항마다 한 문단씩**이었다(「어젯밤은 …」·「오늘은 …처럼 흘러갔다고 하셨어요」·
- *   「어제 몸 컨디션은 …」). 답을 하나씩 되읽어 주는 보고서처럼 읽혀서, 사용자 지시로 **하나의 디렉팅**으로 합쳤다.
- * 🚫 문항별로 문단을 다시 늘리지 말 것 — `sam.test.ts` 가 문단 수를 3으로 못박는다.
+ * ⚠ 2026-09-13 의 두 번에 걸친 사용자 지시:
+ *   ① 처음엔 문단이 5~7개였고 **문항마다 한 문단씩**이었다(「어젯밤은 …」·「오늘은 …처럼 흘러갔다고 하셨어요」·
+ *      「어제 몸 컨디션은 …」) — 답을 하나씩 되읽어 주는 보고서처럼 읽혔다.
+ *   ② 그걸 문단 셋으로 줄였더니 *"문단 셋으로 나누지 말고 하나로 해"* — **문단을 나누지 않는다.**
+ * 🚫 문단을 다시 나누지 말 것 — `sam.test.ts` 가 빈 줄(문단 구분)이 하나도 없음을 못박는다.
  */
 export function directing(ans: SamAnswerDone, body: Level | null, slot: number): Directing {
   const q = quadrantOf(ans.valence, ans.arousal);
@@ -179,5 +181,5 @@ export function directing(ans: SamAnswerDone, body: Level | null, slot: number):
   const advice = closing(q, body, slot) + (ans.dominance <= 2
     ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
     : "");
-  return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join("\n\n") };
+  return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" ") };
 }
