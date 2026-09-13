@@ -3,11 +3,20 @@ import { CHARACTERS, CHARACTER_DISPLAY_NAME, INTRO, characterOf, DEFAULT_CHARACT
 import { SYSTEM_CORE, SYSTEM_EXAMPLES } from "./risk";
 
 describe("CHARACTERS", () => {
-  it("4명, 남2·여2, id 중복 없음", () => {
-    expect(CHARACTERS).toHaveLength(4);
-    expect(CHARACTERS.filter((c) => c.gender === "female")).toHaveLength(2);
-    expect(CHARACTERS.filter((c) => c.gender === "male")).toHaveLength(2);
-    expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(4);
+  // 2026-09-13: 사용자가 그림을 주며 한 명 추가(4 → 5). 인원·성별 비율은 사양이 아니므로 숫자를 못박지 않는다.
+  it("id 가 겹치지 않고, 아바타 파일 경로가 id 와 짝이 맞는다", () => {
+    expect(CHARACTERS.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(CHARACTERS.length);
+    for (const c of CHARACTERS) {
+      expect(c.avatar, c.id).toBe(`/wellness/images/char-${c.id}.png`);
+      expect(c.color, c.id).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+
+  // ★ 고르는 화면은 그림만 보여준다(역할 고르기를 시키지 않는다 — 2026-09-13 사용자).
+  //   role 은 이미지가 깨졌을 때의 첫 글자로만 쓰이므로 비어 있으면 안 된다.
+  it("역할 이름은 화면에 안 나오지만, 이미지가 깨졌을 때 그릴 첫 글자는 있어야 한다", () => {
+    for (const c of CHARACTERS) expect(c.role.trim().length, c.id).toBeGreaterThan(0);
   });
   it("역할에 「선생님」이 붙지 않고, 개인 이름이 없다 — 표시 이름은 「마음과 대화」 하나(사용자 지시)", () => {
     expect(CHARACTER_DISPLAY_NAME).toBe("마음과 대화");
@@ -20,7 +29,7 @@ describe("CHARACTERS", () => {
       }
     }
   });
-  it("인사말은 4명 전부 같은 한 문장(INTRO), 역할 이름(옆반·수석교사·동기·상담교사·상담사)이 없고, 인물 설정이 직함을 밝히지 말라고 명시한다(사용자 지시)", () => {
+  it("인사말은 전부 같은 한 문장(INTRO), 역할 이름(옆반·수석교사·동기·상담교사·상담사)이 없고, 인물 설정이 직함을 밝히지 말라고 명시한다(사용자 지시)", () => {
     for (const c of CHARACTERS) {
       expect(c.intro, c.id).toBe(INTRO);
       for (const w of ["옆반", "수석교사", "동기", "상담교사", "상담사"]) expect(c.intro, c.id).not.toContain(w);
@@ -54,7 +63,7 @@ describe("characterOf / systemPromptFor", () => {
   });
   it("캐릭터마다 프롬프트가 다르다(페르소나가 실제로 반영된다)", () => {
     const ps = CHARACTERS.map((c) => systemPromptFor(c.id, 9));
-    expect(new Set(ps).size).toBe(4);
+    expect(new Set(ps).size).toBe(CHARACTERS.length);
   });
 });
 

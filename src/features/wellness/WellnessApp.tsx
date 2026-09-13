@@ -1308,9 +1308,10 @@ export default function WellnessApp() {
               <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>마음과 대화</div>
               <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요.<br />오늘 하루 선생님의 마음을 열어보세요.</div>
             </div>
-            <div style={sx("display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:0 4px")}>
+            <div style={{ ...sx("display:grid; gap:10px; padding:0 2px"), gridTemplateColumns: `repeat(${CHARACTERS.length}, 1fr)` }}>
               {CHARACTERS.map((c) => {
-                // 네 개 다 같은 흰 테두리 — 「지난번 상대」 보라 링은 뺀다(사용자 지시). 누르면 바로 새 대화라 고른 상태가 없다.
+                // 전부 같은 흰 테두리 — 「지난번 상대」 보라 링은 뺀다(사용자 지시). 누르면 바로 새 대화라 고른 상태가 없다.
+                // ★ 칸 수는 캐릭터 수를 따라간다 — 4개로 못박아 두면 한 명 늘 때 마지막 한 장이 혼자 다음 줄로 내려간다.
                 return (
                   <div key={c.id} onClick={() => startTalkWith(c.id)} style={{ ...sx("cursor:pointer; aspect-ratio:1; border-radius:50%; overflow:hidden; border:3px solid #fff; position:relative; display:flex; align-items:center; justify-content:center; font-weight:800; color:#2d5c6e; font-size:20px"), background: c.color, boxShadow: "0 2px 8px rgba(45,92,110,0.12)" }}>
                     {c.role.slice(0, 1)}
