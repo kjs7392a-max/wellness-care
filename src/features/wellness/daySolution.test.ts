@@ -112,3 +112,30 @@ describe("parqNotice — PAR-Q+ 안내가 온보딩에서 끝나지 않게", () 
     expect(new Set(all).size).toBe(1);
   });
 });
+
+describe("buildDaySolution — 마무리 문장은 부위를 말하지 않는다", () => {
+  // 마무리 문장은 세 직군이 공유한다. 거기서 「어깨」라고 말하면 행정(허리)·영양(다리) 제안과 어긋난다.
+  // 직군만 바꾼 세 문장의 **공통 꼬리**가 곧 마무리 문장이므로, 거기에 부위 이름이 없어야 한다.
+  const PARTS = ["어깨", "허리", "다리", "종아리", "손목", "눈", "목"];
+  const commonSuffix = (xs: string[]) => {
+    let n = 0;
+    while (n < Math.min(...xs.map((x) => x.length)) && new Set(xs.map((x) => x[x.length - 1 - n])).size === 1) n++;
+    return xs[0].slice(xs[0].length - n);
+  };
+
+  it("모든 조합에서 공통 꼬리에 부위 이름이 없다", () => {
+    for (const low of [false, true]) {
+      for (const slot of [0, 1, 2]) {
+        for (const isWeekend of [false, true]) {
+          for (const weatherPrefer of PREFERS) {
+            const xs = ROLES.map((role) => buildDaySolution({ role, slot, isWeekend, low, weatherPrefer, feelsTxt: "체감 25°" }));
+            const tail = commonSuffix(xs);
+            for (const part of PARTS) {
+              expect(tail, `low=${low}/slot${slot}/${isWeekend ? "주말" : "평일"}/${weatherPrefer} → ${tail}`).not.toContain(part);
+            }
+          }
+        }
+      }
+    }
+  });
+});

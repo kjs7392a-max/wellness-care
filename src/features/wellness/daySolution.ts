@@ -54,6 +54,12 @@ const BODY_LOW: Partial<Record<Role, Record<number, string>>> = {
 
 const WEEKEND_REST = "오늘은 쉬는 날이네요. 학교 일은 잠시 내려놓으셔도 돼요. 몸이 뻐근하면 그때 잠깐만 움직여도 충분해요. ";
 
+/**
+ * 마무리 문장 — **직군을 인자로 받지 않는다.** 세 직군이 같은 문장을 쓰므로
+ * 여기서 부위(어깨·허리·다리…)를 말하면 어느 직군에선 반드시 틀린 말이 된다.
+ * ⚠ 2026-09-13: 저강도 문구를 "어깨만 천천히 풀고"로 써 놨다가, 시간대 고정으로 행정(허리)·영양(다리) 제안이
+ *    같은 문장을 받으면서 드러났다. `daySolution.test.ts` 의 「마무리 문장은 부위를 말하지 않는다」가 막는다.
+ */
 function closing(a: DaySolutionArgs): string {
   const indoor = a.weatherPrefer === "indoor";
   if (a.isWeekend) {
@@ -69,8 +75,8 @@ function closing(a: DaySolutionArgs): string {
   if (a.slot === 2) {
     if (a.low) {
       return indoor
-        ? "바깥은 " + a.feelsTxt + "라 나가시는 건 권하지 않아요. 퇴근 전에 자리에 앉은 그대로 어깨만 천천히 풀고 나가셔도 충분합니다."
-        : "공기가 좋은 날이지만 무리하지 않으셔도 돼요. 퇴근 전에 앉은 그대로 어깨만 천천히 풀고 나가시면 충분합니다.";
+        ? "바깥은 " + a.feelsTxt + "라 나가시는 건 권하지 않아요. 퇴근 전에 자리에 앉은 그대로 가볍게 풀고 나가셔도 충분합니다."
+        : "공기가 좋은 날이지만 무리하지 않으셔도 돼요. 퇴근 전에 앉은 그대로 천천히 풀고 나가시면 충분합니다.";
     }
     return indoor
       ? "바깥은 " + a.feelsTxt + "라 나가시는 건 권하지 않아요. 대신 시원한 실내에서 3분만 풀어두시고, 걷고 싶으시면 해가 진 뒤가 좋겠어요."

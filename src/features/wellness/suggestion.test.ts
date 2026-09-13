@@ -1,42 +1,58 @@
 import { describe, expect, it } from "vitest";
-import { MVP_FIXED_SUGGESTION, resolveSuggestion } from "./suggestion";
-import { SHOULDER_RELEASE } from "./guide";
+import { DEMO_PINNED_SLOT, resolveSuggestion } from "./suggestion";
+import { ROLES, type Role } from "./data";
 
-describe("resolveSuggestion — MVP 고정(2026-09-13 해제됨)", () => {
-  // 시연 고정을 풀었다 — 직군을 골라도 제안이 그대로면 「어떤 일을 하고 계신가요?」가 값을 하지 않는다.
-  // 고정 경로 자체는 남겨 둔다(다시 묶어야 할 날이 온다). 아래 두 테스트가 그 경로를 지킨다.
-  it("플래그가 꺼져 있다 — 제안은 시각·요일·직군을 따른다", () => {
-    expect(MVP_FIXED_SUGGESTION).toBe(false);
+const ROLE_KEYS: Role[] = ["teacher", "admin", "care"];
+
+describe("resolveSuggestion — 시연용 시간대 고정", () => {
+  it("퇴근 전(slot 2)으로 못박혀 있다", () => {
+    expect(DEMO_PINNED_SLOT).toBe(2);
   });
-  it("고정 경로는 그대로 — 켜면 시각·요일·직군과 무관하게 「퇴근 전 어깨·목 풀기」 + 가이드 영상", () => {
-    const cases = [
-      { role: "teacher" as const, parqYes: false, hour: 8, dow: 1 },
-      { role: "admin" as const, parqYes: false, hour: 13, dow: 3 },
-      { role: "care" as const, parqYes: false, hour: 17, dow: 6 }, // 주말이어도
-    ];
-    for (const c of cases) {
-      const s = resolveSuggestion(c, true);
-      expect(s.item.title).toBe("퇴근 전 어깨·목 풀기");
-      expect(s.item.video).toBe(SHOULDER_RELEASE);
-      expect(s.slot).toBe(2);
-      expect(s.isWeekend).toBe(false); // 주말 문구·제목 변형이 끼어들지 않게
+
+  it("언제 열어도 그 직군의 「퇴근 전」 항목이 나온다 — 시각·요일 무관", () => {
+    for (const role of ROLE_KEYS) {
+      for (const [hour, dow] of [[8, 1], [13, 3], [17, 5], [10, 6], [21, 0]]) {
+        const s = resolveSuggestion({ role, parqYes: false, hour, dow });
+        expect(s.slot).toBe(2);
+        expect(s.isWeekend).toBe(false); // 「퇴근 전」 제목과 쉬는 날 문구가 부딪히지 않게
+        expect(s.item).toBe(ROLES[role].items[2]);
+      }
     }
   });
-  it("PAR-Q 에 걸리면 저강도판 — 역시 영상 있음", () => {
-    const s = resolveSuggestion({ role: "teacher", parqYes: true, hour: 17, dow: 2 }, true);
-    expect(s.item.title).toBe("퇴근 전 앉은 채로 어깨 내려놓기");
-    expect(s.item.video).toBe(SHOULDER_RELEASE);
+
+  // 2026-09-13: 직군까지 고정했더니 「어떤 일을 하고 계신가요?」가 화면에서 아무 일도 하지 않았다.
+  it("직군은 고정되지 않는다 — 셋이 서로 다른 제안을 받는다", () => {
+    const titles = ROLE_KEYS.map((role) => resolveSuggestion({ role, parqYes: false, hour: 17, dow: 1 }).item.title);
+    expect(new Set(titles).size).toBe(3);
+  });
+
+  it("PAR-Q 에 걸리면 같은 시간대의 저강도판", () => {
+    for (const role of ROLE_KEYS) {
+      const s = resolveSuggestion({ role, parqYes: true, hour: 17, dow: 1 });
+      expect(s.item).toBe(ROLES[role].low[2]);
+    }
+  });
+
+  // 시연에서 「지금 바로 시작하기」를 누르면 타이머가 아니라 가이드 영상이 떠야 한다(2026-09-13 사용자 지시).
+  it("고정된 시간대의 항목은 직군·강도와 무관하게 전부 가이드 영상을 갖는다", () => {
+    for (const role of ROLE_KEYS) {
+      for (const parqYes of [false, true]) {
+        const s = resolveSuggestion({ role, parqYes, hour: 17, dow: 1 });
+        expect(s.item.video, `${role}/${parqYes ? "저강도" : "평소"} — ${s.item.title}`).toBeDefined();
+      }
+    }
   });
 });
 
-describe("resolveSuggestion — 원래 설계(플래그 off)", () => {
+describe("resolveSuggestion — 고정을 풀면(원래 설계)", () => {
   it("시각으로 slot 이 갈린다", () => {
-    expect(resolveSuggestion({ role: "teacher", parqYes: false, hour: 8, dow: 1 }, false).slot).toBe(0);
-    expect(resolveSuggestion({ role: "teacher", parqYes: false, hour: 13, dow: 1 }, false).slot).toBe(1);
-    expect(resolveSuggestion({ role: "teacher", parqYes: false, hour: 17, dow: 1 }, false).slot).toBe(2);
+    expect(resolveSuggestion({ role: "teacher", parqYes: false, hour: 8, dow: 1 }, null).slot).toBe(0);
+    expect(resolveSuggestion({ role: "teacher", parqYes: false, hour: 13, dow: 1 }, null).slot).toBe(1);
+    expect(resolveSuggestion({ role: "teacher", parqYes: false, hour: 17, dow: 1 }, null).slot).toBe(2);
   });
+
   it("직군별 항목·주말 판정", () => {
-    const s = resolveSuggestion({ role: "admin", parqYes: false, hour: 8, dow: 6 }, false);
+    const s = resolveSuggestion({ role: "admin", parqYes: false, hour: 8, dow: 6 }, null);
     expect(s.item.title).toBe("문서작업 중간 30초 눈 운동");
     expect(s.isWeekend).toBe(true);
   });
