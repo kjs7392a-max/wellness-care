@@ -232,7 +232,7 @@ export default function WellnessApp() {
     const parqYes = Object.values(st.parq).filter(Boolean).length;
     const parqAll = Object.keys(st.parq).length === PARQ.length;
     // 제안 항목·시간대·주말 판정은 resolveSuggestion 한 곳 — MVP 시연 동안은 하나로 고정돼 있다(suggestion.ts 참고).
-    const sug = resolveSuggestion({ role: roleKey, parqYes: parqYes > 0, hour: st.now.getHours(), dow: st.now.getDay() });
+    const sug = resolveSuggestion({ role: roleKey, parqYes, hour: st.now.getHours(), dow: st.now.getDay() });
     const slot = sug.slot;
     const liveKey = st.live && st.live.key;
     const wxBase = WEATHER[(liveKey as WeatherKey) || "hot"] || WEATHER.hot;
@@ -450,7 +450,7 @@ export default function WellnessApp() {
                         <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
                           <div style={{ ...sx("font-size:12.5px; font-weight:600; line-height:1.5; text-wrap:pretty"), color: ac.text }}>{ROLES[k].picked}</div>
                           {/* 실제로 받게 될 제안 이름을 그대로 보여준다 — 데이터에서 뽑으므로 화면과 어긋날 수 없다. */}
-                          <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>예 · 「{(v.parqYes > 0 ? ROLES[k].low : ROLES[k].items)[v.slot].title}」</div>
+                          <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>예 · 「{resolveSuggestion({ role: k, parqYes: v.parqYes, hour: s.now.getHours(), dow: s.now.getDay() }).item.title}」</div>
                         </div>
                       </div>
                     )}

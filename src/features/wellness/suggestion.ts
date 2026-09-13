@@ -1,4 +1,4 @@
-import { ROLES, slotForHour, type Role, type StretchItem } from "./data";
+import { PARQ_REST_ITEM, parqTier, ROLES, slotForHour, type Role, type StretchItem } from "./data";
 
 /**
  * 홈 「AI 오늘의 제안」이 어느 항목을 내놓을지.
@@ -29,13 +29,22 @@ export interface Suggestion {
   item: StretchItem;
 }
 
+/**
+ * ★ `parqYes` 는 **개수**다(예전엔 boolean 이었다). 2026-09-13 사용자 지적 —
+ *   "예를 누르든 아니오를 누르든 변화가 없다 … 예가 2개 3개 4개 이상이면 다른 제안이 나와야 한다".
+ *   실제로 「예 1개」와 「예 7개」가 같은 항목을 받고 있었고, 교사·영양은 저강도판이 **같은 영상**이라 티도 안 났다.
+ *   단계는 `parqTier`(data.ts) 한 곳에서 정한다 — 문턱을 바꿔도 여기는 안 고쳐도 된다.
+ */
 export function resolveSuggestion(
-  args: { role: Role; parqYes: boolean; hour: number; dow: number },
+  args: { role: Role; parqYes: number; hour: number; dow: number },
   pinnedSlot: number | null = DEMO_PINNED_SLOT,
 ): Suggestion {
   const slot = pinnedSlot ?? slotForHour(args.hour);
   // 시간대를 못박은 동안은 요일도 평일로 본다(위 주석).
   const isWeekend = pinnedSlot === null && (args.dow === 0 || args.dow === 6);
+  const tier = parqTier(args.parqYes);
   const r = ROLES[args.role];
-  return { slot, isWeekend, item: (args.parqYes ? r.low : r.items)[slot] };
+  // 3단계는 직군을 보지 않는다 — 「어느 직군이냐」보다 「지금 움직여도 되느냐」가 먼저다.
+  const item = tier === 2 ? PARQ_REST_ITEM : (tier === 1 ? r.low : r.items)[slot];
+  return { slot, isWeekend, item };
 }

@@ -1,4 +1,4 @@
-import { LEAD_IN, PARQ_CONSULT, PARQ_LOW_NOTICE, type Role } from "./data";
+import { LEAD_IN, PARQ_CONSULT, PARQ_LOW_NOTICE, PARQ_REST_CONSULT, PARQ_REST_NOTICE, parqTier, type Role } from "./data";
 
 /**
  * 홈 「AI 오늘의 제안」 본문 한 단락.
@@ -106,11 +106,12 @@ export function buildDaySolution(a: DaySolutionArgs): string {
 /**
  * PAR-Q+ 결과 안내 — 「예」가 하나라도 있으면 홈에 **상시로** 붙는다(null 이면 안 그린다).
  *
- * 🚫 개수로 문턱을 나누지 않는다: 「예」 1개와 7개가 같은 안내를 받는다.
- *    시연용으로 그렇게 두기로 했고(2026-09-13 사용자 확정), 문항별 가중·중단 기준은 정식 발매 전 임상 감수 몫이다.
- *    바꿔야 할 날이 오면 **여기 한 곳**만 고치면 온보딩·홈이 함께 따라온다.
+ * 단계는 `parqTier`(data.ts) 한 곳에서 정한다 — 1단계는 강도를 낮추고, 2단계는 **내놓는 것 자체를 숨 고르기로 바꾼다.**
+ * 🚫 문항별 가중은 아직 없다(심장 「예」와 관절 「예」가 같은 무게) — 문턱과 함께 임상 감수 몫.
  */
 export function parqNotice(parqYes: number): string | null {
-  if (parqYes <= 0) return null;
+  const tier = parqTier(parqYes);
+  if (tier === 0) return null;
+  if (tier === 2) return PARQ_REST_NOTICE + " " + PARQ_REST_CONSULT;
   return PARQ_LOW_NOTICE + " " + PARQ_CONSULT;
 }

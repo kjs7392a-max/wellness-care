@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDaySolution, parqNotice, type DaySolutionArgs } from "./daySolution";
-import { WEATHER, type Role, type WeatherKey } from "./data";
+import { PARQ_TIER_AT, WEATHER, type Role, type WeatherKey } from "./data";
 
 const ROLES: Role[] = ["teacher", "admin", "care"];
 
@@ -106,11 +106,16 @@ describe("parqNotice — PAR-Q+ 안내가 온보딩에서 끝나지 않게", () 
     expect(txt).toContain("주치의");
   });
 
-  // 2026-09-13 사용자 확정: 시연용이라 개수로 가르지 않는다. 정식 발매 전 임상 감수에서 정한다.
-  // 이 테스트는 "그렇게 하기로 했다"는 사실을 못박는 것이지, 그것이 임상적으로 옳다는 뜻이 아니다.
-  it("지금은 1개든 7개든 같은 안내다(가중·게이팅 없음)", () => {
-    const all = [1, 2, 3, 4, 5, 6, 7].map(parqNotice);
-    expect(new Set(all).size).toBe(1);
+  // 2026-09-13: 개수로 단계를 나눴다(사용자 지적 "예가 2개 3개 4개 이상이면 다른 제안이 나와야").
+  // ⚠ 문턱 숫자는 임상 감수 대상이다 — 이 테스트는 "단계가 실제로 갈린다"만 못박는다.
+  it("「예」가 많으면 안내도 달라진다", () => {
+    expect(parqNotice(PARQ_TIER_AT.low)).not.toBe(parqNotice(PARQ_TIER_AT.rest));
+  });
+
+  it("여러 개일 때는 숨 고르기만 내놓는다고 말하고, 상담을 더 강하게 권한다", () => {
+    const txt = parqNotice(PARQ_TIER_AT.rest)!;
+    expect(txt).toContain("숨 고르기");
+    expect(txt).toContain("꼭 먼저 상의");
   });
 });
 
