@@ -68,7 +68,7 @@ export const ROLES: Record<Role, RoleContent> = {
     low: [
       { title: "앉은 자리에서 하는 목소리 이완 호흡", desc: "의자에 기대앉아 숨만 고르면 됩니다. 일어나지 않으셔도 돼요." },
       { title: "앉은 채로 목·어깨 천천히 풀기", desc: "의자에 앉은 그대로, 고개를 아주 천천히 기울이는 동작만 있어요." },
-      { title: "퇴근 전 앉은 채로 어깨 내려놓기", desc: "자리에 앉은 그대로, 어깨만 천천히 풀고 나가시면 돼요.", video: SHOULDER_RELEASE },
+      { title: "퇴근 전 목소리·숨 고르기", desc: "하루 종일 쓴 목을 숨으로 가라앉히는 시간이에요. 앉은 그대로 코로 4초, 입으로 6초.", video: PROGRAM_VIDEOS.p10 },
     ],
   },
   admin: {
@@ -100,7 +100,7 @@ export const ROLES: Record<Role, RoleContent> = {
     low: [
       { title: "앉은 채로 손목 쉬게 하기", desc: "손목을 무릎에 얹고 아주 작게 돌리는 동작이에요." },
       { title: "앉아서 하는 종아리 이완", desc: "의자에 앉아 발끝만 천천히 움직이면 됩니다." },
-      { title: "퇴근 전 앉아서 다리 쉬게 하기", desc: "자리에 앉은 채로 다리만 편하게 두면 되는 자세예요.", video: PROGRAM_VIDEOS.p9 },
+      { title: "퇴근 전 앉아서 숨 고르기", desc: "다리는 편하게 두고 숨만 천천히 고르면 됩니다. 배에 손을 얹어 보세요.", video: PROGRAM_VIDEOS.p11 },
     ],
   },
 };
@@ -209,9 +209,9 @@ export function parqTier(parqYes: number): 0 | 1 | 2 {
  * ★ 새로 만들지 않고 라이브러리의 「숨 고르기」 영상을 그대로 쓴다(p11).
  */
 export const PARQ_REST_ITEM: StretchItem = {
-  title: "앉은 자리에서 숨 고르기",
-  desc: "일어나지 않으셔도 돼요. 의자에 기대앉아 숨만 천천히 쉬면 됩니다.",
-  video: PROGRAM_VIDEOS.p11,
+  title: "앉은 자리에서 이완 호흡",
+  desc: "일어나지 않으셔도 돼요. 의자에 기대앉아 4초 들이쉬고 8초 길게 내쉬면 됩니다.",
+  video: PROGRAM_VIDEOS.p12,
 };
 
 export const PARQ_LOW_NOTICE = "안전 확인에서 해당되는 항목이 있어 앉은 자리에서 하는 낮은 강도만 제안해 드려요.";

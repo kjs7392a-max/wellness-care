@@ -85,3 +85,17 @@ describe("resolveSuggestion — PAR-Q+ 「예」 개수로 단계가 갈린다 (
     expect(PARQ_REST_ITEM.video).toBeDefined();
   });
 });
+
+describe("resolveSuggestion — 단계마다 영상이 실제로 달라야 한다 (2026-09-13 사용자 지적)", () => {
+  // 「예를 누르든 아니오를 누르든 변화가 없다」의 정체가 이것이었다 —
+  // 제목·라이브러리 개수는 바뀌는데 **선생님이 보는 영상**이 같았다(교사·영양).
+  // 🚫 제목만 바꿔 놓고 「달라졌다」고 하지 말 것.
+  it("직군마다 0·1·2단계의 영상이 전부 다르다", () => {
+    for (const role of ROLE_KEYS) {
+      const vids = [0, PARQ_TIER_AT.low, PARQ_TIER_AT.rest]
+        .map((n) => resolveSuggestion({ role, parqYes: n, hour: 17, dow: 1 }).item.video);
+      expect(vids.every(Boolean), `${role} — 영상 없는 단계가 있다`).toBe(true);
+      expect(new Set(vids).size, `${role} — ${vids.map((v) => v!.src.split("/").pop()).join(" / ")}`).toBe(3);
+    }
+  });
+});
