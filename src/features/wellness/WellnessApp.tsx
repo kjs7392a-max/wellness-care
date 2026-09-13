@@ -436,16 +436,19 @@ export default function WellnessApp() {
             <div style={sx("display:flex; flex-direction:column; gap:10px")}>
               {(Object.keys(ROLES) as Role[]).map((k) => {
                 const on = v.roleKey === k && !!s.role;
+                // 2026-09-13 사용자 지시: 테두리를 진하게 + 세 카드의 색을 나눈다.
+                // 안 고른 카드도 자기 색을 갖되 같은 색을 옅게(알파) 쓴다 — 새 hex 를 만들지 않으려는 것이다(data.ts 주석).
+                const ac = ROLES[k].accent;
                 return (
-                  <div key={k} onClick={() => patch({ role: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:5px; padding:17px 18px; border-radius:16px; border:1.5px solid; transition:all 0.2s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#c4b8ec" : "#c9d6dc" }}>
+                  <div key={k} onClick={() => patch({ role: k })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; gap:5px; padding:17px 18px; border-radius:16px; border:2px solid; transition:all 0.2s"), background: on ? ac.line + "14" : "#fff", borderColor: on ? ac.line : ac.line + "b3" }}>
                     <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{ROLES[k].label}</div>
                     <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ROLES[k].hint}</div>
                     {/* 2026-09-13: 고른 자리에서 바로 "무엇이 달라지는가"를 말한다. 색만 살짝 바뀌면 고른 티가 안 난다(사용자 지적). */}
                     {on && (
-                      <div style={sx("display:flex; align-items:flex-start; gap:7px; margin-top:4px; padding-top:9px; border-top:1px solid #cfc5ea")}>
-                        <div style={sx("flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; background:#7a6bc4; color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center")}>✓</div>
+                      <div style={{ ...sx("display:flex; align-items:flex-start; gap:7px; margin-top:4px; padding-top:9px; border-top:1px solid"), borderTopColor: ac.line + "59" }}>
+                        <div style={{ ...sx("flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center"), background: ac.text }}>✓</div>
                         <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
-                          <div style={sx("font-size:12.5px; font-weight:600; color:#5a4a9c; line-height:1.5; text-wrap:pretty")}>{ROLES[k].picked}</div>
+                          <div style={{ ...sx("font-size:12.5px; font-weight:600; line-height:1.5; text-wrap:pretty"), color: ac.text }}>{ROLES[k].picked}</div>
                           {/* 실제로 받게 될 제안 이름을 그대로 보여준다 — 데이터에서 뽑으므로 화면과 어긋날 수 없다. */}
                           <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>예 · 「{(v.parqYes > 0 ? ROLES[k].low : ROLES[k].items)[v.slot].title}」</div>
                         </div>
