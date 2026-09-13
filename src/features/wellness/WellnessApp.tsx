@@ -44,8 +44,12 @@ interface State {
   loginId: string;
   loginPw: string;
   ob: number;
-  tab: "home" | "records" | "settings";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month";
+  /**
+   * 아래 탭. 2026-09-13 사용자 지시로 바뀌었다 — 설정은 **상단 톱니**로 빠지고, 기록 탭은 없앴다.
+   * 홈 · 데일리케어(신체·마음 카드) · my(주간 기록). 월간은 홈 카드의 「월간 기록 보기」 칩이 연다.
+   */
+  tab: "home" | "daily" | "my";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings";
   /** 오늘의 마음카드(SAM) 답 — 기분·긴장 1~5. 둘 다 있으면 오늘 기록 */
   sam: SamAnswer;
   minutes: number;
@@ -309,8 +313,8 @@ export default function WellnessApp() {
           {!v.authed && renderLogin()}
           {v.onboarding && renderOnboarding()}
           {v.authed && !v.onboarding && s.tab === "home" && renderHome()}
-          {v.authed && !v.onboarding && s.tab === "records" && renderRecords()}
-          {v.authed && !v.onboarding && s.tab === "settings" && renderSettings()}
+          {v.authed && !v.onboarding && s.tab === "daily" && renderDaily()}
+          {v.authed && !v.onboarding && s.tab === "my" && renderCondition(true)}
           {v.authed && !v.onboarding && renderTabs()}
 
           {s.sheet === "picture" && renderPicture()}
@@ -319,7 +323,8 @@ export default function WellnessApp() {
           {s.sheet === "mind" && renderMind()}
           {s.sheet === "talk" && renderTalk()}
           {s.sheet === "condition" && renderCondition()}
-          {/* 월간은 「기록」 탭과 **같은 함수**를 시트 모양으로 부른다 — 같은 화면을 두 번 만들지 않는다(2026-09-13 사용자 지시). */}
+          {s.sheet === "settings" && renderSettings()}
+          {/* 월간 기록 — 홈 카드의 「월간 기록 보기」 칩만 연다. 2026-09-13 에 「기록」 탭이 없어지면서 이 시트가 유일한 입구가 됐다. */}
           {s.sheet === "month" && renderRecords(true)}
         </div>
       </div>
@@ -365,9 +370,9 @@ export default function WellnessApp() {
     const obBackLabel = s.parqOnly ? "취소" : s.ob === OB_AT.promise ? "나중에 볼게요" : "이전";
     const obNext = () => {
       if (!canNext) return;
-      patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
+      patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
     };
-    const obBack = () => patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, tab: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 });
+    const obBack = () => patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 });
 
     return (
       <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
@@ -533,11 +538,13 @@ export default function WellnessApp() {
             <div style={sx("font-size:12.5px; color:#8ba8b3; font-weight:500")}>{todayLabel} · {v.role.label}</div>
             <div style={sx("font-size:20px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; text-wrap:pretty")}>{greeting}</div>
           </div>
-          <div onClick={() => patch({ tab: "settings" })} style={sx("cursor:pointer; width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:1px solid #c9d6dc; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(45,92,110,0.06)")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#7a6bc4" strokeWidth="1.9" strokeLinecap="round" style={{ width: 19, height: 19 }}>
+          {/* 2026-09-13 사용자 지시: 아래 탭에서 설정을 빼는 대신 **톱니 옆에 「설정」이라고 적는다** — 아이콘만으로는 못 찾는다. */}
+          <div onClick={() => patch({ sheet: "settings" })} style={sx("cursor:pointer; flex:none; height:42px; padding:0 13px 0 10px; border-radius:999px; background:#fff; border:1px solid #c9d6dc; display:flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(45,92,110,0.06)")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#7a6bc4" strokeWidth="1.9" strokeLinecap="round" style={{ width: 19, height: 19, flex: "none" }}>
               <path d="M12 4.2l1.5 1.9 2.4-.5.5 2.4 1.9 1.5-1.1 2.2 1.1 2.2-1.9 1.5-.5 2.4-2.4-.5L12 19.8l-1.5-1.9-2.4.5-.5-2.4-1.9-1.5L6.8 12 5.7 9.8l1.9-1.5.5-2.4 2.4.5z" strokeLinejoin="round" />
               <circle cx="12" cy="12" r="2.6" />
             </svg>
+            <div style={sx("font-size:12.5px; font-weight:700; color:#7a6bc4; white-space:nowrap")}>설정</div>
           </div>
         </div>
 
@@ -676,7 +683,28 @@ export default function WellnessApp() {
           )}
         </div>
 
-        {/* 2단 타일 */}
+        {/* 2단 타일(신체 건강·마음 건강)은 2026-09-13 사용자 지시로 **데일리케어 탭**으로 옮겼다 — renderDaily 참고. 🚫 홈에 되돌리지 말 것.
+        */}
+
+      </div>
+    );
+  }
+
+  /**
+   * 월별 기록장. `inSheet` 면 홈 위에 덮는 시트 모양으로.
+   * ⚠ 2026-09-13 에 「기록」 탭이 없어져 지금은 **시트로만** 불린다(`inSheet=false` 경로는 탭을 되살릴 때를 위해 남겨 둔다).
+   */
+  /**
+   * 데일리케어 — 신체 건강·마음 건강으로 들어가는 자리(2026-09-13 사용자 지시로 홈에서 옮겨 왔다).
+   * 🚫 홈에 같은 카드를 다시 두지 말 것.
+   */
+  function renderDaily() {
+    return (
+      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 96px")}>
+        <div style={sx("display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
+          <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
+          <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
+        </div>
         <div style={sx("display:grid; grid-template-columns:1fr 1fr; gap:11px")}>
           <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
             <div style={sx("display:flex; align-items:flex-start; gap:8px")}>
@@ -685,7 +713,7 @@ export default function WellnessApp() {
             </div>
             <div style={sx("display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:14.5px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
-              <div style={sx("font-size:12px; color:#9a5f4c; line-height:1.5")}>짧은 몸풀기 {v.libList.length}가지</div>
+              <div style={sx("font-size:12px; color:#9a5f4c; line-height:1.5; text-wrap:pretty")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
             </div>
           </div>
           <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; flex-direction:column; gap:18px; padding:16px; border-radius:22px; background:linear-gradient(150deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
@@ -695,16 +723,14 @@ export default function WellnessApp() {
             </div>
             <div style={sx("display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:14.5px; font-weight:700; color:#4a3f80")}>마음 건강</div>
-              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5")}>대화 · 오늘의 마음카드</div>
+              <div style={sx("font-size:12px; color:#5f5397; line-height:1.5; text-wrap:pretty")}>마음건강을 위한 짧은 대화와 마음카드</div>
             </div>
           </div>
         </div>
-
       </div>
     );
   }
 
-  /** `inSheet` 면 홈 위에 덮는 시트 모양으로 — 탭으로 쓸 때와 **내용은 같은 코드**다. */
   function renderRecords(inSheet = false) {
     // 월별 기록장 — 원장(하루 한 줄)에서 고른 달만 모아 요약. 규칙은 monthly.ts(condition.ts 주간 규칙 재사용).
     const records = mockRecordsUntil(s.now);
@@ -928,7 +954,7 @@ export default function WellnessApp() {
           <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>월간 기록</div>
-            <div style={sx("font-size:11px; color:#8ba8b3")}>달을 넘겨 볼 수 있어요 · 「기록」 탭과 같은 내용입니다</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>달을 넘겨 볼 수 있어요 · 하루씩 보기는 my 탭에서</div>
           </div>
         </div>
         {body}
@@ -936,11 +962,19 @@ export default function WellnessApp() {
     );
   }
 
+  /**
+   * 설정 — 2026-09-13 사용자 지시로 **아래 탭에서 빠지고 상단 톱니(「설정」 글자 포함)가 여는 시트**가 됐다.
+   * ⚠ 시트 자리에 그냥 두면 덮이지 않고 아래에 쌓인다(실측) → 다른 시트들처럼 `position:absolute; inset:0` 껍데기가 필요하다.
+   */
   function renderSettings() {
     const parqStatus = v.parqAll ? (v.parqYes ? "낮은 강도" : "평소 강도") : "미완료";
     return (
-      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 96px")}>
-        <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>설정</div>
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; font-size:15px; font-weight:700; color:#2d5c6e")}>설정</div>
+        </div>
+      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 28px")}>
 
         <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#f2edfa; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>개인정보 5대 원칙</div>
@@ -999,27 +1033,36 @@ export default function WellnessApp() {
           <div onClick={() => patch({ authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
+      </div>
     );
   }
 
+  /** 아래 탭 — 홈 · 데일리케어 · my. 설정은 상단 톱니로 빠졌다(2026-09-13 사용자 지시). */
   function renderTabs() {
-    const homeInk = s.tab === "home" ? "#7a6bc4" : "#b5c8d0";
-    const recInk = s.tab === "records" ? "#7a6bc4" : "#b5c8d0";
-    const setInk = s.tab === "settings" ? "#7a6bc4" : "#b5c8d0";
+    const ink = (t: State["tab"]) => (s.tab === t ? "#7a6bc4" : "#b5c8d0");
+    const tab = (t: State["tab"], label: string, icon: (c: string) => React.ReactNode) => {
+      const c = ink(t);
+      return (
+        <div onClick={() => patch({ tab: t })} style={sx("flex:1; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px")}>
+          {icon(c)}
+          <div style={{ ...sx("font-size:11px; font-weight:600"), color: c }}>{label}</div>
+        </div>
+      );
+    };
     return (
       <div style={sx("position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; padding:10px 16px 26px; background:rgba(255,255,255,0.96); border-top:1px solid #eaf2f5; backdrop-filter:blur(12px)")}>
-        <div onClick={() => patch({ tab: "home" })} style={sx("flex:1; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px")}>
-          <div style={{ ...sx("width:20px; height:20px; border-radius:6px; border:2px solid"), borderColor: homeInk }} />
-          <div style={{ ...sx("font-size:11px; font-weight:600"), color: homeInk }}>홈</div>
-        </div>
-        <div onClick={() => patch({ tab: "records" })} style={sx("flex:1; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px")}>
-          <div style={{ ...sx("width:20px; height:20px; border-radius:50%; border:2px solid"), borderColor: recInk }} />
-          <div style={{ ...sx("font-size:11px; font-weight:600"), color: recInk }}>기록</div>
-        </div>
-        <div onClick={() => patch({ tab: "settings" })} style={sx("flex:1; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px")}>
-          <div style={{ ...sx("width:20px; height:6px; border-radius:3px; border:2px solid; margin-top:7px"), borderColor: setInk }} />
-          <div style={{ ...sx("font-size:11px; font-weight:600"), color: setInk }}>설정</div>
-        </div>
+        {tab("home", "홈", (c) => <div style={{ ...sx("width:20px; height:20px; border-radius:6px; border:2px solid"), borderColor: c }} />)}
+        {tab("daily", "데일리케어", (c) => (
+          <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+            <path d="M12 20s-7-4.4-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.6 12 20 12 20z" />
+          </svg>
+        ))}
+        {tab("my", "my", (c) => (
+          <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+            <circle cx="12" cy="8.5" r="3.4" />
+            <path d="M5 19.5c1.1-3.3 3.7-5 7-5s5.9 1.7 7 5" />
+          </svg>
+        ))}
       </div>
     );
   }
@@ -1296,7 +1339,11 @@ export default function WellnessApp() {
     );
   }
 
-  function renderCondition() {
+  /**
+   * 주간 기록. `asTab` 이면 아래 탭(my)의 화면으로 — 홈에서 칩으로 열면 시트, my 탭에서는 그대로 한 장.
+   * 내용은 **같은 코드**다(2026-09-13 사용자 지시로 my 탭이 이 화면을 쓴다).
+   */
+  function renderCondition(asTab = false) {
     const close = () => patch({ sheet: null });
     const box = (l: (typeof v.cond)["overall"]) => (l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" });
     const oc = box(v.cond.dayOverall);
@@ -1308,16 +1355,8 @@ export default function WellnessApp() {
       return flow.map((_, i) => names[(d.getDay() - (flow.length - 1 - i) + 14) % 7]);
     })();
     // ⚠ 어제 한 장만 그리던 `axis` 헬퍼는 2026-09-13 일별 보기로 바뀌며 지웠다(같은 것을 두 모양으로 두지 않는다).
-    return (
-      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
-        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
-          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>주간 기록</div>
-            <div style={sx("font-size:11px; color:#8ba8b3")}>지난 7일을 하루씩 · 단계는 선생님만 봅니다</div>
-          </div>
-        </div>
-        <div style={sx("flex:1; overflow-y:auto; padding:18px 18px 28px; display:flex; flex-direction:column; gap:14px")}>
+    const inner = (
+      <div style={{ ...sx("flex:1; overflow-y:auto; padding:18px 18px; display:flex; flex-direction:column; gap:14px"), paddingBottom: asTab ? 96 : 28 }}>
           {/* 종합 */}
           <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:18px 18px 16px; border-radius:20px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
             <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: oc.fg }}>{v.cond.yesterday}</div>
@@ -1383,6 +1422,28 @@ export default function WellnessApp() {
             })}
           </div>
         </div>
+    );
+    if (asTab) {
+      return (
+        <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
+          <div style={sx("flex:none; padding:14px 20px 8px; display:flex; flex-direction:column; gap:4px")}>
+            <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>주간 기록</div>
+            <div style={sx("font-size:12.5px; color:#8ba8b3")}>지난 7일을 하루씩 · 단계는 선생님만 봅니다</div>
+          </div>
+          {inner}
+        </div>
+      );
+    }
+    return (
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>주간 기록</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>지난 7일을 하루씩 · 단계는 선생님만 봅니다</div>
+          </div>
+        </div>
+        {inner}
       </div>
     );
   }
