@@ -45,7 +45,7 @@ interface State {
   loginPw: string;
   ob: number;
   tab: "home" | "records" | "settings";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month";
   /** 오늘의 마음카드(SAM) 답 — 기분·긴장 1~5. 둘 다 있으면 오늘 기록 */
   sam: SamAnswer;
   minutes: number;
@@ -319,6 +319,8 @@ export default function WellnessApp() {
           {s.sheet === "mind" && renderMind()}
           {s.sheet === "talk" && renderTalk()}
           {s.sheet === "condition" && renderCondition()}
+          {/* 월간은 「기록」 탭과 **같은 함수**를 시트 모양으로 부른다 — 같은 화면을 두 번 만들지 않는다(2026-09-13 사용자 지시). */}
+          {s.sheet === "month" && renderRecords(true)}
         </div>
       </div>
     </div>
@@ -573,10 +575,11 @@ export default function WellnessApp() {
               </div>
               {/* 2026-09-13 사용자 지시: 「상세보기」를 없애고 주간·월간 두 칩으로. 카드 전체를 누르는 동작도 없앴다
                   — 칩이 각각 다른 곳으로 가므로 어디를 눌렀는지가 분명해야 한다.
-                  월간은 「기록」 탭으로 보낸다 — 같은 화면을 한 번 더 만들면 두 곳이 갈린다. */}
+                  월간은 홈에 그대로 머문 채 시트로 띄운다(사용자 지시 "기록 보기로 가는 게 아니고 내용만 가져오게").
+                  ★그 시트는 「기록」 탭과 **같은 renderRecords** 를 부른다 — 같은 화면을 한 번 더 만들면 두 곳이 갈린다. */}
               <div style={sx("display:flex; gap:8px")}>
                 {navChip("주간 기록 보기", () => patch({ sheet: "condition" }), c.fg)}
-                {navChip("월간 기록 보기", () => patch({ tab: "records" }), c.fg)}
+                {navChip("월간 기록 보기", () => patch({ sheet: "month" }), c.fg)}
               </div>
             </div>
           );
@@ -698,7 +701,8 @@ export default function WellnessApp() {
     );
   }
 
-  function renderRecords() {
+  /** `inSheet` 면 홈 위에 덮는 시트 모양으로 — 탭으로 쓸 때와 **내용은 같은 코드**다. */
+  function renderRecords(inSheet = false) {
     // 월별 기록장 — 원장(하루 한 줄)에서 고른 달만 모아 요약. 규칙은 monthly.ts(condition.ts 주간 규칙 재사용).
     const records = mockRecordsUntil(s.now);
     const range = monthRange(records, s.now);
@@ -742,9 +746,10 @@ export default function WellnessApp() {
       </div>
     );
 
-    return (
-      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:13px; padding:14px 20px 96px")}>
-        <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>나의 기록</div>
+    const body = (
+      <div style={{ ...sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:13px; padding:14px 20px"), paddingBottom: inSheet ? 28 : 96 }}>
+        {/* 시트로 열 때는 위 머리줄이 제목을 맡으므로 여기 제목은 안 그린다. */}
+        {!inSheet && <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>나의 기록</div>}
 
         {/* 월 넘기기 — 첫 기록 달 ~ 이번 달 */}
         <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:10px")}>
@@ -911,6 +916,19 @@ export default function WellnessApp() {
             </div>
           </div>
         )}
+      </div>
+    );
+    if (!inSheet) return body;
+    return (
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>월간 기록</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>달을 넘겨 볼 수 있어요 · 「기록」 탭과 같은 내용입니다</div>
+          </div>
+        </div>
+        {body}
       </div>
     );
   }
