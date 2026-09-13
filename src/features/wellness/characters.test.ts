@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, CHARACTER_DISPLAY_NAME, INTRO, characterOf, DEFAULT_CHARACTER, isCharacterId, systemPromptFor } from "./characters";
+import { CHARACTERS, CHARACTER_DISPLAY_NAME, INTRO, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, isCharacterId, systemPromptFor } from "./characters";
 import { SYSTEM_CORE, SYSTEM_EXAMPLES } from "./risk";
 
 describe("CHARACTERS", () => {
@@ -75,5 +75,37 @@ describe("SYSTEM_EXAMPLES — 좋은 답 예시", () => {
     for (const w of ["우울증", "진단", "심리검사", "치료", "스트레스 지수", "인지 재구성", "반영"]) expect(body, w).not.toContain(w);
     expect(/\p{Extended_Pictographic}/u.test(SYSTEM_EXAMPLES)).toBe(false);
     expect(answers.some((l) => !l.trim().endsWith("?"))).toBe(true);
+  });
+});
+
+describe("charactersInDisplayOrder — 윗줄 여성 · 아랫줄 남성, 각 줄 나이순 (2026-09-13 사용자 지시)", () => {
+  it("여성이 모두 남성보다 앞에 온다", () => {
+    const order = charactersInDisplayOrder();
+    const lastFemale = order.map((c) => c.gender).lastIndexOf("female");
+    const firstMale = order.map((c) => c.gender).indexOf("male");
+    expect(firstMale).toBeGreaterThan(lastFemale);
+  });
+
+  it("같은 성별 안에서는 나이가 적은 쪽이 앞", () => {
+    for (const g of ["female", "male"] as const) {
+      const ages = charactersInDisplayOrder().filter((c) => c.gender === g).map((c) => c.age);
+      expect(ages).toEqual([...ages].sort((a, b) => a - b));
+    }
+  });
+
+  // 화면이 3열로 그릴 때 「윗줄 = 여성」이 성립하려면 여성이 정확히 3명이어야 한다.
+  // 인원 구성이 바뀌면 줄이 어긋나므로 여기서 먼저 빨개진다.
+  it("3열 기준 첫 줄이 전부 여성이다", () => {
+    const order = charactersInDisplayOrder();
+    expect(order.length).toBe(6);
+    expect(order.slice(0, 3).every((c) => c.gender === "female")).toBe(true);
+    expect(order.slice(3).every((c) => c.gender === "male")).toBe(true);
+  });
+
+  it("나이는 페르소나에 적힌 나이대와 어긋나지 않는다", () => {
+    for (const c of charactersInDisplayOrder()) {
+      const decade = Math.floor(c.age / 10) * 10;
+      expect(c.persona, `${c.id}(${c.age}세)`).toContain(`${decade}대`);
+    }
   });
 });

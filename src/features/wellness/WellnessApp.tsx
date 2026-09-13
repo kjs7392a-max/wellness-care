@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
-import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, DEFAULT_CHARACTER, type CharacterId } from "./characters";
+import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
 import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, flowText, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion } from "./suggestion";
@@ -1315,7 +1315,7 @@ export default function WellnessApp() {
               const cols = CHARACTERS.length <= 5 ? CHARACTERS.length : 3;
               return (
             <div style={{ ...sx("display:grid; gap:12px; padding:0 2px"), gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-              {CHARACTERS.map((c) => {
+              {charactersInDisplayOrder().map((c) => {
                 // 전부 같은 흰 테두리 — 「지난번 상대」 보라 링은 뺀다(사용자 지시). 누르면 바로 새 대화라 고른 상태가 없다.
                 // ★ 칸 수는 캐릭터 수를 따라간다 — 4개로 못박아 두면 한 명 늘 때 마지막 한 장이 혼자 다음 줄로 내려간다.
                 return (

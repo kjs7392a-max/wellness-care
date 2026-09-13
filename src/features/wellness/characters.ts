@@ -24,7 +24,10 @@ export interface Character {
   role: string;
   /** ⚠ 지금 어디서도 안 쓰인다(설계 의도 보관용). 🚫 이걸 화면에 꺼내면 「역할 고르기」가 된다. */
   title: string;
+  /** 고르는 화면의 **줄**을 가른다 — 윗줄 여성, 아랫줄 남성(2026-09-13 사용자 지시). */
   gender: "female" | "male";
+  /** 대표 나이. 화면에 안 나오고 **같은 줄 안의 차례**를 정하는 데만 쓴다(나이순, 사용자 지시). 페르소나 문장의 나이대와 맞춘다. */
+  age: number;
   /** ⚠ 지금 어디서도 안 쓰인다(설계 의도 보관용). */
   blurb: string;
   /** 아바타 색(이미지 없을 때 배경) */
@@ -46,6 +49,7 @@ export const CHARACTERS: Character[] = [
     role: "옆반 동료",
     title: "교사 · 같은 학년",
     gender: "female",
+    age: 34,
     blurb: "오늘 있었던 일을 그대로 말해도 되는 사람. 마음부터 알아줘요.",
     color: "#f2c9b0",
     avatar: "/wellness/images/char-peer.png",
@@ -61,6 +65,7 @@ export const CHARACTERS: Character[] = [
     role: "수석교사",
     title: "교직 20년",
     gender: "female",
+    age: 47,
     blurb: "학부모·관리자·동료 문제, 돌려 말하지 않고 같이 정리해요.",
     color: "#c9d8ec",
     avatar: "/wellness/images/char-senior.png",
@@ -76,6 +81,7 @@ export const CHARACTERS: Character[] = [
     role: "동기",
     title: "교사 · 임용 동기",
     gender: "male",
+    age: 31,
     blurb: "무겁게 안 가요. 웃으면서 털어내고 싶은 날에.",
     color: "#cfe6d8",
     avatar: "/wellness/images/char-buddy.png",
@@ -91,6 +97,7 @@ export const CHARACTERS: Character[] = [
     role: "상담교사",
     title: "전문상담교사",
     gender: "male",
+    age: 45,
     blurb: "생각이 엉킨 날, 천천히 한 가닥씩. 잠·호흡·몸도 같이 봐요.",
     color: "#dcd3ee",
     avatar: "/wellness/images/char-counselor.png",
@@ -107,6 +114,7 @@ export const CHARACTERS: Character[] = [
     role: "듣는 사람",
     title: "—",
     gender: "male",
+    age: 52,
     blurb: "서두르지 않고 끝까지 들어요.",
     color: "#cfdcea",
     avatar: "/wellness/images/char-listener.png",
@@ -123,6 +131,7 @@ export const CHARACTERS: Character[] = [
     role: "밝은 사람",
     title: "—",
     gender: "female",
+    age: 28,
     blurb: "작은 것도 같이 기뻐해 줘요.",
     color: "#f0e3bb",
     avatar: "/wellness/images/char-cheer.png",
@@ -134,6 +143,16 @@ export const CHARACTERS: Character[] = [
     ].join("\n"),
   },
 ];
+
+/**
+ * 고르는 화면에 놓을 차례 — **윗줄 여성 · 아랫줄 남성, 각 줄은 나이순**(2026-09-13 사용자 지시).
+ * 배열에 적힌 순서가 아니라 이 함수가 정한다 — 캐릭터를 더할 때 자리를 손으로 맞추지 않게.
+ * ⚠ 「윗줄/아랫줄」은 화면이 3열로 그릴 때(= 여섯 명) 성립한다. 인원이 3·3 이 아니게 되면 줄이 어긋나므로 그때 다시 볼 것.
+ */
+export function charactersInDisplayOrder(): Character[] {
+  const rank = (c: Character) => (c.gender === "female" ? 0 : 1);
+  return [...CHARACTERS].sort((a, b) => rank(a) - rank(b) || a.age - b.age);
+}
 
 export const DEFAULT_CHARACTER: CharacterId = "peer";
 
