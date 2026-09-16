@@ -684,17 +684,17 @@ export default function WellnessApp() {
           ) : (
             <>
               <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
-              {/* 지금 바로 시작하기 — 3개 중 고른다(2026-09-17 사용자 지시). 첫째 = 지금 시간대에 맞는 항목(진하게), 나머지는 흰 버튼. */}
+              {/* 지금 바로 시작하기 — 시간대 항목 1(진하게) + 부위 프로세스 3(목·어깨·자세, 흰 버튼 · 부위를 앞에 붙인다). suggestion.ts 참고. */}
               <div style={sx("display:flex; flex-direction:column; gap:8px")}>
                 <div style={sx("font-size:10.5px; font-weight:700; color:#4a3f80; letter-spacing:0.03em; padding:0 2px")}>지금 바로 시작하기 · 하나를 골라 주세요</div>
-                {v.choices.map((it, i) => {
+                {v.choices.map(({ item: it, part }, i) => {
                   const first = i === 0;
                   return (
                     <div key={it.title} onClick={() => patch({ sheet: "content", program: null, pick: it })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:54px; padding:0 14px; border-radius:15px; border:1.5px solid"), background: first ? "#7a6bc4" : "#fff", borderColor: first ? "#7a6bc4" : "#cfc5ea", boxShadow: first ? "0 6px 16px rgba(122,107,196,0.32)" : "none" }}>
                       <div style={{ ...sx("flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center"), background: first ? "rgba(255,255,255,0.22)" : "#f2edfa" }}>
                         <div style={{ ...sx("width:0; height:0; margin-left:3px; border-top:6px solid transparent; border-bottom:6px solid transparent"), borderLeft: `10px solid ${first ? "#fff" : "#7a6bc4"}` }} />
                       </div>
-                      <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{v.isWeekend ? it.title.replace(/^퇴근 전 /, "") : it.title}</div>
+                      <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{part && <><span style={sx("color:#7a6bc4")}>{part}</span>{" · "}</>}{v.isWeekend && first ? it.title.replace(/^퇴근 전 /, "") : it.title}</div>
                       <div style={{ ...sx("flex:none; font-size:16px"), color: first ? "rgba(255,255,255,0.8)" : "#7a6bc4" }}>›</div>
                     </div>
                   );

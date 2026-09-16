@@ -98,26 +98,43 @@ describe("resolveSuggestion — 단계마다 영상이 실제로 달라야 한�
   });
 });
 
-// 2026-09-17 사용자 지시: 「지금 바로 시작하기」를 3개 정도로 고를 수 있게.
-describe("suggestionChoices — 고를 수 있는 항목", () => {
-  it("0·1단계 = 그 직군의 세 항목 전부, 시간대에 맞는 것이 첫째", () => {
+// 2026-09-17 사용자 지시: 「지금 바로 시작하기」를 고를 수 있게 → 처음엔 직군의 세 시간대 항목을 늘어놓았는데
+//   아침에 「4교시 후…」「퇴근 전…」이 같이 떠 말이 안 됐다(사용자 지적) → **시간대 항목 1 + 부위 프로세스 3(목·어깨·자세)**.
+import { PROGRAMS } from "./data";
+describe("suggestionChoices — 시간대 1 + 부위 3", () => {
+  const byId = (id: string) => PROGRAMS.find((p) => p.id === id)!;
+  it("0·1단계 = 4개, 첫째는 그 시간대 항목(resolveSuggestion 과 같은 것), 나머지 셋은 목·어깨·자세 순", () => {
     for (const role of ROLE_KEYS) {
       for (const tier of [0, 1] as const) {
-        const pool = tier === 1 ? ROLES[role].low : ROLES[role].items;
-        for (const [hour, slot] of [[8, 0], [13, 1], [17, 2]] as const) {
+        for (const hour of [8, 13, 17]) {
           const c = suggestionChoices({ role, tier, hour, dow: 1 });
-          expect(c.length).toBe(3);
-          expect(c[0]).toBe(pool[slot]);
-          expect(new Set(c).size).toBe(3);
-          for (const it of pool) expect(c).toContain(it);
+          expect(c.length).toBe(4);
+          expect(c[0].item).toBe(resolveSuggestion({ role, tier, hour, dow: 1 }).item);
+          expect(c[0].part).toBeUndefined();
+          expect(c.slice(1).map((x) => x.part)).toEqual(["목", "어깨", "자세"]);
+          expect(new Set(c.map((x) => x.item)).size).toBe(4);
         }
       }
     }
   });
-  it("2단계(숨 고르기)는 하나뿐 — 직군 항목을 섞지 않는다", () => {
-    for (const role of ROLE_KEYS) expect(suggestionChoices({ role, tier: 2, hour: 17, dow: 1 })).toEqual([PARQ_REST_ITEM]);
+  it("1단계(낮은 강도)의 부위 항목은 전부 low 인 라이브러리 항목", () => {
+    for (const x of suggestionChoices({ role: "teacher", tier: 1, hour: 8, dow: 1 }).slice(1)) {
+      const pg = PROGRAMS.find((p) => p === x.item);
+      expect(pg, x.item.title).toBeDefined();
+      expect(pg!.low).toBe(true);
+    }
   });
-  it("첫째가 resolveSuggestion 의 항목과 같다(두 곳이 갈리지 않는다)", () => {
-    for (const hour of [8, 13, 17]) expect(suggestionChoices({ role: "admin", tier: 0, hour, dow: 1 })[0]).toBe(resolveSuggestion({ role: "admin", tier: 0, hour, dow: 1 }).item);
+  it("부위 항목엔 시간대 이름이 없다 — 아침에 「퇴근 전」이 뜨지 않는다", () => {
+    for (const tier of [0, 1] as const) for (const x of suggestionChoices({ role: "teacher", tier, hour: 8, dow: 1 }).slice(1)) expect(x.item.title).not.toMatch(/수업 전|4교시|퇴근 전|잠들기 전/);
+  });
+  it("부위 항목은 전부 가이드 영상이 있다", () => {
+    for (const tier of [0, 1] as const) for (const x of suggestionChoices({ role: "admin", tier, hour: 13, dow: 1 }).slice(1)) expect(x.item.video, x.item.title).toBeDefined();
+  });
+  it("2단계(숨 고르기)는 하나뿐 — 부위 항목을 섞지 않는다", () => {
+    for (const role of ROLE_KEYS) expect(suggestionChoices({ role, tier: 2, hour: 17, dow: 1 }).map((x) => x.item)).toEqual([PARQ_REST_ITEM]);
+  });
+  it("자세 항목은 평소엔 전신 기지개, 낮은 강도엔 앉은 자리 허리(p15/p5)", () => {
+    expect(suggestionChoices({ role: "care", tier: 0, hour: 8, dow: 1 })[3].item).toBe(byId("p15"));
+    expect(suggestionChoices({ role: "care", tier: 1, hour: 8, dow: 1 })[3].item).toBe(byId("p5"));
   });
 });
