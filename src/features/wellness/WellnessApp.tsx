@@ -18,6 +18,7 @@ import {
 } from "./data";
 import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { greetingForHour } from "./greeting";
+import { PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, personaResult, type PersonaAnswers, type PersonaResult } from "./persona";
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -58,7 +59,12 @@ interface State {
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "daily" | "my";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaResult";
+  /** 마음 성향 테스트 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 말투에만 쓴다(persona.ts 머리 주석). */
+  persona: PersonaAnswers;
+  personaIdx: number;
+  personaDone: (PersonaResult & { at: string }) | null;
+  personaPage: 1 | 2;
   /** 오늘의 마음카드(SAM) 답 — 기분·긴장 1~5. 둘 다 있으면 오늘 기록 */
   sam: SamAnswer;
   minutes: number;
@@ -99,7 +105,7 @@ function stampAt(n: number, ref?: Date): string {
 export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
-    parq: {}, parq2: {}, delay: {}, pick: null, parqOnly: false, perms: {}, area: "all", program: null,
+    parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, perms: {}, area: "all", program: null,
     authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
@@ -341,6 +347,8 @@ export default function WellnessApp() {
           {s.sheet === "settings" && renderSettings()}
           {/* 월간 기록 시트 — 홈의 「기록 보기」 버튼이 연다(my 탭과 같은 renderRecords). */}
           {s.sheet === "month" && renderRecords(true)}
+          {s.sheet === "persona" && renderPersonaTest()}
+          {s.sheet === "personaResult" && renderPersonaResult()}
         </div>
       </div>
     </div>
@@ -728,6 +736,7 @@ export default function WellnessApp() {
   function renderDaily() {
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
+        {/* 2026-09-17 사용자 지시: 탭 = 「케어&힐링」, 페이지는 구분선으로 「데일리케어」(케어 카드 둘) / 「데일리 힐링」(성향 테스트·추천 음악) 두 절. */}
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
@@ -736,7 +745,7 @@ export default function WellnessApp() {
             이 탭엔 카드 둘뿐이라 위에 붙여 두면 아래가 통째로 빈다 → 제목은 위에 두고 카드는 남은 높이의 가운데.
             ⚠ 카드를 더 키워도 봤는데(아이콘 60px) **부제가 두 줄로 접혀** 되돌렸다 — 폭이 좁아 「…운동 / · 15가지」처럼 꼬리만 남는다.
             화면이 짧으면 `overflow-y:auto` 로 그대로 스크롤된다. */}
-        <div style={sx("flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; padding:12px 0 28px")}>
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 22px")}>
           {/* 가로로 길어졌으므로 아이콘 → 글 → 화살표 **한 줄**로. 세로 2열 시절의 「아이콘 위 / 글 아래」는 옆이 텅 빈다. */}
           <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
@@ -755,6 +764,157 @@ export default function WellnessApp() {
             </div>
             <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
           </div>
+        </div>
+
+        {/* ── 데일리 힐링 ── 「케어」가 아니라 잠깐 쉬고 나를 들여다보는 것(성향 테스트 · 시간대 추천 음악). 이름은 사용자 확정(「데일리 쉼표」는 케어와 결이 안 맞아 반려). */}
+        <div style={sx("flex:none; height:1px; background:#d9d2ec; margin:2px 0 18px")} />
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px")}>
+          <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리 힐링</div>
+          <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>가볍게 나를 알아보고, 잠시 음악으로 쉬어 가요.</div>
+        </div>
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 8px")}>
+          {renderHealingCards()}
+        </div>
+      </div>
+    );
+  }
+
+  /** 데일리 힐링 카드 — 성향 테스트(+ 추천 음악은 유튜브 목록이 정해지면). */
+  function renderHealingCards() {
+    const done = s.personaDone;
+    const t = done ? PERSONA_TYPES[done.type] : null;
+    return (
+      <>
+        <div onClick={() => (done ? patch({ sheet: "personaResult", personaPage: 1 }) : patch({ sheet: "persona", persona: {}, personaIdx: 0 }))} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.22), 0 2px 6px rgba(80,160,130,0.14)")}>
+          <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#2d7a5f; letter-spacing:-0.02em")}>{done ? done.type : "16"}</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
+            <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>마음 성향 테스트</div>
+            <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 · 40문항 · 5분"}</div>
+          </div>
+          <div style={sx("flex:none; font-size:17px; color:#4fa585")}>↗</div>
+        </div>
+      </>
+    );
+  }
+
+  /** 마음 성향 테스트 — 한 문항씩, 5점 척도. 다 답하면 결과를 저장하고 결과 시트로. */
+  function renderPersonaTest() {
+    const i = s.personaIdx;
+    const item = PERSONA_ITEMS[i];
+    const total = PERSONA_ITEMS.length;
+    const answered = Object.keys(s.persona).length;
+    const pick = (score: number) => patchFn((st) => {
+      const persona = { ...st.persona, [i]: score };
+      const res = personaResult(persona);
+      if (res && i === total - 1) return { persona, personaDone: { ...res, at: new Date().toISOString() }, sheet: "personaResult" as const, personaPage: 1 as const };
+      return { persona, personaIdx: Math.min(total - 1, i + 1) };
+    });
+    return (
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 성향 테스트</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>정답은 없어요 · 평소의 나에 가까운 쪽으로</div>
+          </div>
+          <div style={sx("flex:none; font-size:12px; font-weight:700; color:#7a6bc4")}>{i + 1} / {total}</div>
+        </div>
+        <div style={sx("flex:none; height:4px; background:#eee9f7")}><div style={{ ...sx("height:100%; background:#7a6bc4; transition:width 0.25s"), width: `${Math.round((answered / total) * 100)}%` }} /></div>
+        <div style={sx("flex:1; overflow-y:auto; padding:26px 20px 28px; display:flex; flex-direction:column; gap:18px")}>
+          <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>나는 …</div>
+          <div style={sx("font-size:21px; font-weight:700; color:#2d5c6e; line-height:1.5; letter-spacing:-0.02em; text-wrap:pretty; word-break:keep-all")}>{item.text}</div>
+          <div style={sx("display:flex; flex-direction:column; gap:9px; padding-top:6px")}>
+            {PERSONA_SCALE.map((label, k) => {
+              const score = k + 1;
+              const on = s.persona[i] === score;
+              return (
+                <div key={score} onClick={() => pick(score)} style={{ ...sx("cursor:pointer; min-height:50px; padding:0 16px; border-radius:14px; display:flex; align-items:center; justify-content:space-between; border:1.5px solid; transition:all 0.15s"), background: on ? "#f2edfa" : "#fff", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>
+                  <div style={{ ...sx("font-size:14.5px; font-weight:700"), color: on ? "#7a6bc4" : "#2d5c6e" }}>{label}</div>
+                  <div style={{ ...sx("width:18px; height:18px; border-radius:50%; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", borderColor: on ? "#7a6bc4" : "#c9d6dc" }} />
+                </div>
+              );
+            })}
+          </div>
+          <div style={sx("display:flex; justify-content:space-between; padding-top:4px")}>
+            <div onClick={() => patch({ personaIdx: Math.max(0, i - 1) })} style={{ ...sx("cursor:pointer; font-size:13px; font-weight:700; padding:8px 4px"), color: i === 0 ? "#c9d6dc" : "#7a6bc4" }}>‹ 이전</div>
+            {s.persona[i] !== undefined && i < total - 1 && <div onClick={() => patch({ personaIdx: i + 1 })} style={sx("cursor:pointer; font-size:13px; font-weight:700; color:#7a6bc4; padding:8px 4px")}>다음 ›</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /** 결과 — 1페이지 유형·기울기·성향·위로 / 2페이지 문장·도서·출처·고지. */
+  function renderPersonaResult() {
+    const done = s.personaDone;
+    if (!done) return null;
+    const t = PERSONA_TYPES[done.type];
+    const close = () => patch({ sheet: null });
+    const axes: Array<{ key: "E" | "N" | "F" | "J"; left: string; right: string }> = [
+      { key: "E", left: "E 외향", right: "I 내향" }, { key: "N", left: "N 직관", right: "S 감각" }, { key: "F", left: "F 감정", right: "T 사고" }, { key: "J", left: "J 계획", right: "P 유연" },
+    ];
+    const card = "display:flex; flex-direction:column; gap:10px; padding:17px 16px; border-radius:20px; background:#fff; border:1px solid #c9d6dc";
+    return (
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>나의 마음 성향</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>{s.personaPage === 1 ? "성향과 위로" : "문장과 책"} · {s.personaPage}/2</div>
+          </div>
+        </div>
+        <div style={sx("flex:1; overflow-y:auto; padding:18px 20px 28px; display:flex; flex-direction:column; gap:14px")}>
+          {s.personaPage === 1 ? (
+            <>
+              <div style={sx("display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px 16px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6")}>
+                <div style={sx("font-size:34px; font-weight:800; color:#245c48; letter-spacing:0.04em")}>{done.type}</div>
+                <div style={sx("font-size:17px; font-weight:700; color:#2d7a5f")}>{t.name}</div>
+              </div>
+              {/* 기울기 — 막대만, 숫자·% 없음(앱 원칙). 가운데가 중립. */}
+              <div style={sx(card)}>
+                {axes.map(({ key, left, right }) => {
+                  const v2 = done.lean[key]; // -1~1 · 양수 = 왼쪽(앞 글자)
+                  const w = Math.round(Math.abs(v2) * 50);
+                  return (
+                    <div key={key} style={sx("display:flex; flex-direction:column; gap:4px")}>
+                      <div style={sx("display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#2d5c6e")}><span style={{ opacity: v2 >= 0 ? 1 : 0.45 }}>{left}</span><span style={{ opacity: v2 < 0 ? 1 : 0.45 }}>{right}</span></div>
+                      <div style={sx("position:relative; height:9px; border-radius:999px; background:#eef3f5")}>
+                        <div style={sx("position:absolute; left:50%; top:-2px; width:1px; height:13px; background:#c9d6dc")} />
+                        <div style={{ ...sx("position:absolute; top:0; height:100%; border-radius:999px; background:#7a6bc4"), left: v2 >= 0 ? `${50 - w}%` : "50%", width: `${w}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={sx(card)}>
+                <div style={sx("font-size:13px; font-weight:800; color:#2d5c6e")}>이런 편이에요</div>
+                <div style={sx("font-size:14px; color:#3a4a72; line-height:1.75; text-wrap:pretty")}>{t.traits}</div>
+              </div>
+              <div style={{ ...sx(card), background: "#f2edfa", borderColor: "#cfc5ea" }}>
+                <div style={sx("font-size:13px; font-weight:800; color:#4a3f80")}>위로 한 조각</div>
+                <div style={sx("font-size:14px; color:#4a3f80; line-height:1.75; text-wrap:pretty")}>{t.comfort}</div>
+              </div>
+              <div onClick={() => patch({ personaPage: 2 })} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14.5px; font-weight:800")}>다음 ›</div>
+            </>
+          ) : (
+            <>
+              <div style={{ ...sx(card), background: "#fff7ed", borderColor: "#f3c98b" }}>
+                <div style={sx("font-size:13px; font-weight:800; color:#7a4a00")}>마음과 닮은 문장</div>
+                <div style={sx("font-size:16px; font-weight:600; color:#7a4a00; line-height:1.7; text-wrap:pretty")}>{t.quote}</div>
+              </div>
+              <div style={sx(card)}>
+                <div style={sx("font-size:13px; font-weight:800; color:#2d5c6e")}>추천 도서</div>
+                {t.books.map((b) => <div key={b} style={sx("font-size:14px; color:#3a4a72; line-height:1.6")}>{b}</div>)}
+              </div>
+              <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_SOURCE}</div>
+              <div style={sx("font-size:12px; font-weight:600; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_NOTICE}</div>
+              <div style={sx("display:flex; gap:8px; padding-top:4px")}>
+                <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0, personaDone: null })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>다시 하기</div>
+                <div onClick={close} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:800")}>닫기</div>
+              </div>
+              <div onClick={() => patch({ personaPage: 1 })} style={sx("cursor:pointer; text-align:center; font-size:13px; font-weight:700; color:#7a6bc4; padding:6px")}>‹ 앞 장</div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -1082,7 +1242,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; padding:10px 16px 26px; background:rgba(255,255,255,0.96); border-top:1px solid #eaf2f5; backdrop-filter:blur(12px)")}>
         {tab("home", "홈", (c) => <div style={{ ...sx("width:20px; height:20px; border-radius:6px; border:2px solid"), borderColor: c }} />)}
-        {tab("daily", "데일리케어", (c) => (
+        {tab("daily", "케어&힐링", (c) => (
           <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
             <path d="M12 20s-7-4.4-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.6 12 20 12 20z" />
           </svg>
