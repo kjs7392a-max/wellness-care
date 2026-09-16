@@ -9,7 +9,7 @@ import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, flowText, 
 import { resolveSuggestion } from "./suggestion";
 import { buildDaySolution, parqNotice } from "./daySolution";
 import {
-  AREAS, CHAT_BEATS, CONDITION_HISTORY, YESTERDAY, COLLECT, DONE_WEEK, doneTotals, MIND_DAYS,
+  AREAS, CHAT_BEATS, CONDITION_HISTORY, YESTERDAY, DONE_WEEK, doneTotals, MIND_DAYS,
   // ⚠ NUDGE·NUDGE_LOW 는 아직 어느 화면에도 안 붙어 있다(CONTENT_STATE 별 넛지 문구·낮은 강도판).
   //    지우지 않고 둔 것은 데이터가 이미 다 쓰여 있어서다 — 넛지를 켤 때 여기서부터 시작하면 된다.
   NUDGE, NUDGE_LOW, OB, OB_AT, PARQ, PRINCIPLES, PROGRAMS, ROLES,
@@ -403,15 +403,8 @@ export default function WellnessApp() {
 
           {step.id === "consent" && (
             <div style={sx("display:flex; flex-direction:column; gap:11px")}>
-              {/* 2026-09-13: 옛 「모으는 것은 이만큼이 전부예요」 장. 무엇을 모으는지 보여준 뒤 그 자리에서 동의·권한까지 받는다. */}
-              <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:0 2px")}>모으는 것은 이만큼이 전부예요</div>
-              {COLLECT.map((ci, i) => (
-                <div key={i} style={sx("display:flex; flex-direction:column; gap:4px; padding:16px; border-radius:15px; background:#fff; border:1px solid #c9d6dc")}>
-                  <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{ci.name}</div>
-                  <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{ci.why}</div>
-                </div>
-              ))}
-              <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:8px 2px 0")}>동의</div>
+              {/* 2026-09-16: 「모으는 것은 이만큼이 전부예요」 목록과 장 본문을 삭제(사용자 지시) — 이 장은 동의·권한만 받는다. */}
+              <div style={sx("font-size:13px; font-weight:700; color:#6b8c9a; padding:0 2px")}>동의</div>
               {[
                 { title: "수집·이용 동의 (필수)", desc: "걸음·움직인 시간·앱에서 함께한 몸풀기 기록은 암호화되어 본인 계정에만 저장되며, 본인 외에는 누구도 열어볼 수 없습니다." },
               ].map((c, i) => {
