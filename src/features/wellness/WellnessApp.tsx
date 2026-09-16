@@ -673,10 +673,10 @@ export default function WellnessApp() {
           <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
         </div>
 
-        {/* 오늘의 제안 — 「AI」 표기는 2026-09-17 사용자 지시로 뺐다. 미루기가 켜지면 프로그램 대신 쉬기 안내(라이브러리는 그대로). */}
+        {/* 「신체 건강을 위한 운동 N가지 제안」(2026-09-17 사용자 지시 · N = 실제 선택지 수라 숨 고르기 단계면 1가지) — 「AI」 표기는 뺐다. 미루기가 켜지면 프로그램 대신 쉬기 안내(라이브러리는 그대로). */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #c9d6dc; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
-            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>오늘의 제안</div>
+            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>{v.delayOn ? "오늘의 제안" : `신체 건강을 위한 운동 ${v.choices.length}가지 제안`}</div>
             <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
           </div>
           {v.delayOn ? (
