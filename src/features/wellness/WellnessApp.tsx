@@ -19,6 +19,18 @@ import {
 import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { greetingForHour } from "./greeting";
 import { PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, personaResult, type PersonaAnswers, type PersonaResult } from "./persona";
+
+/**
+ * 데일리 힐링 추천 음악 — 유튜브 채널 emptysilver(@emptysilver · UCyvNK9b_Rs7djuIQ4a7i5aw)의 긴 플레이리스트 영상만 우리 순서로.
+ *   채널 업로드 목록(UU…)을 그대로 걸면 첫 곡이 쇼츠(세로 짧은 영상)라(실측 09-17) `playlist=` 파라미터로 골라 돌린다.
+ *   2026-09-17 실측: 긴 영상 12편 중 임베드 허용 11편 · 5aSlkBcvWVQ 는 차단(playableInEmbed:false) · UIBMm0R0CpM 는 53초라 제외 → 10편.
+ *   ⚠컴포넌트 안에 두면 렌더보다 늦게 초기화돼 TDZ 오류(실측) — 모듈 최상위에 둔다. 채널에 새 영상이 오르면 여기 id 만 더한다.
+ */
+const MUSIC_EMBED = {
+  label: "emptysilver",
+  note: "바쁜 일상 속 잠시 쉬어 가는 편안한 음악 — 플레이리스트 10편",
+  ids: ["wvVsDNnEeZg", "Bl20EHC6J4c", "Nz0x8tTr4js", "b6P_EugaIx4", "WRKSsfLCNZU", "pIUwLACKjyY", "hLimS8htMmA", "OEZh_V4qNrs", "r8vyi0MHGK8", "qQKeuX0PC0I"],
+};
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -779,7 +791,13 @@ export default function WellnessApp() {
     );
   }
 
-  /** 데일리 힐링 카드 — 성향 테스트(+ 추천 음악은 유튜브 목록이 정해지면). */
+  /**
+   * 데일리 힐링 카드 — 성향 테스트 + 추천 음악.
+   * 음악(2026-09-17 사용자 지시 "일단 이거 하나만 임베딩") = 유튜브 채널 **emptysilver**(@emptysilver · 채널 ID UCyvNK9b_Rs7djuIQ4a7i5aw)의
+   *   업로드 목록을 플레이어 하나로. 목록 ID = 채널 ID 의 UC→UU(유튜브 규칙). 음원을 담지 않고 유튜브 공식 임베드로만 재생 — 저작권·약관 문제 없음.
+   *   youtube-nocookie 도메인(추적 최소화) · 자동재생 없음 · 실측(09-17): 채널 긴 영상 11편 임베드 허용, 1편(5aSlkBcvWVQ) 차단 — 목록 재생 시 그 편은 건너뛴다.
+   *   ⚠ 시간대별 3편 선곡은 보류(사용자 "일단 하나만"). 나중에 바꾸면 이 상수만.
+   */
   function renderHealingCards() {
     const done = s.personaDone;
     const t = done ? PERSONA_TYPES[done.type] : null;
@@ -792,6 +810,27 @@ export default function WellnessApp() {
             <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 · 40문항 · 5분"}</div>
           </div>
           <div style={sx("flex:none; font-size:17px; color:#4fa585")}>↗</div>
+        </div>
+        {/* 추천 음악 — 유튜브 플레이어 하나. 16:9 비율 상자 안에 iframe. */}
+        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
+          <div style={sx("display:flex; align-items:center; gap:10px")}>
+            <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>🎧</div>
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+              <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {MUSIC_EMBED.label}</div>
+              <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{MUSIC_EMBED.note}</div>
+            </div>
+          </div>
+          <div style={sx("position:relative; width:100%; padding-top:56.25%; border-radius:14px; overflow:hidden; background:#0f0f0f")}>
+            <iframe
+              title={`추천 음악 · ${MUSIC_EMBED.label}`}
+              src={`https://www.youtube-nocookie.com/embed/${MUSIC_EMBED.ids[0]}?playlist=${MUSIC_EMBED.ids.slice(1).join(",")}&rel=0`}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브에서 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다</div>
         </div>
       </>
     );
