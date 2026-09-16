@@ -383,7 +383,8 @@ export default function WellnessApp() {
 
         <div style={sx("flex:1; overflow-y:auto; padding:26px 24px 0; display:flex; flex-direction:column; gap:20px")}>
           <div style={sx("display:flex; flex-direction:column; gap:9px")}>
-            <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>{step.kicker}</div>
+            {/* 약속 장은 kicker 를 비웠다(사용자 지시 2026-09-16) — 빈 줄이 자리를 먹지 않게 있을 때만 그린다. */}
+            {step.kicker && <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>{step.kicker}</div>}
             <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>{step.title}</div>
             {/* 직군 장은 카드에서 설명을 걷어냈으므로(위 주석) 이 한 줄이 설명의 전부다 → 진하게(사용자 지시). */}
             {step.body && <div style={{ ...sx("font-size:14px; line-height:1.65; text-wrap:pretty"), color: step.id === "role" ? "#2d5c6e" : "#6b8c9a", fontWeight: step.id === "role" ? 600 : 400 }}>{step.body}</div>}
