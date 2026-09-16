@@ -112,3 +112,44 @@ describe("소스 가드 — 화면 문자열에 PAR-Q+ 표기가 없다", () => 
     });
   }
 });
+
+// 2026-09-16: 오리지널 4쪽 「Delay becoming more active if」(일시 질환 · 임신 · 상태 변화)를 홈의 하루 한 번 확인으로.
+//   잠그지 않는다(사용자 확정 "굳이 잠글 필요까지는 없어") — 안내 한 줄만, 프로그램·버튼은 그대로.
+import { DELAY_QUESTIONS, delayNotice, delayAnswersForToday, type DelayAnswers } from "./safety-screen";
+
+describe("DELAY_QUESTIONS — 오늘 몸 상태 3가지", () => {
+  it("문항 3개, 문구 비어 있지 않고 서로 다름, PAR-Q 이름 없음", () => {
+    expect(DELAY_QUESTIONS.length).toBe(3);
+    const t = DELAY_QUESTIONS.map((q) => q.text);
+    expect(new Set(t).size).toBe(3);
+    for (const x of t) { expect(x.trim().length).toBeGreaterThan(0); expect(x).not.toMatch(/PAR-?Q/i); }
+  });
+});
+
+describe("delayNotice — 안내 한 줄", () => {
+  const ans = (yes: number[]): DelayAnswers => ({ date: "2026-09-16", yes: Object.fromEntries(DELAY_QUESTIONS.map((_, i) => [i, yes.includes(i)])) });
+  it("셋 다 아니오 → 안내 없음", () => { expect(delayNotice(ans([]))).toBeNull(); });
+  it("아직 안 답함 → 안내 없음", () => { expect(delayNotice({ date: "2026-09-16", yes: {} })).toBeNull(); });
+  it("일시 질환(0)만 예 → 쉬어도 좋다는 안내, 주치의 언급 없음", () => {
+    const t = delayNotice(ans([0]))!;
+    expect(t).toContain("쉬");
+    expect(t).not.toContain("주치의");
+  });
+  it("임신(1) 또는 상태 변화(2) 예 → 주치의 상의를 덧붙인다", () => {
+    for (const i of [1, 2]) expect(delayNotice(ans([i])), `#${i}`).toContain("주치의");
+  });
+  it("안내에 「하지 마세요」류 금지어가 없다 — 잠그지 않는다", () => {
+    for (const i of [0, 1, 2]) expect(delayNotice(ans([i]))!).not.toMatch(/하지 마|금지|멈추/);
+  });
+});
+
+describe("delayAnswersForToday — 날짜가 바뀌면 초기화", () => {
+  const saved: DelayAnswers = { date: "2026-09-15", yes: { 0: true, 1: false, 2: false } };
+  it("같은 날이면 그대로", () => { expect(delayAnswersForToday(saved, "2026-09-15")).toBe(saved); });
+  it("다음 날이면 빈 답(어제의 「예」가 오늘까지 안 남는다)", () => {
+    const r = delayAnswersForToday(saved, "2026-09-16");
+    expect(r.date).toBe("2026-09-16");
+    expect(r.yes).toEqual({});
+  });
+  it("저장된 게 없으면 오늘 날짜의 빈 답", () => { expect(delayAnswersForToday(undefined, "2026-09-16")).toEqual({ date: "2026-09-16", yes: {} }); });
+});

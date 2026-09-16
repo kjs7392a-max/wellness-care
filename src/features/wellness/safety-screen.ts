@@ -92,3 +92,31 @@ export function safetyComplete(a1: SafetyAnswers, a2: FollowUpAnswers): boolean 
   if (SAFETY_QUESTIONS.some((_, i) => a1[i] === undefined)) return false;
   return followUpGroupsFor(a1).every((g) => FOLLOW_UPS[g].items.every((_, j) => a2[`${g}.${j}`] !== undefined));
 }
+
+/* ───────────── 미루기(오늘 몸 상태) ─────────────
+ * 오리지널 4쪽 「Delay becoming more active if」 = 일시적 질환(감기·열) · 임신 · 건강 상태 변화.
+ * 질환 문진(위)과 **별개 축** — 질환은 한 번 답해 두는 값이고, 이것은 **오늘**의 상태라 홈에서 하루 한 번 묻는다.
+ * 🚫 잠그지 않는다(사용자 확정 2026-09-16 "굳이 잠글 필요까지는 없어") — 「예」여도 프로그램·버튼은 그대로, 안내 한 줄만 얹는다.
+ *    안내에 「하지 마세요」류 금지어를 쓰지 말 것(테스트가 막는다). 오리지널 Delay 도 「미루라」이지 「하지 말라」가 아니다.
+ * 날짜가 바뀌면 셋 다 초기화(수동 해제 없음 — 임신처럼 오래 가는 답은 매일 「예」를 누르면 된다). ⚠감수 대상 ④.
+ */
+export const DELAY_QUESTIONS: ReadonlyArray<{ text: string; consult: boolean }> = [
+  { text: "지금 열이 있거나 감기처럼 잠깐 아픈 상태인가요?", consult: false },
+  { text: "임신 중인가요?", consult: true },
+  { text: "최근에 건강 상태가 달라졌나요? (새 진단·입원·수술·약 변경)", consult: true },
+];
+
+/** 홈에서 하루 한 번 답한 것. `date` = 답한 날(YYYY-MM-DD, 로컬). */
+export type DelayAnswers = { date: string; yes: Record<number, boolean> };
+
+export function delayAnswersForToday(saved: DelayAnswers | undefined, today: string): DelayAnswers {
+  if (saved && saved.date === today) return saved;
+  return { date: today, yes: {} };
+}
+
+export function delayNotice(a: DelayAnswers): string | null {
+  const hit = DELAY_QUESTIONS.filter((_, i) => a.yes[i]);
+  if (hit.length === 0) return null;
+  const base = "오늘은 몸을 쉬게 두셔도 좋아요. 상태가 나아지면 평소대로 이어가세요.";
+  return hit.some((q) => q.consult) ? base + " 활동을 늘리기 전에는 주치의와 한 번 상의해 주세요." : base;
+}

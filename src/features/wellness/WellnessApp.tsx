@@ -15,7 +15,7 @@ import {
   NUDGE, NUDGE_LOW, OB, OB_AT, PRINCIPLES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, type ContentState, type Role, type WeatherKey,
 } from "./data";
-import { FOLLOW_UPS, SAFETY_QUESTIONS, followUpGroupsFor, safetyComplete, safetyTier } from "./safety-screen";
+import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayAnswersForToday, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -39,6 +39,8 @@ interface State {
   parq: Record<number, boolean>;
   /** 2단(후속) 답. 키 = "묶음.하위". 안 뜬 묶음의 옛 답이 남아도 판정은 뜬 묶음만 본다(safety-screen.ts). */
   parq2: Record<string, boolean>;
+  /** 오늘 몸 상태(미루기) — 홈에서 하루 한 번. 날짜가 바뀌면 delayAnswersForToday 가 비운다. */
+  delay?: DelayAnswers;
   parqOnly: boolean;
   perms: Record<number, boolean>;
   area: string;
@@ -240,6 +242,11 @@ export default function WellnessApp() {
     // 2단 문진(2026-09-16): 1단 「예」한 질환 묶음의 후속까지 답해야 완료. 판정은 safetyTier 한 곳.
     const tier = safetyTier(st.parq, st.parq2);
     const parqAll = safetyComplete(st.parq, st.parq2);
+    // 미루기(오늘 몸 상태) — 로컬 달력일 키. 🚫 toISOString(UTC) 금지: 한국시간 새벽에 어제로 밀린다.
+    const todayKey = `${st.now.getFullYear()}-${String(st.now.getMonth() + 1).padStart(2, "0")}-${String(st.now.getDate()).padStart(2, "0")}`;
+    const delay = delayAnswersForToday(st.delay, todayKey);
+    const delayDone = DELAY_QUESTIONS.every((_, i) => delay.yes[i] !== undefined);
+    const delayMsg = delayNotice(delay);
     // 제안 항목·시간대·주말 판정은 resolveSuggestion 한 곳 — MVP 시연 동안은 하나로 고정돼 있다(suggestion.ts 참고).
     const sug = resolveSuggestion({ role: roleKey, tier, hour: st.now.getHours(), dow: st.now.getDay() });
     const slot = sug.slot;
@@ -292,7 +299,7 @@ export default function WellnessApp() {
       mindChange: change(CONDITION_HISTORY.mind[CONDITION_HISTORY.mind.length - 1], mind),
       overallChange: change(overallHistory[overallHistory.length - 1], overall),
     };
-    return { roleKey, role, authed, onboarding, tier, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
+    return { roleKey, role, authed, onboarding, tier, parqAll, delay, delayDone, delayMsg, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
   }
 
   const nowTime = `${s.now.getHours()}:${String(s.now.getMinutes()).padStart(2, "0")}`;
@@ -679,6 +686,30 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
+        {/* 오늘 몸 상태 확인(미루기) — 오리지널 사전운동 문진의 「Delay」 축. 하루 한 번, 셋 다 아니오면 접힌다.
+            🚫 잠그지 않는다 — 「예」여도 아래 제안 카드·버튼은 그대로, 안내 한 줄만(사용자 확정 2026-09-16). */}
+        {!v.delayDone ? (
+          <div style={sx("display:flex; flex-direction:column; gap:8px; padding:14px 15px; border-radius:18px; background:#fff; border:1.5px solid #c4b8ec")}>
+            <div style={sx("font-size:13px; font-weight:700; color:#5a4aa8")}>오늘 몸 상태 확인 · 3가지</div>
+            {DELAY_QUESTIONS.map(({ text }, i) => {
+              const val = v.delay.yes[i];
+              const btn = (label: string, on: boolean, val2: boolean) => (
+                <div onClick={() => patchFn((sti) => { const d = delayAnswersForToday(sti.delay, v.delay.date); return { delay: { ...d, yes: { ...d.yes, [i]: val2 } } }; })} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:38px; min-width:50px; padding:0 11px; border-radius:11px; font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", color: on ? "#7a6bc4" : "#8ba8b3", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>{label}</div>
+              );
+              return (
+                <div key={i} style={sx("display:flex; align-items:center; gap:10px")}>
+                  <div style={sx("flex:1; min-width:0; font-size:13px; color:#2d5c6e; line-height:1.5; font-weight:500; text-wrap:pretty")}>{text}</div>
+                  <div style={sx("flex:none; display:flex; gap:6px")}>{btn("아니오", val === false, false)}{btn("예", val === true, true)}</div>
+                </div>
+              );
+            })}
+          </div>
+        ) : v.delayMsg && (
+          <div style={sx("display:flex; gap:10px; align-items:flex-start; padding:13px 15px; border-radius:16px; background:#fff7ed; border:1.5px solid #f3c98b")}>
+            <div style={sx("flex:none; width:22px; height:22px; border-radius:50%; background:#f3c98b; color:#7a4a00; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center")}>!</div>
+            <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>{v.delayMsg}</div>
+          </div>
+        )}
         {/* AI 오늘의 제안 */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #c9d6dc; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
