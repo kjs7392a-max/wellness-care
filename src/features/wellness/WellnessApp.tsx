@@ -741,7 +741,7 @@ export default function WellnessApp() {
           <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
+              <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강 케어</div>
               {/* ⚠ 한글은 아무 데서나 끊긴다 — 「15 / 가지」로 갈라졌었다. keep-all 로 낱말을 붙여 둔다. */}
               <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
             </div>
@@ -750,7 +750,7 @@ export default function WellnessApp() {
           <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>마음 건강</div>
+              <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>마음 건강 케어</div>
               <div style={sx("font-size:12.5px; color:#5f5397; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>마음건강을 위한 짧은 대화와 마음카드</div>
             </div>
             <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
