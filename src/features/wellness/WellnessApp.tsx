@@ -527,7 +527,7 @@ export default function WellnessApp() {
               </div>
               {v.parqAll && (
                 <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #c9d6dc; animation:wRise 0.4s ease-out both")}>
-                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.delayOn ? "오늘은 쉬어 가요" : v.tier > 0 ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
+                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.delayOn ? "오늘은 쉬어 가셔도 좋아요" : v.tier > 0 ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
                   <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{v.delayMsg ?? parqNotice(v.tier) ?? "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
                 </div>
               )}
@@ -673,34 +673,36 @@ export default function WellnessApp() {
           <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
         </div>
 
-        {/* 「신체 건강을 위한 운동 N가지 제안」(2026-09-17 사용자 지시 · N = 실제 선택지 수라 숨 고르기 단계면 1가지) — 「AI」 표기는 뺐다. 미루기가 켜지면 프로그램 대신 쉬기 안내(라이브러리는 그대로). */}
+        {/* 「신체 건강을 위한 운동 N가지 제안」(2026-09-17 사용자 지시 · N = 실제 선택지 수라 숨 고르기 단계면 1가지) — 「AI」 표기는 뺐다.
+            ★미루기가 켜져도 제안·선택지는 그대로 두고 쉬어도 좋다는 안내 한 줄만 얹는다 — "제안을 한 거지 하는 건 그 사람 마음"(사용자 2026-09-17).
+            🚫 미루기로 제안을 치우지 말 것(한 번 그렇게 했다가 지적받았다). */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #c9d6dc; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
-            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>{v.delayOn ? "오늘의 제안" : `신체 건강을 위한 운동 ${v.choices.length}가지 제안`}</div>
+            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>{`신체 건강을 위한 운동 ${v.choices.length}가지 제안`}</div>
             <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
           </div>
-          {v.delayOn ? (
-            <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{v.delayMsg}</div>
-          ) : (
-            <>
-              <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
-              {/* 지금 바로 시작하기 — 시간대 항목 1(진하게) + 부위 프로세스 3(목·어깨·자세, 흰 버튼 · 부위를 앞에 붙인다). suggestion.ts 참고. */}
-              <div style={sx("display:flex; flex-direction:column; gap:8px")}>
-                <div style={sx("font-size:10.5px; font-weight:700; color:#4a3f80; letter-spacing:0.03em; padding:0 2px")}>지금 바로 시작하기 · 하나를 골라 주세요</div>
-                {v.choices.map(({ item: it, part }, i) => {
-                  const first = i === 0;
-                  return (
-                    <div key={it.title} onClick={() => patch({ sheet: "content", program: null, pick: it })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:54px; padding:0 14px; border-radius:15px; border:1.5px solid"), background: first ? "#7a6bc4" : "#fff", borderColor: first ? "#7a6bc4" : "#cfc5ea", boxShadow: first ? "0 6px 16px rgba(122,107,196,0.32)" : "none" }}>
-                      <div style={{ ...sx("flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center"), background: first ? "rgba(255,255,255,0.22)" : "#f2edfa" }}>
-                        <div style={{ ...sx("width:0; height:0; margin-left:3px; border-top:6px solid transparent; border-bottom:6px solid transparent"), borderLeft: `10px solid ${first ? "#fff" : "#7a6bc4"}` }} />
-                      </div>
-                      <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{part && <><span style={sx("color:#7a6bc4")}>{part}</span>{" · "}</>}{v.isWeekend && first ? it.title.replace(/^퇴근 전 /, "") : it.title}</div>
-                      <div style={{ ...sx("flex:none; font-size:16px"), color: first ? "rgba(255,255,255,0.8)" : "#7a6bc4" }}>›</div>
+            <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
+            {/* 지금 바로 시작하기 — 시간대 항목 1(진하게) + 부위 프로세스 3(목·어깨·자세, 흰 버튼 · 부위를 앞에 붙인다). suggestion.ts 참고. */}
+            <div style={sx("display:flex; flex-direction:column; gap:8px")}>
+              <div style={sx("font-size:10.5px; font-weight:700; color:#4a3f80; letter-spacing:0.03em; padding:0 2px")}>지금 바로 시작하기 · 하나를 골라 주세요</div>
+              {v.choices.map(({ item: it, part }, i) => {
+                const first = i === 0;
+                return (
+                  <div key={it.title} onClick={() => patch({ sheet: "content", program: null, pick: it })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:54px; padding:0 14px; border-radius:15px; border:1.5px solid"), background: first ? "#7a6bc4" : "#fff", borderColor: first ? "#7a6bc4" : "#cfc5ea", boxShadow: first ? "0 6px 16px rgba(122,107,196,0.32)" : "none" }}>
+                    <div style={{ ...sx("flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center"), background: first ? "rgba(255,255,255,0.22)" : "#f2edfa" }}>
+                      <div style={{ ...sx("width:0; height:0; margin-left:3px; border-top:6px solid transparent; border-bottom:6px solid transparent"), borderLeft: `10px solid ${first ? "#fff" : "#7a6bc4"}` }} />
                     </div>
-                  );
-                })}
-              </div>
-            </>
+                    <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{part && <><span style={sx("color:#7a6bc4")}>{part}</span>{" · "}</>}{v.isWeekend && first ? it.title.replace(/^퇴근 전 /, "") : it.title}</div>
+                    <div style={{ ...sx("flex:none; font-size:16px"), color: first ? "rgba(255,255,255,0.8)" : "#7a6bc4" }}>›</div>
+                  </div>
+                );
+              })}
+            </div>
+          {v.delayMsg && (
+            <div style={sx("display:flex; gap:9px; align-items:flex-start; padding:12px 13px; border-radius:14px; background:#fff7ed; border:1px solid #f3c98b")}>
+              <div style={sx("flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; background:#f3c98b; color:#7a4a00; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center")}>!</div>
+              <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>{v.delayMsg}</div>
+            </div>
           )}
           {/* 2026-09-13: 안전 확인 안내가 온보딩에서 한 번 스쳐 지나가고 끝이었다 → 제안을 읽는 그 자리에 상시로 둔다. */}
           {parqNotice(v.tier) && (
