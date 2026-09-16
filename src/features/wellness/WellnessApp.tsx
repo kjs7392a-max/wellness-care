@@ -977,7 +977,7 @@ export default function WellnessApp() {
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 28px")}>
 
         <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#f2edfa; border:1px solid #c9d6dc")}>
-          <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>개인정보 5대 원칙</div>
+          <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>개인정보 3대 원칙</div>
           <div style={sx("display:flex; flex-direction:column; gap:7px")}>
             {PRINCIPLES.map((text, i) => (<div key={i} style={sx("font-size:13px; color:#4d7c8c; line-height:1.55; text-wrap:pretty")}>{text}</div>))}
           </div>
