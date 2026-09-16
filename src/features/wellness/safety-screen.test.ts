@@ -92,12 +92,13 @@ describe("safetyTier — 오리지널 4쪽 판정", () => {
 
 describe("safetyComplete — 판정을 내놓아도 되는가", () => {
   const c = idx("condition");
-  it("1단이 다 안 찼으면 미완료", () => { expect(safetyComplete({ 0: false }, {})).toBe(false); });
-  it("1단 전부 아니오면 완료(후속 없음)", () => { expect(safetyComplete(a1([]), {})).toBe(true); });
-  it("질환 예인데 그 후속을 아직 안 답했으면 미완료", () => { expect(safetyComplete(a1([c[0]]), {})).toBe(false); });
-  it("필요한 후속까지 다 답하면 완료", () => { expect(safetyComplete(a1([c[0]]), a2([groupOf(c[0])]))).toBe(true); });
+  const allDelay = () => ({ 0: false, 1: false, 2: false });
+  it("1단이 다 안 찼으면 미완료", () => { expect(safetyComplete({ 0: false }, {}, {})).toBe(false); });
+  it("1단 전부 아니오면 완료(후속 없음)", () => { expect(safetyComplete(a1([]), {}, allDelay())).toBe(true); });
+  it("질환 예인데 그 후속을 아직 안 답했으면 미완료", () => { expect(safetyComplete(a1([c[0]]), {}, allDelay())).toBe(false); });
+  it("필요한 후속까지 다 답하면 완료", () => { expect(safetyComplete(a1([c[0]]), a2([groupOf(c[0])]), allDelay())).toBe(true); });
   it("안 뜬 묶음의 답은 완료 판정에 필요 없다", () => {
-    expect(safetyComplete(a1([c[0]]), a2([groupOf(c[0])]))).toBe(true); // 다른 묶음은 비어 있어도 됨
+    expect(safetyComplete(a1([c[0]]), a2([groupOf(c[0])]), allDelay())).toBe(true); // 다른 묶음은 비어 있어도 됨
   });
 });
 
@@ -113,9 +114,10 @@ describe("소스 가드 — 화면 문자열에 PAR-Q+ 표기가 없다", () => 
   }
 });
 
-// 2026-09-16: 오리지널 4쪽 「Delay becoming more active if」(일시 질환 · 임신 · 상태 변화)를 홈의 하루 한 번 확인으로.
-//   잠그지 않는다(사용자 확정 "굳이 잠글 필요까지는 없어") — 안내 한 줄만, 프로그램·버튼은 그대로.
-import { DELAY_QUESTIONS, delayNotice, delayAnswersForToday, type DelayAnswers } from "./safety-screen";
+// 2026-09-16: 오리지널 4쪽 「Delay becoming more active if」(일시 질환 · 임신 · 상태 변화).
+//   2026-09-17 사용자 지시: 홈이 아니라 **안전 확인 문진 안**에서 묻고, 체크되면 제안이 **딜레이**(쉬기)된다.
+//   날짜 초기화 없음 — 해제는 설정 「안전 확인 다시 답하기」. 라이브러리는 잠그지 않는다.
+import { DELAY_QUESTIONS, delayNotice, delayActive, type DelayAnswers } from "./safety-screen";
 
 describe("DELAY_QUESTIONS — 오늘 몸 상태 3가지", () => {
   it("문항 3개, 문구 비어 있지 않고 서로 다름, PAR-Q 이름 없음", () => {
@@ -126,30 +128,28 @@ describe("DELAY_QUESTIONS — 오늘 몸 상태 3가지", () => {
   });
 });
 
-describe("delayNotice — 안내 한 줄", () => {
-  const ans = (yes: number[]): DelayAnswers => ({ date: "2026-09-16", yes: Object.fromEntries(DELAY_QUESTIONS.map((_, i) => [i, yes.includes(i)])) });
-  it("셋 다 아니오 → 안내 없음", () => { expect(delayNotice(ans([]))).toBeNull(); });
-  it("아직 안 답함 → 안내 없음", () => { expect(delayNotice({ date: "2026-09-16", yes: {} })).toBeNull(); });
-  it("일시 질환(0)만 예 → 쉬어도 좋다는 안내, 주치의 언급 없음", () => {
+describe("delayActive / delayNotice", () => {
+  const ans = (yes: number[]): DelayAnswers => Object.fromEntries(DELAY_QUESTIONS.map((_, i) => [i, yes.includes(i)]));
+  it("셋 다 아니오 → 딜레이 아님·안내 없음", () => { expect(delayActive(ans([]))).toBe(false); expect(delayNotice(ans([]))).toBeNull(); });
+  it("미답 → 딜레이 아님", () => { expect(delayActive({})).toBe(false); });
+  it("하나라도 예 → 딜레이", () => { for (const i of [0, 1, 2]) expect(delayActive(ans([i])), `#${i}`).toBe(true); });
+  it("일시 질환(0)만 예 → 쉬라는 안내, 주치의 언급 없음, 다시 답하는 길을 말한다", () => {
     const t = delayNotice(ans([0]))!;
     expect(t).toContain("쉬");
     expect(t).not.toContain("주치의");
+    expect(t).toContain("다시 답");
   });
   it("임신(1) 또는 상태 변화(2) 예 → 주치의 상의를 덧붙인다", () => {
     for (const i of [1, 2]) expect(delayNotice(ans([i])), `#${i}`).toContain("주치의");
   });
-  it("안내에 「하지 마세요」류 금지어가 없다 — 잠그지 않는다", () => {
+  it("안내에 「하지 마세요」류 금지어가 없다", () => {
     for (const i of [0, 1, 2]) expect(delayNotice(ans([i]))!).not.toMatch(/하지 마|금지|멈추/);
   });
 });
 
-describe("delayAnswersForToday — 날짜가 바뀌면 초기화", () => {
-  const saved: DelayAnswers = { date: "2026-09-15", yes: { 0: true, 1: false, 2: false } };
-  it("같은 날이면 그대로", () => { expect(delayAnswersForToday(saved, "2026-09-15")).toBe(saved); });
-  it("다음 날이면 빈 답(어제의 「예」가 오늘까지 안 남는다)", () => {
-    const r = delayAnswersForToday(saved, "2026-09-16");
-    expect(r.date).toBe("2026-09-16");
-    expect(r.yes).toEqual({});
-  });
-  it("저장된 게 없으면 오늘 날짜의 빈 답", () => { expect(delayAnswersForToday(undefined, "2026-09-16")).toEqual({ date: "2026-09-16", yes: {} }); });
+describe("safetyComplete — 미루기까지 답해야 완료", () => {
+  const all1 = (): Record<number, boolean> => Object.fromEntries(SAFETY_QUESTIONS.map((_, i) => [i, false]));
+  const allD = (): DelayAnswers => Object.fromEntries(DELAY_QUESTIONS.map((_, i) => [i, false]));
+  it("1단 다 답했어도 미루기 3개를 안 답하면 미완료", () => { expect(safetyComplete(all1(), {}, {})).toBe(false); });
+  it("미루기까지 답하면 완료", () => { expect(safetyComplete(all1(), {}, allD())).toBe(true); });
 });

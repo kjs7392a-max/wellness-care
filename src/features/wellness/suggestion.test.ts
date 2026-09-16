@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PINNED_SLOT, resolveSuggestion } from "./suggestion";
+import { DEMO_PINNED_SLOT, resolveSuggestion, suggestionChoices } from "./suggestion";
 import { PARQ_REST_ITEM, ROLES, type Role } from "./data";
 
 const ROLE_KEYS: Role[] = ["teacher", "admin", "care"];
 
-describe("resolveSuggestion — 시연용 시간대 고정", () => {
-  it("퇴근 전(slot 2)으로 못박혀 있다", () => {
-    expect(DEMO_PINNED_SLOT).toBe(2);
+describe("resolveSuggestion — 접속 시각을 따른다 (2026-09-17 사용자 지시로 시연 고정 해제)", () => {
+  it("시연용 시간대 고정이 풀려 있다", () => {
+    expect(DEMO_PINNED_SLOT).toBeNull();
   });
 
-  it("언제 열어도 그 직군의 「퇴근 전」 항목이 나온다 — 시각·요일 무관", () => {
+  it("기본 호출(고정값 인자 없이)이 시각으로 slot 을 가른다", () => {
     for (const role of ROLE_KEYS) {
-      for (const [hour, dow] of [[8, 1], [13, 3], [17, 5], [10, 6], [21, 0]]) {
-        const s = resolveSuggestion({ role, tier: 0, hour, dow });
-        expect(s.slot).toBe(2);
-        expect(s.isWeekend).toBe(false); // 「퇴근 전」 제목과 쉬는 날 문구가 부딪히지 않게
-        expect(s.item).toBe(ROLES[role].items[2]);
-      }
+      expect(resolveSuggestion({ role, tier: 0, hour: 8, dow: 1 }).item).toBe(ROLES[role].items[0]);
+      expect(resolveSuggestion({ role, tier: 0, hour: 13, dow: 1 }).item).toBe(ROLES[role].items[1]);
+      expect(resolveSuggestion({ role, tier: 0, hour: 17, dow: 1 }).item).toBe(ROLES[role].items[2]);
     }
   });
 
@@ -98,5 +95,29 @@ describe("resolveSuggestion — 단계마다 영상이 실제로 달라야 한�
       expect(vids.every(Boolean), `${role} — 영상 없는 단계가 있다`).toBe(true);
       expect(new Set(vids).size, `${role} — ${vids.map((v) => v!.src.split("/").pop()).join(" / ")}`).toBe(3);
     }
+  });
+});
+
+// 2026-09-17 사용자 지시: 「지금 바로 시작하기」를 3개 정도로 고를 수 있게.
+describe("suggestionChoices — 고를 수 있는 항목", () => {
+  it("0·1단계 = 그 직군의 세 항목 전부, 시간대에 맞는 것이 첫째", () => {
+    for (const role of ROLE_KEYS) {
+      for (const tier of [0, 1] as const) {
+        const pool = tier === 1 ? ROLES[role].low : ROLES[role].items;
+        for (const [hour, slot] of [[8, 0], [13, 1], [17, 2]] as const) {
+          const c = suggestionChoices({ role, tier, hour, dow: 1 });
+          expect(c.length).toBe(3);
+          expect(c[0]).toBe(pool[slot]);
+          expect(new Set(c).size).toBe(3);
+          for (const it of pool) expect(c).toContain(it);
+        }
+      }
+    }
+  });
+  it("2단계(숨 고르기)는 하나뿐 — 직군 항목을 섞지 않는다", () => {
+    for (const role of ROLE_KEYS) expect(suggestionChoices({ role, tier: 2, hour: 17, dow: 1 })).toEqual([PARQ_REST_ITEM]);
+  });
+  it("첫째가 resolveSuggestion 의 항목과 같다(두 곳이 갈리지 않는다)", () => {
+    for (const hour of [8, 13, 17]) expect(suggestionChoices({ role: "admin", tier: 0, hour, dow: 1 })[0]).toBe(resolveSuggestion({ role: "admin", tier: 0, hour, dow: 1 }).item);
   });
 });

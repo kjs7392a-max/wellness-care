@@ -12,6 +12,8 @@ import type { SafetyTier } from "./safety-screen";
  *   2026-09-13 ① 해제 — 직군을 골라도 제안이 안 바뀌어 「어떤 일을 하고 계신가요?」가 값을 하지 않았다.
  *   2026-09-13 ② **시간대만 다시 고정**(사용자 지시) — 시연은 그 시간대에 하니 언제 열어도 「퇴근 전」으로 보이되,
  *              직군은 고정하지 않아 교사·행정·영양/보건/조리가 **각자 다른 퇴근 전 제안**을 받는다.
+ *   2026-09-17 ③ **해제**(사용자 지시 "제안도 접속 시간에 맞게 다양하게") — `null`. 아침·점심·퇴근 전이 실제 시각을 따른다.
+ *              ⚠ 아침·점심 항목엔 가이드 영상이 없어(퇴근 전만 있다) 그 시간대엔 타이머 화면이 뜬다.
  *
  * 상세·복원 절차 = docs/decisions/2026-09-12-mvp-fixed-suggestion.md
  */
@@ -22,7 +24,7 @@ import type { SafetyTier } from "./safety-screen";
  * 🚫 직군은 여기서 고정하지 않는다 — 고정하면 직군 선택이 화면에서 아무 일도 하지 않는다(2026-09-13 실측).
  * ⚠ 고정 중에는 **주말이어도 평일로 본다** — 「퇴근 전」 제목과 「오늘은 쉬는 날이네요」 문구가 부딪히기 때문.
  */
-export const DEMO_PINNED_SLOT: number | null = 2;
+export const DEMO_PINNED_SLOT: number | null = null;
 
 export interface Suggestion {
   slot: number;
@@ -47,4 +49,16 @@ export function resolveSuggestion(
   // 3단계는 직군을 보지 않는다 — 「어느 직군이냐」보다 「지금 움직여도 되느냐」가 먼저다.
   const item = tier === 2 ? PARQ_REST_ITEM : (tier === 1 ? r.low : r.items)[slot];
   return { slot, isWeekend, item };
+}
+
+/**
+ * 「지금 바로 시작하기」에서 고를 수 있는 항목들(2026-09-17 사용자 지시 "3개 정도로 선택할 수 있게").
+ *   0·1단계 = 그 직군의 세 시간대 항목 전부 — **지금 시간대에 맞는 것이 첫째**(resolveSuggestion 과 같은 것).
+ *   2단계 = 숨 고르기 하나뿐(직군 항목을 섞지 않는다 — 「지금 움직여도 되느냐」가 먼저다).
+ */
+export function suggestionChoices(args: { role: Role; tier: SafetyTier; hour: number; dow: number }, pinnedSlot: number | null = DEMO_PINNED_SLOT): StretchItem[] {
+  const first = resolveSuggestion(args, pinnedSlot);
+  if (args.tier === 2) return [PARQ_REST_ITEM];
+  const pool = args.tier === 1 ? ROLES[args.role].low : ROLES[args.role].items;
+  return [first.item, ...pool.filter((it) => it !== first.item)];
 }

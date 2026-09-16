@@ -5,8 +5,8 @@ import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
 import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
-import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, flowText, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
-import { resolveSuggestion } from "./suggestion";
+import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
+import { resolveSuggestion, suggestionChoices } from "./suggestion";
 import { buildDaySolution, parqNotice } from "./daySolution";
 import {
   AREAS, CHAT_BEATS, CONDITION_HISTORY, YESTERDAY, DONE_WEEK, doneTotals, MIND_DAYS,
@@ -14,8 +14,10 @@ import {
   //    지우지 않고 둔 것은 데이터가 이미 다 쓰여 있어서다 — 넛지를 켤 때 여기서부터 시작하면 된다.
   NUDGE, NUDGE_LOW, OB, OB_AT, PRINCIPLES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, type ContentState, type Role, type WeatherKey,
+  type StretchItem,
 } from "./data";
-import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayAnswersForToday, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
+import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
+import { greetingForHour } from "./greeting";
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -39,8 +41,10 @@ interface State {
   parq: Record<number, boolean>;
   /** 2단(후속) 답. 키 = "묶음.하위". 안 뜬 묶음의 옛 답이 남아도 판정은 뜬 묶음만 본다(safety-screen.ts). */
   parq2: Record<string, boolean>;
-  /** 오늘 몸 상태(미루기) — 홈에서 하루 한 번. 날짜가 바뀌면 delayAnswersForToday 가 비운다. */
-  delay?: DelayAnswers;
+  /** 오늘 몸 상태(미루기) — 안전 확인 문진 안에서 답한다(2026-09-17). 해제는 「안전 확인 다시 답하기」. */
+  delay: DelayAnswers;
+  /** 「지금 바로 시작하기」에서 고른 항목(3개 중 하나). 시트가 열릴 때만 뜻이 있다. */
+  pick: StretchItem | null;
   parqOnly: boolean;
   perms: Record<number, boolean>;
   area: string;
@@ -51,7 +55,7 @@ interface State {
   ob: number;
   /**
    * 아래 탭. 2026-09-13 사용자 지시로 바뀌었다 — 설정은 **상단 톱니**로 빠지고, 기록 탭은 없앴다.
-   * 홈 · 데일리케어(신체·마음 카드) · my(주간 기록). 월간은 홈 카드의 「월간 기록 보기」 칩이 연다.
+   * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "daily" | "my";
   sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings";
@@ -95,7 +99,7 @@ function stampAt(n: number, ref?: Date): string {
 export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
-    parq: {}, parq2: {}, parqOnly: false, perms: {}, area: "all", program: null,
+    parq: {}, parq2: {}, delay: {}, pick: null, parqOnly: false, perms: {}, area: "all", program: null,
     authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
@@ -241,14 +245,13 @@ export default function WellnessApp() {
     // 2026-09-16: 안전 확인 단계(0 평소 · 1 낮은 강도 · 2 숨 고르기)는 safetyTier 가 **문항 성격**으로 정한다 — 예 개수를 세지 않는다.
     // 2단 문진(2026-09-16): 1단 「예」한 질환 묶음의 후속까지 답해야 완료. 판정은 safetyTier 한 곳.
     const tier = safetyTier(st.parq, st.parq2);
-    const parqAll = safetyComplete(st.parq, st.parq2);
-    // 미루기(오늘 몸 상태) — 로컬 달력일 키. 🚫 toISOString(UTC) 금지: 한국시간 새벽에 어제로 밀린다.
-    const todayKey = `${st.now.getFullYear()}-${String(st.now.getMonth() + 1).padStart(2, "0")}-${String(st.now.getDate()).padStart(2, "0")}`;
-    const delay = delayAnswersForToday(st.delay, todayKey);
-    const delayDone = DELAY_QUESTIONS.every((_, i) => delay.yes[i] !== undefined);
-    const delayMsg = delayNotice(delay);
+    const parqAll = safetyComplete(st.parq, st.parq2, st.delay);
+    // 미루기(오늘 몸 상태) — 문진에서 답한다. 켜지면 제안이 쉬기로 바뀐다(라이브러리는 그대로).
+    const delayOn = delayActive(st.delay);
+    const delayMsg = delayNotice(st.delay);
     // 제안 항목·시간대·주말 판정은 resolveSuggestion 한 곳 — MVP 시연 동안은 하나로 고정돼 있다(suggestion.ts 참고).
     const sug = resolveSuggestion({ role: roleKey, tier, hour: st.now.getHours(), dow: st.now.getDay() });
+    const choices = suggestionChoices({ role: roleKey, tier, hour: st.now.getHours(), dow: st.now.getDay() });
     const slot = sug.slot;
     const liveKey = st.live && st.live.key;
     const wxBase = WEATHER[(liveKey as WeatherKey) || "hot"] || WEATHER.hot;
@@ -256,7 +259,7 @@ export default function WellnessApp() {
       ? { ...wxBase, label: st.live.temp + "° " + wxBase.word, note: (st.live.feels !== st.live.temp ? "체감 " + st.live.feels + "° · " : "") + wxBase.plain }
       : wxBase;
     const feelsTxt = st.live ? "체감 " + st.live.feels + "도" : "체감 35도";
-    const item = st.program || sug.item;
+    const item = st.program || st.pick || sug.item;
     // 주말·휴일엔 프로그램 이름의 평일 표현("퇴근 전 ")을 떼서 상황과 어긋나지 않게 한다.
     // (직접 고른 프로그램 st.program은 사용자가 고른 원래 이름 그대로 둔다.)
     const isWeekend = sug.isWeekend;
@@ -299,7 +302,7 @@ export default function WellnessApp() {
       mindChange: change(CONDITION_HISTORY.mind[CONDITION_HISTORY.mind.length - 1], mind),
       overallChange: change(overallHistory[overallHistory.length - 1], overall),
     };
-    return { roleKey, role, authed, onboarding, tier, parqAll, delay, delayDone, delayMsg, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
+    return { roleKey, role, authed, onboarding, tier, parqAll, delayOn, delayMsg, choices, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
   }
 
   const nowTime = `${s.now.getHours()}:${String(s.now.getMinutes()).padStart(2, "0")}`;
@@ -326,7 +329,7 @@ export default function WellnessApp() {
           {v.onboarding && renderOnboarding()}
           {v.authed && !v.onboarding && s.tab === "home" && renderHome()}
           {v.authed && !v.onboarding && s.tab === "daily" && renderDaily()}
-          {/* my = 월간 기록(2026-09-13 사용자 지시로 주간 → 월간). 주간은 홈 카드의 「주간 기록 보기」 칩이 연다. */}
+          {/* my = 월간 기록(2026-09-13 사용자 지시로 주간 → 월간). 주간 흐름은 그 화면 맨 위(2026-09-17). */}
           {v.authed && !v.onboarding && s.tab === "my" && renderRecords()}
           {v.authed && !v.onboarding && renderTabs()}
 
@@ -335,9 +338,8 @@ export default function WellnessApp() {
           {s.sheet === "library" && renderLibrary()}
           {s.sheet === "mind" && renderMind()}
           {s.sheet === "talk" && renderTalk()}
-          {s.sheet === "condition" && renderCondition()}
           {s.sheet === "settings" && renderSettings()}
-          {/* 월간 기록 — 홈 카드의 「월간 기록 보기」 칩만 연다. 2026-09-13 에 「기록」 탭이 없어지면서 이 시트가 유일한 입구가 됐다. */}
+          {/* 월간 기록 시트 — 홈의 「기록 보기」 버튼이 연다(my 탭과 같은 renderRecords). */}
           {s.sheet === "month" && renderRecords(true)}
         </div>
       </div>
@@ -507,10 +509,26 @@ export default function WellnessApp() {
                   })}
                 </div>
               ))}
+              {/* 미루기(오늘 몸 상태) — 2026-09-17 사용자 지시로 홈에서 여기로. 하나라도 예면 제안이 쉬기로 바뀐다. */}
+              <div style={sx("display:flex; flex-direction:column; gap:8px; padding:14px 15px; border-radius:15px; background:#fff7ed; border:1.5px solid #f3c98b")}>
+                <div style={sx("font-size:13px; font-weight:700; color:#7a4a00")}>오늘 몸 상태</div>
+                {DELAY_QUESTIONS.map(({ text }, i) => {
+                  const val = s.delay[i];
+                  const btn = (label: string, on: boolean, val2: boolean) => (
+                    <div onClick={() => patchFn((sti) => ({ delay: { ...sti.delay, [i]: val2 } }))} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:40px; min-width:52px; padding:0 12px; border-radius:11px; font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", color: on ? "#7a6bc4" : "#8ba8b3", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>{label}</div>
+                  );
+                  return (
+                    <div key={i} style={sx("display:flex; align-items:center; gap:10px")}>
+                      <div style={sx("flex:1; min-width:0; font-size:13px; color:#2d5c6e; line-height:1.5; font-weight:500; text-wrap:pretty")}>{text}</div>
+                      <div style={sx("flex:none; display:flex; gap:6px")}>{btn("아니오", val === false, false)}{btn("예", val === true, true)}</div>
+                    </div>
+                  );
+                })}
+              </div>
               {v.parqAll && (
                 <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #c9d6dc; animation:wRise 0.4s ease-out both")}>
-                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.tier > 0 ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
-                  <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.tier) ?? "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
+                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.delayOn ? "오늘은 쉬어 가요" : v.tier > 0 ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
+                  <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{v.delayMsg ?? parqNotice(v.tier) ?? "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
                 </div>
               )}
               <div style={sx("font-size:13px; color:#2d5c6e; font-weight:600; line-height:1.65; padding:2px; text-wrap:pretty")}>호주 ESSA 성인 사전운동 문진(APSS)과 미국 ACSM 사전참여 기준을 참고해 만든 문항으로, 건강검진이나 진단이 아닙니다. 이 답은 활동 강도를 정하는 데만 쓰이고, 본인 외에는 누구도 볼 수 없습니다. 설정에서 언제든 다시 답할 수 있어요.</div>
@@ -530,7 +548,7 @@ export default function WellnessApp() {
   function renderHome() {
     const wx = v.wx;
     const item = v.item;
-    const greeting = EMPTY_STATE ? "천천히 시작해요" : "오늘도 한 걸음 왔네요";
+    const greeting = EMPTY_STATE ? "천천히 시작해요" : greetingForHour(s.now.getHours());
     // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★안전 확인 강도. 조립은 daySolution.ts(순수·테스트).
     // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
     //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
@@ -577,53 +595,6 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}
-        <div style={sx("display:flex; align-items:center; gap:9px; margin-top:-4px")}>
-          <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:32px; padding:0 13px; border-radius:999px; background:#fff; border:1px solid #c9d6dc")}>
-            <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
-            <div style={sx("font-size:13px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
-          </div>
-          <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
-        </div>
-
-        {/* 종합 컨디션 카드 — 신체·마음을 합친 단계 하나가 주인공, 두 축은 칩으로. 숫자 없음(사용자 확정). 누르면 상세 시트. */}
-        {(() => {
-          const lv = v.cond.dayOverall;
-          const c = lv ? LEVEL_COLOR[lv] : { bg: "#eef3f5", fg: "#6b8c9a" };
-          const flow = flowText(v.cond.weekFlow.slice(-3));
-          // 2026-09-13 사용자 지시: 위 「신체건강·마음건강」 칩과 **한눈에 갈려야 한다**.
-          //   읽는 칩 = 흰 배경 + 테두리 · 누르는 칩 = 앱의 행동색(#7a6bc4)으로 **채운다**(「지금 바로 시작하기」와 같은 색).
-          //   🚫 둘 다 흰 알약으로 되돌리지 말 것 — 그래서 구분이 안 갔다.
-          const navChip = (label: string, go: () => void) => (
-            <div onClick={go} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 10px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; white-space:nowrap; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>{label} ›</div>
-          );
-          const chip = (name: string, l: typeof lv) => {
-            const cc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-            return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; border:2px solid rgba(45,92,110,0.6)"), background: "rgba(255,255,255,0.85)", color: cc.fg }}><span style={sx("color:#2d5c6e")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 부족"}</span></div>;
-          };
-          return (
-            <div style={{ ...sx("display:flex; flex-direction:column; gap:12px; padding:17px 17px 15px; border-radius:20px; border:2px solid rgba(45,92,110,0.45); box-shadow:0 6px 18px rgba(45,92,110,0.10)"), background: c.bg }}>
-              <div style={sx("display:flex; flex-direction:column; gap:4px")}>
-                <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: c.fg }}>{v.cond.yesterday} 종합 컨디션</div>
-                <div style={{ ...sx("font-size:24px; font-weight:800; letter-spacing:-0.02em"), color: c.fg }}>{lv ? LEVEL_LABEL[lv] : "기록 부족"}</div>
-                <div style={{ ...sx("font-size:12px; line-height:1.4; opacity:0.85; text-wrap:pretty"), color: c.fg }}>최근 흐름 {flow}</div>
-              </div>
-              <div style={sx("display:flex; gap:8px")}>
-                {chip("신체건강", v.cond.dayBody)}
-                {chip("마음건강", v.cond.dayMind)}
-              </div>
-              {/* 2026-09-13 사용자 지시: 「상세보기」를 없애고 주간·월간 두 칩으로. 카드 전체를 누르는 동작도 없앴다
-                  — 칩이 각각 다른 곳으로 가므로 어디를 눌렀는지가 분명해야 한다.
-                  월간은 홈에 그대로 머문 채 시트로 띄운다(사용자 지시 "기록 보기로 가는 게 아니고 내용만 가져오게").
-                  ★그 시트는 「기록」 탭과 **같은 renderRecords** 를 부른다 — 같은 화면을 한 번 더 만들면 두 곳이 갈린다. */}
-              <div style={sx("display:flex; gap:8px")}>
-                {navChip("주간 기록 보기", () => patch({ sheet: "condition" }))}
-                {navChip("월간 기록 보기", () => patch({ sheet: "month" }))}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* 오늘의 기록 */}
         <div style={sx("display:grid; gap:11px")}>
           <div style={sx("display:flex; align-items:center; gap:9px; padding:0 2px")}>
@@ -669,7 +640,7 @@ export default function WellnessApp() {
           ) : (
             <div style={sx("display:flex; flex-direction:column; gap:13px; padding:18px; border-radius:20px; background:#fff; border:1px solid #c9d6dc")}>
               <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>오늘은 아직 조용해요. 시작은 1분이면 충분합니다.</div>
-              <div onClick={() => patch({ sheet: "content", program: null })} style={sx("cursor:pointer; text-align:center; padding:13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:14px; font-weight:700; color:#7a6bc4")}>1분 기지개부터</div>
+              <div onClick={() => patch({ sheet: "content", program: null, pick: null })} style={sx("cursor:pointer; text-align:center; padding:13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:14px; font-weight:700; color:#7a6bc4")}>1분 기지개부터</div>
             </div>
           )}
 
@@ -686,47 +657,48 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
-        {/* 오늘 몸 상태 확인(미루기) — 오리지널 사전운동 문진의 「Delay」 축. 하루 한 번, 셋 다 아니오면 접힌다.
-            🚫 잠그지 않는다 — 「예」여도 아래 제안 카드·버튼은 그대로, 안내 한 줄만(사용자 확정 2026-09-16). */}
-        {!v.delayDone ? (
-          <div style={sx("display:flex; flex-direction:column; gap:8px; padding:14px 15px; border-radius:18px; background:#fff; border:1.5px solid #c4b8ec")}>
-            <div style={sx("font-size:13px; font-weight:700; color:#5a4aa8")}>오늘 몸 상태 확인 · 3가지</div>
-            {DELAY_QUESTIONS.map(({ text }, i) => {
-              const val = v.delay.yes[i];
-              const btn = (label: string, on: boolean, val2: boolean) => (
-                <div onClick={() => patchFn((sti) => { const d = delayAnswersForToday(sti.delay, v.delay.date); return { delay: { ...d, yes: { ...d.yes, [i]: val2 } } }; })} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:38px; min-width:50px; padding:0 11px; border-radius:11px; font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", color: on ? "#7a6bc4" : "#8ba8b3", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>{label}</div>
-              );
-              return (
-                <div key={i} style={sx("display:flex; align-items:center; gap:10px")}>
-                  <div style={sx("flex:1; min-width:0; font-size:13px; color:#2d5c6e; line-height:1.5; font-weight:500; text-wrap:pretty")}>{text}</div>
-                  <div style={sx("flex:none; display:flex; gap:6px")}>{btn("아니오", val === false, false)}{btn("예", val === true, true)}</div>
-                </div>
-              );
-            })}
+        {/* 기록 보기 — 2026-09-17 사용자 지시: 종합 컨디션 박스(큰 단계 글자·최근 흐름·신체/마음 칩)와 「주간 기록 보기」를 없애고
+            버튼 하나. 주간 흐름 막대·범례는 월간 기록 화면 맨 위로 옮겼다(renderRecords). 🚫 홈에 단계 글자를 되살리지 말 것. */}
+        <div onClick={() => patch({ sheet: "month" })} style={sx("cursor:pointer; text-align:center; padding:14px 12px; border-radius:15px; font-size:14.5px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>기록 보기 ›</div>
+
+        {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}
+        <div style={sx("display:flex; align-items:center; gap:9px; margin-top:-4px")}>
+          <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:32px; padding:0 13px; border-radius:999px; background:#fff; border:1px solid #c9d6dc")}>
+            <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
+            <div style={sx("font-size:13px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
           </div>
-        ) : v.delayMsg && (
-          <div style={sx("display:flex; gap:10px; align-items:flex-start; padding:13px 15px; border-radius:16px; background:#fff7ed; border:1.5px solid #f3c98b")}>
-            <div style={sx("flex:none; width:22px; height:22px; border-radius:50%; background:#f3c98b; color:#7a4a00; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center")}>!</div>
-            <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>{v.delayMsg}</div>
-          </div>
-        )}
-        {/* AI 오늘의 제안 */}
+          <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4d5578; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{wx.note}</div>
+        </div>
+
+        {/* 오늘의 제안 — 「AI」 표기는 2026-09-17 사용자 지시로 뺐다. 미루기가 켜지면 프로그램 대신 쉬기 안내(라이브러리는 그대로). */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:linear-gradient(140deg,#eaf6fb 0%,#f2edfa 62%,#fdf0f4 100%); border:1px solid #c9d6dc; box-shadow:0 4px 16px rgba(122,138,196,0.12)")}>
           <div style={sx("display:flex; align-items:center; gap:9px")}>
-            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>AI 오늘의 제안</div>
+            <div style={sx("flex:none; padding:6px 13px; border-radius:999px; background:#4a3f80; font-size:12px; font-weight:800; color:#fff; white-space:nowrap; letter-spacing:0.02em")}>오늘의 제안</div>
             <div style={sx("flex:1; height:1px; background:rgba(122,107,196,0.22)")} />
           </div>
-          <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
-          <div onClick={() => patch({ sheet: "content", program: null })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:60px; padding:0 16px; border-radius:16px; background:#7a6bc4; box-shadow:0 6px 16px rgba(122,107,196,0.32)")}>
-            <div style={sx("flex:none; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center")}>
-              <div style={sx("width:0; height:0; margin-left:3px; border-left:11px solid #fff; border-top:7px solid transparent; border-bottom:7px solid transparent")} />
-            </div>
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-              <div style={sx("font-size:10.5px; font-weight:700; color:rgba(255,255,255,0.75); letter-spacing:0.03em")}>지금 바로 시작하기</div>
-              <div style={sx("font-size:14.5px; font-weight:700; color:#fff; text-wrap:pretty")}>{v.itemTitle}</div>
-            </div>
-            <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
-          </div>
+          {v.delayOn ? (
+            <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{v.delayMsg}</div>
+          ) : (
+            <>
+              <div style={sx("font-size:15.5px; font-weight:600; color:#3a4a72; line-height:1.7; letter-spacing:-0.01em; text-wrap:pretty")}>{daySolution}</div>
+              {/* 지금 바로 시작하기 — 3개 중 고른다(2026-09-17 사용자 지시). 첫째 = 지금 시간대에 맞는 항목(진하게), 나머지는 흰 버튼. */}
+              <div style={sx("display:flex; flex-direction:column; gap:8px")}>
+                <div style={sx("font-size:10.5px; font-weight:700; color:#4a3f80; letter-spacing:0.03em; padding:0 2px")}>지금 바로 시작하기 · 하나를 골라 주세요</div>
+                {v.choices.map((it, i) => {
+                  const first = i === 0;
+                  return (
+                    <div key={it.title} onClick={() => patch({ sheet: "content", program: null, pick: it })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:12px; min-height:54px; padding:0 14px; border-radius:15px; border:1.5px solid"), background: first ? "#7a6bc4" : "#fff", borderColor: first ? "#7a6bc4" : "#cfc5ea", boxShadow: first ? "0 6px 16px rgba(122,107,196,0.32)" : "none" }}>
+                      <div style={{ ...sx("flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center"), background: first ? "rgba(255,255,255,0.22)" : "#f2edfa" }}>
+                        <div style={{ ...sx("width:0; height:0; margin-left:3px; border-top:6px solid transparent; border-bottom:6px solid transparent"), borderLeft: `10px solid ${first ? "#fff" : "#7a6bc4"}` }} />
+                      </div>
+                      <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{v.isWeekend ? it.title.replace(/^퇴근 전 /, "") : it.title}</div>
+                      <div style={{ ...sx("flex:none; font-size:16px"), color: first ? "rgba(255,255,255,0.8)" : "#7a6bc4" }}>›</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
           {/* 2026-09-13: 안전 확인 안내가 온보딩에서 한 번 스쳐 지나가고 끝이었다 → 제안을 읽는 그 자리에 상시로 둔다. */}
           {parqNotice(v.tier) && (
             <div style={sx("display:flex; gap:9px; align-items:flex-start; padding:12px 13px; border-radius:14px; background:rgba(255,255,255,0.72); border:1px solid #c4b8ec")}>
@@ -743,7 +715,7 @@ export default function WellnessApp() {
     );
   }
 
-  /** 월별 기록장. `inSheet` 면 홈 카드의 칩이 띄우는 시트로, 아니면 **my 탭**의 화면으로. 내용은 같은 코드다. */
+  /** 월별 기록장. `inSheet` 면 홈의 「기록 보기」가 띄우는 시트로, 아니면 **my 탭**의 화면으로. 내용은 같은 코드다. */
   /**
    * 데일리케어 — 신체 건강·마음 건강으로 들어가는 자리(2026-09-13 사용자 지시로 홈에서 옮겨 왔다).
    * 🚫 홈에 같은 카드를 다시 두지 말 것.
@@ -831,6 +803,8 @@ export default function WellnessApp() {
       <div style={{ ...sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:13px; padding:14px 20px"), paddingBottom: inSheet ? 28 : 96 }}>
         {/* 시트로 열 때는 위 머리줄이 제목을 맡으므로 여기 제목은 안 그린다. */}
         {!inSheet && <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>나의 기록</div>}
+
+        {renderWeekFlow()}
 
         {/* 월 넘기기 — 첫 기록 달 ~ 이번 달 */}
         <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:10px")}>
@@ -1054,7 +1028,7 @@ export default function WellnessApp() {
             <div style={sx("flex:1; font-size:14px; font-weight:600; color:#2d5c6e")}>직군</div>
             <div style={sx("font-size:13px; color:#6b8c9a; flex:none; white-space:nowrap")}>{v.role.label}</div>
           </div>
-          <div onClick={() => patch({ ob: OB_AT.parq, parq: {}, parq2: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
+          <div onClick={() => patch({ ob: OB_AT.parq, parq: {}, parq2: {}, delay: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
               <div style={sx("font-size:14px; font-weight:600; color:#2d5c6e")}>안전 확인 다시 답하기</div>
               <div style={sx("font-size:12px; color:#8ba8b3")}>안전 확인 9문항 + 후속 · 활동 강도 기준</div>
@@ -1314,7 +1288,7 @@ export default function WellnessApp() {
             const chipBg = pg.min <= 1 ? "#fdf1e6" : pg.min <= 3 ? "#ffe6ec" : "#f2edfa";
             const chipInk = pg.min <= 3 ? "#8a4a3c" : "#4a3f80";
             return (
-              <div key={pg.id} onClick={() => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: "content", program: pg, minutes: pg.min, remaining: pg.min * 60, running: false }); }} style={sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:18px; background:#fff; border:1px solid #e2cec7; box-shadow:0 2px 8px rgba(196,150,140,0.08)")}>
+              <div key={pg.id} onClick={() => { if (timerRef.current) clearInterval(timerRef.current); patch({ sheet: "content", program: pg, pick: null, minutes: pg.min, remaining: pg.min * 60, running: false }); }} style={sx("cursor:pointer; display:flex; align-items:center; gap:13px; padding:15px 16px; border-radius:18px; background:#fff; border:1px solid #e2cec7; box-shadow:0 2px 8px rgba(196,150,140,0.08)")}>
                 <div style={{ ...sx("flex:none; width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800; white-space:nowrap"), background: chipBg, color: chipInk }}>{pg.min}분</div>
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
                   <div style={sx("font-size:14.5px; font-weight:700; color:#5a4a58; text-wrap:pretty")}>{pg.title}</div>
@@ -1401,26 +1375,19 @@ export default function WellnessApp() {
     );
   }
 
-  /** 주간 기록 — 홈 카드의 「주간 기록 보기」 칩이 띄우는 시트. (2026-09-13: 잠깐 my 탭이 이걸 썼다가 월간으로 바뀌었다.) */
-  function renderCondition() {
-    const close = () => patch({ sheet: null });
-    const box = (l: (typeof v.cond)["overall"]) => (l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" });
-    const oc = box(v.cond.dayOverall);
+  /** 주간 흐름 막대 + 범례 — 2026-09-17 사용자 지시로 「주간 기록 보기」 시트를 없애고 월간 기록 화면 맨 위에 둔다. */
+  function renderWeekFlow() {
     const flow = v.cond.weekFlow;
+    const oc = v.cond.dayOverall ? LEVEL_COLOR[v.cond.dayOverall] : { bg: "#eef3f5", fg: "#6b8c9a" };
     const dowLabels = (() => {
       // 이번 주 흐름 라벨: 어제로 끝나는 flow.length 일치 요일
       const d = new Date(s.now.getFullYear(), s.now.getMonth(), s.now.getDate() - 1);
       const names = ["일", "월", "화", "수", "목", "금", "토"];
       return flow.map((_, i) => names[(d.getDay() - (flow.length - 1 - i) + 14) % 7]);
     })();
-    // ⚠ 어제 한 장만 그리던 `axis` 헬퍼는 2026-09-13 일별 보기로 바뀌며 지웠다(같은 것을 두 모양으로 두지 않는다).
-    const inner = (
-      <div style={sx("flex:1; overflow-y:auto; padding:18px 18px 28px; display:flex; flex-direction:column; gap:14px")}>
-          {/* 종합 */}
-          <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:18px 18px 16px; border-radius:20px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
-            <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8"), color: oc.fg }}>{v.cond.yesterday}</div>
-            <div style={{ ...sx("font-size:28px; font-weight:800; letter-spacing:-0.02em"), color: oc.fg }}>{v.cond.dayOverall ? LEVEL_LABEL[v.cond.dayOverall] : "아직 기록이 적어요"}</div>
-            <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; margin-top:6px"), color: oc.fg }}>이번 주 흐름</div>
+    return (
+      <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
+            <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; "), color: oc.fg }}>이번 주 흐름</div>
             {/* 요일마다 가로 바 — 채움 길이 = 단계(5칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}
             <div style={sx("display:flex; flex-direction:column; gap:7px")}>
               {flow.map((h, i) => {
@@ -1446,52 +1413,6 @@ export default function WellnessApp() {
                 </div>
               ))}
             </div>
-            {/* 각주 — 단계 이름이 왜 나오는지(levelFromSum·dayMindLevel·overallLevel 규칙을 말로). 규칙을 바꾸면 이 글도 같이 바꿀 것. */}
-            <div style={{ ...sx("display:flex; flex-direction:column; gap:6px; margin-top:4px; padding:12px 13px; border-radius:14px; background:rgba(255,255,255,0.6); border:1px solid rgba(45,92,110,0.25)"), color: oc.fg }}>
-              <div style={sx("font-size:12px; font-weight:800")}>어떻게 정했나요</div>
-              <div style={sx("font-size:11.5px; line-height:1.6; text-wrap:pretty")}><b>신체건강</b> — 스트레칭·움직인 시간·걸음 세 가지를 평소와 견줘요. 셋 다 평소만큼이면 <b>보통</b>, 하나가 평소보다 많으면 <b>좋음</b>, 둘 이상 많으면 <b>매우 좋음</b>. 반대로 하나가 적으면 <b>조금 지침</b>, 둘 이상 적으면 <b>휴식 필요</b>예요.</div>
-              <div style={sx("font-size:11.5px; line-height:1.6; text-wrap:pretty")}><b>마음건강</b> — 오늘의 마음카드로 봐요. 가벼운 쪽 그림을 골랐으면 <b>좋음</b>, 중간이면 <b>보통</b>, 무거운 쪽이면 <b>조금 지침</b>. 많이 힘든 말이 보인 날은 <b>휴식 필요</b>로 두고 쉬라고 권해요.</div>
-              <div style={sx("font-size:11.5px; line-height:1.6; text-wrap:pretty")}><b>종합</b> — 신체건강과 마음건강을 같이 봐요. 둘이 같으면 그대로, 다르면 낮은 쪽에 맞춰요.</div>
-            </div>
-          </div>
-
-          {/* 2026-09-13 사용자 지시: 「어제 것만」이 아니라 지난 한 주를 하루씩.
-              판정은 새로 쓰지 않는다 — weekConditions 가 하루 규칙을 그대로 쓴다(monthly.ts). */}
-          <div style={sx("display:flex; flex-direction:column; gap:10px")}>
-            <div style={sx("font-size:14.5px; font-weight:800; color:#2d5c6e; padding:2px 2px 0")}>하루씩 보기</div>
-            {weekConditions(mockRecordsUntil(s.now)).map((d, i) => {
-              const dc = d.overall ? LEVEL_COLOR[d.overall] : { bg: "#eef3f5", fg: "#6b8c9a" };
-              const sub = (name: string, l: typeof d.overall) => {
-                const lc = l ? LEVEL_COLOR[l] : { bg: "#eef3f5", fg: "#6b8c9a" };
-                return <div style={{ ...sx("flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 10px; border-radius:10px; font-size:12px; font-weight:700; border:1.5px solid rgba(45,92,110,0.35); background:#fff"), color: lc.fg }}><span style={sx("color:#2d5c6e")}>{name}</span><span>{l ? LEVEL_LABEL[l] : "기록 없음"}</span></div>;
-              };
-              return (
-                <div key={d.date} style={sx("display:flex; flex-direction:column; gap:9px; padding:14px 15px; border-radius:16px; background:#fff; border:2px solid rgba(45,92,110,0.45)")}>
-                  <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:8px")}>
-                    <div style={sx("font-size:13.5px; font-weight:800; color:#2d5c6e")}>{i === 0 ? `어제 · ${d.label}` : d.label}</div>
-                    <div style={{ ...sx("font-size:12px; font-weight:800; padding:5px 10px; border-radius:999px"), background: dc.bg, color: dc.fg }}>{d.overall ? LEVEL_LABEL[d.overall] : "기록 없음"}</div>
-                  </div>
-                  <div style={sx("display:flex; gap:7px")}>
-                    {sub("신체건강", d.body)}
-                    {sub("마음건강", d.mind)}
-                  </div>
-                  <div style={sx("font-size:12px; color:#4d7c8c; line-height:1.55; text-wrap:pretty")}>{[...d.bodyEvidence, ...d.mindEvidence].join(" · ")}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-    );
-    return (
-      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
-        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
-          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>주간 기록</div>
-            <div style={sx("font-size:11px; color:#8ba8b3")}>지난 7일을 하루씩 · 단계는 선생님만 봅니다</div>
-          </div>
-        </div>
-        {inner}
       </div>
     );
   }

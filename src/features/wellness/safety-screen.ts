@@ -87,18 +87,19 @@ export function safetyTier(a1: SafetyAnswers, a2: FollowUpAnswers): SafetyTier {
   return 1;
 }
 
-/** 1단 전부 + 띄운 후속 전부에 답했는가. 판정문·「다음」은 이때만 연다. */
-export function safetyComplete(a1: SafetyAnswers, a2: FollowUpAnswers): boolean {
+/** 1단 전부 + 띄운 후속 전부 + 미루기 3개에 답했는가. 판정문·「다음」은 이때만 연다. */
+export function safetyComplete(a1: SafetyAnswers, a2: FollowUpAnswers, delay: DelayAnswers): boolean {
   if (SAFETY_QUESTIONS.some((_, i) => a1[i] === undefined)) return false;
+  if (DELAY_QUESTIONS.some((_, i) => delay[i] === undefined)) return false;
   return followUpGroupsFor(a1).every((g) => FOLLOW_UPS[g].items.every((_, j) => a2[`${g}.${j}`] !== undefined));
 }
 
 /* ───────────── 미루기(오늘 몸 상태) ─────────────
  * 오리지널 4쪽 「Delay becoming more active if」 = 일시적 질환(감기·열) · 임신 · 건강 상태 변화.
- * 질환 문진(위)과 **별개 축** — 질환은 한 번 답해 두는 값이고, 이것은 **오늘**의 상태라 홈에서 하루 한 번 묻는다.
- * 🚫 잠그지 않는다(사용자 확정 2026-09-16 "굳이 잠글 필요까지는 없어") — 「예」여도 프로그램·버튼은 그대로, 안내 한 줄만 얹는다.
- *    안내에 「하지 마세요」류 금지어를 쓰지 말 것(테스트가 막는다). 오리지널 Delay 도 「미루라」이지 「하지 말라」가 아니다.
- * 날짜가 바뀌면 셋 다 초기화(수동 해제 없음 — 임신처럼 오래 가는 답은 매일 「예」를 누르면 된다). ⚠감수 대상 ④.
+ * 2026-09-16 엔 홈에서 하루 한 번 묻고 안내만 했다 → 2026-09-17 사용자 지시("왜 이 페이지에 뜬금없이 … 앞에 문진으로 빼주고,
+ *   체크되면 딜레이 되어야") = **안전 확인 문진 안**에서 묻고, 하나라도 예면 **제안이 쉬기로 바뀐다**(프로그램 대신 안내).
+ *   🚫 라이브러리·데일리케어까지 잠그지는 않는다(2026-09-16 "굳이 잠글 필요까지는 없어"는 그쪽에 남긴다).
+ *   날짜 초기화 없음 — 해제는 설정 「안전 확인 다시 답하기」(안내문이 그 길을 말한다). ⚠감수 대상 ④.
  */
 export const DELAY_QUESTIONS: ReadonlyArray<{ text: string; consult: boolean }> = [
   { text: "지금 열이 있거나 감기처럼 잠깐 아픈 상태인가요?", consult: false },
@@ -106,17 +107,16 @@ export const DELAY_QUESTIONS: ReadonlyArray<{ text: string; consult: boolean }> 
   { text: "최근에 건강 상태가 달라졌나요? (새 진단·입원·수술·약 변경)", consult: true },
 ];
 
-/** 홈에서 하루 한 번 답한 것. `date` = 답한 날(YYYY-MM-DD, 로컬). */
-export type DelayAnswers = { date: string; yes: Record<number, boolean> };
+/** 문항 번호 → 예/아니오. 아직 안 답한 문항은 키가 없다. */
+export type DelayAnswers = Record<number, boolean>;
 
-export function delayAnswersForToday(saved: DelayAnswers | undefined, today: string): DelayAnswers {
-  if (saved && saved.date === today) return saved;
-  return { date: today, yes: {} };
+export function delayActive(a: DelayAnswers): boolean {
+  return DELAY_QUESTIONS.some((_, i) => a[i]);
 }
 
 export function delayNotice(a: DelayAnswers): string | null {
-  const hit = DELAY_QUESTIONS.filter((_, i) => a.yes[i]);
+  const hit = DELAY_QUESTIONS.filter((_, i) => a[i]);
   if (hit.length === 0) return null;
-  const base = "오늘은 몸을 쉬게 두셔도 좋아요. 상태가 나아지면 평소대로 이어가세요.";
+  const base = "오늘은 몸을 쉬게 두셔도 좋아요. 상태가 나아지면 설정의 「안전 확인 다시 답하기」에서 다시 답해 주세요.";
   return hit.some((q) => q.consult) ? base + " 활동을 늘리기 전에는 주치의와 한 번 상의해 주세요." : base;
 }
