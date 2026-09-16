@@ -657,9 +657,12 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
-        {/* 기록 보기 — 2026-09-17 사용자 지시: 종합 컨디션 박스(큰 단계 글자·최근 흐름·신체/마음 칩)와 「주간 기록 보기」를 없애고
-            버튼 하나. 주간 흐름 막대·범례는 월간 기록 화면 맨 위로 옮겼다(renderRecords). 🚫 홈에 단계 글자를 되살리지 말 것. */}
-        <div onClick={() => patch({ sheet: "month" })} style={sx("cursor:pointer; text-align:center; padding:14px 12px; border-radius:15px; font-size:14.5px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>기록 보기 ›</div>
+        {/* 주간 흐름 박스 — 2026-09-17 사용자 지시: 옛 종합 컨디션 박스에서 큰 단계 글자·「최근 흐름」 한 줄·신체/마음 칩·「주간 기록 보기」를
+            없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
+            "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
+        {renderWeekFlow(
+          <div onClick={() => patch({ sheet: "month" })} style={sx("cursor:pointer; text-align:center; margin-top:4px; padding:13px 12px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>,
+        )}
 
         {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}
         <div style={sx("display:flex; align-items:center; gap:9px; margin-top:-4px")}>
@@ -803,8 +806,6 @@ export default function WellnessApp() {
       <div style={{ ...sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:13px; padding:14px 20px"), paddingBottom: inSheet ? 28 : 96 }}>
         {/* 시트로 열 때는 위 머리줄이 제목을 맡으므로 여기 제목은 안 그린다. */}
         {!inSheet && <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; padding-top:6px")}>나의 기록</div>}
-
-        {renderWeekFlow()}
 
         {/* 월 넘기기 — 첫 기록 달 ~ 이번 달 */}
         <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:10px")}>
@@ -980,7 +981,7 @@ export default function WellnessApp() {
           <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>월간 기록</div>
-            <div style={sx("font-size:11px; color:#8ba8b3")}>달을 넘겨 볼 수 있어요 · 하루씩 보기는 my 탭에서</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>달을 넘겨 볼 수 있어요 · my 탭과 같은 화면</div>
           </div>
         </div>
         {body}
@@ -1375,8 +1376,8 @@ export default function WellnessApp() {
     );
   }
 
-  /** 주간 흐름 막대 + 범례 — 2026-09-17 사용자 지시로 「주간 기록 보기」 시트를 없애고 월간 기록 화면 맨 위에 둔다. */
-  function renderWeekFlow() {
+  /** 주간 흐름 막대 + 범례 — 2026-09-17 사용자 지시로 「주간 기록 보기」 시트를 없애고 홈 박스에 둔다(footer = 「월간 기록 보기」 버튼). */
+  function renderWeekFlow(footer: React.ReactNode) {
     const flow = v.cond.weekFlow;
     const oc = v.cond.dayOverall ? LEVEL_COLOR[v.cond.dayOverall] : { bg: "#eef3f5", fg: "#6b8c9a" };
     const dowLabels = (() => {
@@ -1413,6 +1414,7 @@ export default function WellnessApp() {
                 </div>
               ))}
             </div>
+        {footer}
       </div>
     );
   }
