@@ -15,7 +15,7 @@ import {
   NUDGE, NUDGE_LOW, OB, OB_AT, PRINCIPLES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, type ContentState, type Role, type WeatherKey,
 } from "./data";
-import { SAFETY_QUESTIONS, safetyTier } from "./safety-screen";
+import { FOLLOW_UPS, SAFETY_QUESTIONS, followUpGroupsFor, safetyComplete, safetyTier } from "./safety-screen";
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -37,6 +37,8 @@ interface Session { title: string; time: string }
 interface State {
   now: Date;
   parq: Record<number, boolean>;
+  /** 2단(후속) 답. 키 = "묶음.하위". 안 뜬 묶음의 옛 답이 남아도 판정은 뜬 묶음만 본다(safety-screen.ts). */
+  parq2: Record<string, boolean>;
   parqOnly: boolean;
   perms: Record<number, boolean>;
   area: string;
@@ -91,7 +93,7 @@ function stampAt(n: number, ref?: Date): string {
 export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
-    parq: {}, parqOnly: false, perms: {}, area: "all", program: null,
+    parq: {}, parq2: {}, parqOnly: false, perms: {}, area: "all", program: null,
     authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
@@ -235,8 +237,9 @@ export default function WellnessApp() {
     const authed = st.authed;
     const onboarding = authed && st.ob >= 0;
     // 2026-09-16: 안전 확인 단계(0 평소 · 1 낮은 강도 · 2 숨 고르기)는 safetyTier 가 **문항 성격**으로 정한다 — 예 개수를 세지 않는다.
-    const tier = safetyTier(st.parq);
-    const parqAll = Object.keys(st.parq).length === SAFETY_QUESTIONS.length;
+    // 2단 문진(2026-09-16): 1단 「예」한 질환 묶음의 후속까지 답해야 완료. 판정은 safetyTier 한 곳.
+    const tier = safetyTier(st.parq, st.parq2);
+    const parqAll = safetyComplete(st.parq, st.parq2);
     // 제안 항목·시간대·주말 판정은 resolveSuggestion 한 곳 — MVP 시연 동안은 하나로 고정돼 있다(suggestion.ts 참고).
     const sug = resolveSuggestion({ role: roleKey, tier, hour: st.now.getHours(), dow: st.now.getDay() });
     const slot = sug.slot;
@@ -475,6 +478,28 @@ export default function WellnessApp() {
                   </div>
                 );
               })}
+              {/* 2단 — 「예」한 질환 묶음만 「지금 통제되는가」를 묻는다(오리지널 2·3쪽 논리). 1단을 아니오로 되돌리면 그 묶음은 사라진다. */}
+              {followUpGroupsFor(s.parq).map((g) => (
+                <div key={g} style={sx("display:flex; flex-direction:column; gap:8px; padding:14px 15px; border-radius:15px; background:#f7f5fc; border:1.5px solid #c4b8ec; animation:wRise 0.3s ease-out both")}>
+                  <div style={sx("font-size:13px; font-weight:700; color:#5a4aa8")}>{FOLLOW_UPS[g].title}</div>
+                  {FOLLOW_UPS[g].items.map((text, j) => {
+                    const key = `${g}.${j}`;
+                    const val = s.parq2[key];
+                    const btn = (label: string, on: boolean, v2: boolean) => (
+                      <div onClick={() => patchFn((sti) => ({ parq2: { ...sti.parq2, [key]: v2 } }))} style={{ ...sx("cursor:pointer; white-space:nowrap; min-height:40px; min-width:52px; padding:0 12px; border-radius:11px; font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid; transition:all 0.18s"), background: on ? "#f2edfa" : "#fff", color: on ? "#7a6bc4" : "#8ba8b3", borderColor: on ? "#7a6bc4" : "#c9d6dc" }}>{label}</div>
+                    );
+                    return (
+                      <div key={key} style={sx("display:flex; align-items:center; gap:10px")}>
+                        <div style={sx("flex:1; min-width:0; font-size:13px; color:#2d5c6e; line-height:1.5; font-weight:500; text-wrap:pretty")}>{text}</div>
+                        <div style={sx("flex:none; display:flex; gap:6px")}>
+                          {btn("아니오", val === false, false)}
+                          {btn("예", val === true, true)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
               {v.parqAll && (
                 <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #c9d6dc; animation:wRise 0.4s ease-out both")}>
                   <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.tier > 0 ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
@@ -998,10 +1023,10 @@ export default function WellnessApp() {
             <div style={sx("flex:1; font-size:14px; font-weight:600; color:#2d5c6e")}>직군</div>
             <div style={sx("font-size:13px; color:#6b8c9a; flex:none; white-space:nowrap")}>{v.role.label}</div>
           </div>
-          <div onClick={() => patch({ ob: OB_AT.parq, parq: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
+          <div onClick={() => patch({ ob: OB_AT.parq, parq: {}, parq2: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
               <div style={sx("font-size:14px; font-weight:600; color:#2d5c6e")}>안전 확인 다시 답하기</div>
-              <div style={sx("font-size:12px; color:#8ba8b3")}>안전 확인 8문항 · 활동 강도 기준</div>
+              <div style={sx("font-size:12px; color:#8ba8b3")}>안전 확인 9문항 + 후속 · 활동 강도 기준</div>
             </div>
             <div style={sx("flex:none; white-space:nowrap; font-size:13px; color:#6b8c9a")}>{parqStatus}</div>
           </div>

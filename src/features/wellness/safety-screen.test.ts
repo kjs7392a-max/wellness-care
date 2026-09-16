@@ -1,76 +1,113 @@
 import { describe, expect, it } from "vitest";
-import { SAFETY_QUESTIONS, safetyTier, type SafetyAnswers } from "./safety-screen";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  FOLLOW_UPS, SAFETY_QUESTIONS, followUpGroupsFor, safetyComplete, safetyTier,
+  type FollowUpAnswers, type SafetyAnswers,
+} from "./safety-screen";
 
-// 2026-09-16: 「예 개수」로 갈랐던 PAR-Q+ 판정을 **문항 성격**으로 바꿨다(사용자 확정).
-//   APSS(호주 ESSA) 1단계 = 하나라도 예 → 전문가 상담 후 시작 / ACSM 2015 = 징후·의사 지시 → 의학적 확인 권고,
-//   알려진 질환·무증상 → 가벼운 강도로 시작. 이 테스트는 그 규칙을 못박는다 — 개수는 어디에도 안 나온다.
+// 2026-09-16: 오리지널 PAR-Q+ 의 **2단 논리**를 우리 문항으로 옮겼다(문항 자체는 약관상 못 옮긴다).
+//   1단 = 「질환이 있는가 / 증상이 있는가」 · 2단 = 「예」한 질환 묶음만 「지금 통제되는가」.
+//   판정(오리지널 4쪽): 1단 전부 아니오 → 0 · 질환 예 + 후속 전부 아니오 → 1 · 후속 하나라도 예 → 2.
+//   증상·의사 지시(7·8·9)는 후속 없이 바로 2(ACSM — 증상은 의학적 확인 대상. 사용자 확정).
 
-const idx = (kind: "flag" | "caution") =>
-  SAFETY_QUESTIONS.map((q, i) => (q.kind === kind ? i : -1)).filter((i) => i >= 0);
-
-const answers = (yes: number[]): SafetyAnswers => {
-  const a: SafetyAnswers = {};
-  SAFETY_QUESTIONS.forEach((_, i) => { a[i] = yes.includes(i); });
+const idx = (kind: string) => SAFETY_QUESTIONS.map((q, i) => (q.kind === kind ? i : -1)).filter((i) => i >= 0);
+const groupOf = (i: number) => SAFETY_QUESTIONS[i].group!;
+const a1 = (yes: number[]): SafetyAnswers => { const a: SafetyAnswers = {}; SAFETY_QUESTIONS.forEach((_, i) => { a[i] = yes.includes(i); }); return a; };
+/** 묶음 g 의 후속 전부에 답. yesAt 인덱스만 예. */
+const a2 = (groups: string[], yesAt: Record<string, number[]> = {}): FollowUpAnswers => {
+  const a: FollowUpAnswers = {};
+  for (const g of groups) FOLLOW_UPS[g].items.forEach((_, j) => { a[`${g}.${j}`] = (yesAt[g] ?? []).includes(j); });
   return a;
 };
 
-describe("SAFETY_QUESTIONS — 문항 구성", () => {
-  it("문항마다 성격이 flag 또는 caution 이고 두 성격이 다 있다", () => {
-    for (const q of SAFETY_QUESTIONS) expect(["flag", "caution"]).toContain(q.kind);
-    expect(idx("flag").length).toBeGreaterThan(0);
-    expect(idx("caution").length).toBeGreaterThan(0);
+describe("SAFETY_QUESTIONS — 1단 구성", () => {
+  it("종류는 condition(질환) / symptom(증상·지시) 둘이고 둘 다 있다", () => {
+    for (const q of SAFETY_QUESTIONS) expect(["condition", "symptom"]).toContain(q.kind);
+    expect(idx("condition").length).toBeGreaterThan(0);
+    expect(idx("symptom").length).toBeGreaterThan(0);
   });
-
-  it("문항 문구는 비어 있지 않고 서로 다르다", () => {
-    const texts = SAFETY_QUESTIONS.map((q) => q.text.trim());
-    expect(texts.every((t) => t.length > 0)).toBe(true);
+  it("질환 문항은 후속 묶음을 하나씩 가리키고, 그 묶음은 실재하며 2~3문항이다", () => {
+    for (const i of idx("condition")) {
+      const g = SAFETY_QUESTIONS[i].group;
+      expect(g, `#${i}`).toBeTruthy();
+      expect(FOLLOW_UPS[g!], g).toBeDefined();
+      expect(FOLLOW_UPS[g!].items.length).toBeGreaterThanOrEqual(2);
+      expect(FOLLOW_UPS[g!].items.length).toBeLessThanOrEqual(3);
+    }
+    // 증상 문항은 후속이 없다
+    for (const i of idx("symptom")) expect(SAFETY_QUESTIONS[i].group).toBeUndefined();
+  });
+  it("모든 후속 묶음은 어떤 1단 문항이 가리킨다(고아 묶음 없음)", () => {
+    const pointed = new Set(idx("condition").map(groupOf));
+    for (const g of Object.keys(FOLLOW_UPS)) expect(pointed.has(g), g).toBe(true);
+  });
+  it("문구는 비어 있지 않고 서로 다르며 PAR-Q 이름이 없다", () => {
+    const texts = [...SAFETY_QUESTIONS.map((q) => q.text), ...Object.values(FOLLOW_UPS).flatMap((g) => [g.title, ...g.items])];
+    expect(texts.every((t) => t.trim().length > 0)).toBe(true);
     expect(new Set(texts).size).toBe(texts.length);
-  });
-
-  // PAR-Q+ 는 약관상 못 쓴다(수정 금지·앱 사용 서면 승인·한국어판 없음 — 2026-09-16 실측). 이름을 부르면 안 된다.
-  it("문항 문구에 PAR-Q 이름이 없다", () => {
-    for (const q of SAFETY_QUESTIONS) expect(q.text).not.toMatch(/PAR-?Q/i);
+    for (const t of texts) expect(t).not.toMatch(/PAR-?Q/i);
   });
 });
 
-describe("safetyTier — 개수가 아니라 성격으로 가른다", () => {
-  it("전부 「아니오」면 0(평소 강도)", () => {
-    expect(safetyTier(answers([]))).toBe(0);
+describe("followUpGroupsFor — 「예」한 질환 묶음만", () => {
+  it("1단 전부 아니오 → 후속 없음", () => { expect(followUpGroupsFor(a1([]))).toEqual([]); });
+  it("증상만 예 → 후속 없음(바로 2단계라 물을 게 없다)", () => { expect(followUpGroupsFor(a1(idx("symptom")))).toEqual([]); });
+  it("질환 하나 예 → 그 묶음 하나, 1단 순서대로", () => {
+    const c = idx("condition");
+    expect(followUpGroupsFor(a1([c[0]]))).toEqual([groupOf(c[0])]);
+    expect(followUpGroupsFor(a1([c[1], c[0]]))).toEqual([groupOf(c[0]), groupOf(c[1])]);
   });
+});
 
-  it("아직 하나도 안 답했으면 0", () => {
-    expect(safetyTier({})).toBe(0);
+describe("safetyTier — 오리지널 4쪽 판정", () => {
+  const c = idx("condition"); const s = idx("symptom");
+  it("1단 전부 아니오 → 0", () => { expect(safetyTier(a1([]), {})).toBe(0); });
+  it("미답 → 0", () => { expect(safetyTier({}, {})).toBe(0); });
+  it("증상·지시 하나라도 예 → 후속과 무관하게 2", () => {
+    for (const i of s) expect(safetyTier(a1([i]), {}), `symptom #${i}`).toBe(2);
   });
-
-  it("징후(flag) 하나라도 「예」면 2(숨 고르기 + 상담)", () => {
-    for (const i of idx("flag")) expect(safetyTier(answers([i])), `flag #${i}`).toBe(2);
+  it("질환 예 + 그 후속 전부 아니오 → 1", () => {
+    for (const i of c) expect(safetyTier(a1([i]), a2([groupOf(i)])), `condition #${i}`).toBe(1);
   });
-
-  it("조심(caution)만 「예」면 1(낮은 강도)", () => {
-    for (const i of idx("caution")) expect(safetyTier(answers([i])), `caution #${i}`).toBe(1);
+  it("질환 둘 예 + 후속 전부 아니오 → 여전히 1(합산 없음)", () => {
+    const two = [c[0], c[1]];
+    expect(safetyTier(a1(two), a2(two.map(groupOf)))).toBe(1);
   });
-
-  it("조심이 여럿이어도 합산해서 올라가지 않는다 — 여전히 1", () => {
-    expect(idx("caution").length).toBeGreaterThan(1);
-    expect(safetyTier(answers(idx("caution")))).toBe(1);
+  it("후속 하나라도 예 → 2 (모든 묶음·모든 하위 문항)", () => {
+    for (const i of c) {
+      const g = groupOf(i);
+      FOLLOW_UPS[g].items.forEach((_, j) => {
+        expect(safetyTier(a1([i]), a2([g], { [g]: [j] })), `${g}.${j}`).toBe(2);
+      });
+    }
   });
+  it("뜨지 않은 묶음의 옛 답은 무시한다 — 1단에서 아니오로 바꾸면 그 후속 예가 남아 있어도 영향 없음", () => {
+    const g = groupOf(c[0]);
+    const stale = a2([g], { [g]: [0] }); // 예전에 예라고 답해 둔 후속
+    expect(safetyTier(a1([]), stale)).toBe(0);
+    expect(safetyTier(a1([c[1]]), { ...stale, ...a2([groupOf(c[1])]) })).toBe(1);
+  });
+});
 
-  it("징후와 조심이 섞이면 징후가 이긴다 — 2", () => {
-    expect(safetyTier(answers([idx("flag")[0], idx("caution")[0]]))).toBe(2);
+describe("safetyComplete — 판정을 내놓아도 되는가", () => {
+  const c = idx("condition");
+  it("1단이 다 안 찼으면 미완료", () => { expect(safetyComplete({ 0: false }, {})).toBe(false); });
+  it("1단 전부 아니오면 완료(후속 없음)", () => { expect(safetyComplete(a1([]), {})).toBe(true); });
+  it("질환 예인데 그 후속을 아직 안 답했으면 미완료", () => { expect(safetyComplete(a1([c[0]]), {})).toBe(false); });
+  it("필요한 후속까지 다 답하면 완료", () => { expect(safetyComplete(a1([c[0]]), a2([groupOf(c[0])]))).toBe(true); });
+  it("안 뜬 묶음의 답은 완료 판정에 필요 없다", () => {
+    expect(safetyComplete(a1([c[0]]), a2([groupOf(c[0])]))).toBe(true); // 다른 묶음은 비어 있어도 됨
   });
 });
 
 // 소스 가드 — 이 저장소엔 jsdom 이 없어 화면 문구는 이것이 유일한 방어선이다.
-// PAR-Q+ 이름·「캐나다운동생리학회」가 화면 문자열로 되살아나면 약관 문제가 그대로 돌아온다(주석은 허용).
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 describe("소스 가드 — 화면 문자열에 PAR-Q+ 표기가 없다", () => {
   const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   for (const f of ["WellnessApp.tsx", "data.ts"]) {
     it(`${f} 의 코드(주석 제외)에 PAR-Q·캐나다운동생리학회 문자열이 없다`, () => {
       const code = stripComments(readFileSync(join(__dirname, f), "utf8"));
       expect(code).not.toMatch(/캐나다운동생리학회/);
-      // 식별자 PARQ_* 는 허용(화면에 안 나온다) — 사람에게 보이는 표기 「PAR-Q」만 막는다.
       expect(code).not.toMatch(/PAR-Q/);
     });
   }
