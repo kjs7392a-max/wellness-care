@@ -12,9 +12,10 @@ import {
   AREAS, CHAT_BEATS, CONDITION_HISTORY, YESTERDAY, DONE_WEEK, doneTotals, MIND_DAYS,
   // ⚠ NUDGE·NUDGE_LOW 는 아직 어느 화면에도 안 붙어 있다(CONTENT_STATE 별 넛지 문구·낮은 강도판).
   //    지우지 않고 둔 것은 데이터가 이미 다 쓰여 있어서다 — 넛지를 켤 때 여기서부터 시작하면 된다.
-  NUDGE, NUDGE_LOW, OB, OB_AT, PARQ, PRINCIPLES, PROGRAMS, ROLES,
+  NUDGE, NUDGE_LOW, OB, OB_AT, PRINCIPLES, PROGRAMS, ROLES,
   TEMP, WEATHER, WEEK_TEMP, type ContentState, type Role, type WeatherKey,
 } from "./data";
+import { SAFETY_QUESTIONS, safetyTier } from "./safety-screen";
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -233,10 +234,11 @@ export default function WellnessApp() {
     const role = ROLES[roleKey];
     const authed = st.authed;
     const onboarding = authed && st.ob >= 0;
-    const parqYes = Object.values(st.parq).filter(Boolean).length;
-    const parqAll = Object.keys(st.parq).length === PARQ.length;
+    // 2026-09-16: 안전 확인 단계(0 평소 · 1 낮은 강도 · 2 숨 고르기)는 safetyTier 가 **문항 성격**으로 정한다 — 예 개수를 세지 않는다.
+    const tier = safetyTier(st.parq);
+    const parqAll = Object.keys(st.parq).length === SAFETY_QUESTIONS.length;
     // 제안 항목·시간대·주말 판정은 resolveSuggestion 한 곳 — MVP 시연 동안은 하나로 고정돼 있다(suggestion.ts 참고).
-    const sug = resolveSuggestion({ role: roleKey, parqYes, hour: st.now.getHours(), dow: st.now.getDay() });
+    const sug = resolveSuggestion({ role: roleKey, tier, hour: st.now.getHours(), dow: st.now.getDay() });
     const slot = sug.slot;
     const liveKey = st.live && st.live.key;
     const wxBase = WEATHER[(liveKey as WeatherKey) || "hot"] || WEATHER.hot;
@@ -252,7 +254,7 @@ export default function WellnessApp() {
     const area = st.area || "all";
     const libList = PROGRAMS
       .filter((pg) => area === "all" || pg.area === area)
-      .filter((pg) => !(parqYes && !pg.low))
+      .filter((pg) => !(tier > 0 && !pg.low))
       .filter((pg) => !(wx.prefer === "indoor" && pg.place === "outdoor"));
     const totals = doneTotals();
     const answered = samAnswered(st.sam);
@@ -287,7 +289,7 @@ export default function WellnessApp() {
       mindChange: change(CONDITION_HISTORY.mind[CONDITION_HISTORY.mind.length - 1], mind),
       overallChange: change(overallHistory[overallHistory.length - 1], overall),
     };
-    return { roleKey, role, authed, onboarding, parqYes, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
+    return { roleKey, role, authed, onboarding, tier, parqAll, slot, wx, feelsTxt, item, itemTitle, isWeekend, libList, totals, answered, cond };
   }
 
   const nowTime = `${s.now.getHours()}:${String(s.now.getMinutes()).padStart(2, "0")}`;
@@ -296,7 +298,7 @@ export default function WellnessApp() {
   const chatDateLabel = `${s.now.getFullYear()}년 ${s.now.getMonth() + 1}월 ${s.now.getDate()}일 ${days[s.now.getDay()]}요일`;
 
   const step = OB[Math.max(0, s.ob)] || OB[0];
-  // 온보딩 단계: 약속 → 수집동의서 및 권한허용(모으는 것 포함) → PAR-Q+ → 직군 (2026-09-13 사용자 지시로 PAR-Q+ 가 직군 앞)
+  // 온보딩 단계: 약속 → 동의·권한 → 안전 확인(옛 PAR-Q+, 2026-09-16 부터 APSS·ACSM 기반) → 직군 (2026-09-13 사용자 지시로 안전 확인이 직군 앞)
   const canNext = s.ob === OB_AT.consent ? s.consent[0] : s.ob === OB_AT.parq ? v.parqAll : true;
 
   // ---- 렌더 ----
@@ -461,7 +463,7 @@ export default function WellnessApp() {
 
           {step.id === "parq" && (
             <div style={sx("display:flex; flex-direction:column; gap:9px")}>
-              {PARQ.map((text, i) => {
+              {SAFETY_QUESTIONS.map(({ text }, i) => {
                 const val = s.parq[i];
                 return (
                   <div key={i} style={{ ...sx("display:flex; align-items:center; gap:12px; padding:14px 15px; border-radius:15px; background:#fff; border:1.5px solid"), borderColor: val === undefined ? "#c9d6dc" : "#c9d6dc" }}>
@@ -475,11 +477,11 @@ export default function WellnessApp() {
               })}
               {v.parqAll && (
                 <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:#f2edfa; border:1px solid #c9d6dc; animation:wRise 0.4s ease-out both")}>
-                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.parqYes ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
-                  <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.parqYes) ?? "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
+                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e")}>{v.tier > 0 ? "가벼운 것부터 함께할게요" : "편하게 시작하셔도 좋아요"}</div>
+                  <div style={sx("font-size:13px; color:#4d7c8c; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.tier) ?? "특별히 걸리는 것이 없어 평소 강도로 제안해 드릴게요. 몸이 무거운 날에는 언제든 더 낮은 강도를 고르실 수 있어요."}</div>
                 </div>
               )}
-              <div style={sx("font-size:13px; color:#2d5c6e; font-weight:600; line-height:1.65; padding:2px; text-wrap:pretty")}>PAR-Q+ (Physical Activity Readiness Questionnaire)는 캐나다운동생리학회가 만든 국제 표준 문항으로, 건강검진이나 진단이 아닙니다. 이 답은 활동 강도를 정하는 데만 쓰이고, 본인 외에는 누구도 볼 수 없습니다. 설정에서 언제든 다시 답할 수 있어요.</div>
+              <div style={sx("font-size:13px; color:#2d5c6e; font-weight:600; line-height:1.65; padding:2px; text-wrap:pretty")}>호주 ESSA 성인 사전운동 문진(APSS)과 미국 ACSM 사전참여 기준을 참고해 만든 문항으로, 건강검진이나 진단이 아닙니다. 이 답은 활동 강도를 정하는 데만 쓰이고, 본인 외에는 누구도 볼 수 없습니다. 설정에서 언제든 다시 답할 수 있어요.</div>
             </div>
           )}
 
@@ -497,17 +499,17 @@ export default function WellnessApp() {
     const wx = v.wx;
     const item = v.item;
     const greeting = EMPTY_STATE ? "천천히 시작해요" : "오늘도 한 걸음 왔네요";
-    // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★PAR-Q+ 강도. 조립은 daySolution.ts(순수·테스트).
+    // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★안전 확인 강도. 조립은 daySolution.ts(순수·테스트).
     // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
     //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
-    // 🚫 이 문구를 화면 안에서 다시 조립하지 말 것 — 2026-09-13 까지 여기 있던 판이 PAR-Q+ 답을 보지 않아,
+    // 🚫 이 문구를 화면 안에서 다시 조립하지 말 것 — 2026-09-13 까지 여기 있던 판이 안전 확인 답을 보지 않아,
     //    "낮은 강도만 제안한다"고 약속한 분께 같은 화면이 걷기를 권하고 있었다.
     const isWeekend = v.isWeekend;
     const daySolution = buildDaySolution({
       role: v.roleKey,
       slot: v.slot,
       isWeekend,
-      low: v.parqYes > 0,
+      low: v.tier > 0,
       weatherPrefer: wx.prefer,
       feelsTxt: v.feelsTxt,
     });
@@ -669,11 +671,11 @@ export default function WellnessApp() {
             </div>
             <div style={sx("flex:none; font-size:16px; color:rgba(255,255,255,0.8)")}>›</div>
           </div>
-          {/* 2026-09-13: PAR-Q+ 안내가 온보딩에서 한 번 스쳐 지나가고 끝이었다 → 제안을 읽는 그 자리에 상시로 둔다. */}
-          {parqNotice(v.parqYes) && (
+          {/* 2026-09-13: 안전 확인 안내가 온보딩에서 한 번 스쳐 지나가고 끝이었다 → 제안을 읽는 그 자리에 상시로 둔다. */}
+          {parqNotice(v.tier) && (
             <div style={sx("display:flex; gap:9px; align-items:flex-start; padding:12px 13px; border-radius:14px; background:rgba(255,255,255,0.72); border:1px solid #c4b8ec")}>
               <div style={sx("flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; background:#7a6bc4; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center")}>!</div>
-              <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4a3f80; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.parqYes)}</div>
+              <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4a3f80; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.tier)}</div>
             </div>
           )}
         </div>
@@ -961,7 +963,8 @@ export default function WellnessApp() {
    * ⚠ 시트 자리에 그냥 두면 덮이지 않고 아래에 쌓인다(실측) → 다른 시트들처럼 `position:absolute; inset:0` 껍데기가 필요하다.
    */
   function renderSettings() {
-    const parqStatus = v.parqAll ? (v.parqYes ? "낮은 강도" : "평소 강도") : "미완료";
+    // 2026-09-16: 2단계(숨 고르기)를 「낮은 강도」로 뭉개 보이던 것을 셋으로 갈랐다.
+    const parqStatus = !v.parqAll ? "미완료" : v.tier === 2 ? "숨 고르기만" : v.tier === 1 ? "낮은 강도" : "평소 강도";
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
@@ -998,7 +1001,7 @@ export default function WellnessApp() {
           <div onClick={() => patch({ ob: OB_AT.parq, parq: {}, parqOnly: true })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eef4f6")}>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
               <div style={sx("font-size:14px; font-weight:600; color:#2d5c6e")}>안전 확인 다시 답하기</div>
-              <div style={sx("font-size:12px; color:#8ba8b3")}>PAR-Q+ 7문항 · 활동 강도 기준</div>
+              <div style={sx("font-size:12px; color:#8ba8b3")}>안전 확인 8문항 · 활동 강도 기준</div>
             </div>
             <div style={sx("flex:none; white-space:nowrap; font-size:13px; color:#6b8c9a")}>{parqStatus}</div>
           </div>

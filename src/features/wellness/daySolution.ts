@@ -1,4 +1,5 @@
-import { LEAD_IN, PARQ_CONSULT, PARQ_LOW_NOTICE, PARQ_REST_CONSULT, PARQ_REST_NOTICE, parqTier, type Role } from "./data";
+import { LEAD_IN, PARQ_CONSULT, PARQ_LOW_NOTICE, PARQ_REST_CONSULT, PARQ_REST_NOTICE, type Role } from "./data";
+import type { SafetyTier } from "./safety-screen";
 
 /**
  * 홈 「AI 오늘의 제안」 본문 한 단락.
@@ -106,11 +107,11 @@ export function buildDaySolution(a: DaySolutionArgs): string {
 /**
  * PAR-Q+ 결과 안내 — 「예」가 하나라도 있으면 홈에 **상시로** 붙는다(null 이면 안 그린다).
  *
- * 단계는 `parqTier`(data.ts) 한 곳에서 정한다 — 1단계는 강도를 낮추고, 2단계는 **내놓는 것 자체를 숨 고르기로 바꾼다.**
+ * 단계는 `safetyTier`(safety-screen.ts) 한 곳에서 정한다(2026-09-16: 개수 → 문항 성격) — 1단계는 강도를 낮추고, 2단계는 **내놓는 것 자체를 숨 고르기로 바꾼다.**
+ * 여기는 이미 정해진 단계를 받는다 — 개수를 받아 다시 계산하지 않는다.
  * 🚫 문항별 가중은 아직 없다(심장 「예」와 관절 「예」가 같은 무게) — 문턱과 함께 임상 감수 몫.
  */
-export function parqNotice(parqYes: number): string | null {
-  const tier = parqTier(parqYes);
+export function parqNotice(tier: SafetyTier): string | null {
   if (tier === 0) return null;
   if (tier === 2) return PARQ_REST_NOTICE + " " + PARQ_REST_CONSULT;
   return PARQ_LOW_NOTICE + " " + PARQ_CONSULT;

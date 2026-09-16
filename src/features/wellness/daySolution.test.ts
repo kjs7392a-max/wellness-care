@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDaySolution, parqNotice, type DaySolutionArgs } from "./daySolution";
-import { PARQ_TIER_AT, WEATHER, type Role, type WeatherKey } from "./data";
+import { WEATHER, type Role, type WeatherKey } from "./data";
 
 const ROLES: Role[] = ["teacher", "admin", "care"];
 
@@ -27,7 +27,7 @@ function allCases(low: boolean): DaySolutionArgs[] {
   return out;
 }
 
-describe("buildDaySolution — PAR-Q+ 낮은 강도", () => {
+describe("buildDaySolution — 안전 확인 낮은 강도", () => {
   // 이 앱은 PAR-Q+ 에 「예」가 있으면 "앉은 자리에서 하는 낮은 강도만 제안해 드립니다" 라고 약속한다.
   // 홈 본문이 같은 화면에서 걷기·산책·일어서기를 권하면 그 약속이 거짓이 된다.
   it("낮은 강도에서는 36가지 조합 어디에서도 걷기·산책·일어서기를 권하지 않는다", () => {
@@ -95,25 +95,24 @@ describe("buildDaySolution — 기존 동작 유지", () => {
   });
 });
 
-describe("parqNotice — PAR-Q+ 안내가 온보딩에서 끝나지 않게", () => {
+describe("parqNotice — 안전 확인 안내가 온보딩에서 끝나지 않게", () => {
   it("「예」가 하나도 없으면 아무것도 안 붙인다", () => {
     expect(parqNotice(0)).toBeNull();
   });
 
-  it("「예」가 하나라도 있으면 낮은 강도라는 사실과 상담 안내를 함께 말한다", () => {
+  it("1단계(조심)면 낮은 강도라는 사실과 상담 안내를 함께 말한다", () => {
     const txt = parqNotice(1);
     expect(txt).toContain("낮은 강도");
     expect(txt).toContain("주치의");
   });
 
-  // 2026-09-13: 개수로 단계를 나눴다(사용자 지적 "예가 2개 3개 4개 이상이면 다른 제안이 나와야").
-  // ⚠ 문턱 숫자는 임상 감수 대상이다 — 이 테스트는 "단계가 실제로 갈린다"만 못박는다.
-  it("「예」가 많으면 안내도 달라진다", () => {
-    expect(parqNotice(PARQ_TIER_AT.low)).not.toBe(parqNotice(PARQ_TIER_AT.rest));
+  // 2026-09-16: 단계는 safety-screen.ts 가 문항 성격으로 정한다(개수 아님). 여기는 단계별 안내가 갈리는지만 본다.
+  it("1단계와 2단계의 안내가 다르다", () => {
+    expect(parqNotice(1)).not.toBe(parqNotice(2));
   });
 
-  it("여러 개일 때는 숨 고르기만 내놓는다고 말하고, 상담을 더 강하게 권한다", () => {
-    const txt = parqNotice(PARQ_TIER_AT.rest)!;
+  it("2단계(징후)면 숨 고르기만 내놓는다고 말하고, 상담을 더 강하게 권한다", () => {
+    const txt = parqNotice(2)!;
     expect(txt).toContain("숨 고르기");
     expect(txt).toContain("꼭 먼저 상의");
   });

@@ -1,4 +1,5 @@
-import { PARQ_REST_ITEM, parqTier, ROLES, slotForHour, type Role, type StretchItem } from "./data";
+import { PARQ_REST_ITEM, ROLES, slotForHour, type Role, type StretchItem } from "./data";
+import type { SafetyTier } from "./safety-screen";
 
 /**
  * 홈 「AI 오늘의 제안」이 어느 항목을 내놓을지.
@@ -30,19 +31,18 @@ export interface Suggestion {
 }
 
 /**
- * ★ `parqYes` 는 **개수**다(예전엔 boolean 이었다). 2026-09-13 사용자 지적 —
- *   "예를 누르든 아니오를 누르든 변화가 없다 … 예가 2개 3개 4개 이상이면 다른 제안이 나와야 한다".
- *   실제로 「예 1개」와 「예 7개」가 같은 항목을 받고 있었고, 교사·영양은 저강도판이 **같은 영상**이라 티도 안 났다.
- *   단계는 `parqTier`(data.ts) 한 곳에서 정한다 — 문턱을 바꿔도 여기는 안 고쳐도 된다.
+ * ★ `tier` 는 안전 확인 **단계**(0 평소 · 1 낮은 강도 · 2 숨 고르기)다.
+ *   이력: boolean(예 유무) → 개수(2026-09-13, "예가 2개 3개 4개 이상이면 다른 제안이 나와야") → 문항 성격으로 정한 단계(2026-09-16).
+ *   단계는 `safetyTier`(safety-screen.ts) 한 곳에서 정한다 — 여기는 받기만 하고 개수를 세지 않는다.
  */
 export function resolveSuggestion(
-  args: { role: Role; parqYes: number; hour: number; dow: number },
+  args: { role: Role; tier: SafetyTier; hour: number; dow: number },
   pinnedSlot: number | null = DEMO_PINNED_SLOT,
 ): Suggestion {
   const slot = pinnedSlot ?? slotForHour(args.hour);
   // 시간대를 못박은 동안은 요일도 평일로 본다(위 주석).
   const isWeekend = pinnedSlot === null && (args.dow === 0 || args.dow === 6);
-  const tier = parqTier(args.parqYes);
+  const tier = args.tier;
   const r = ROLES[args.role];
   // 3단계는 직군을 보지 않는다 — 「어느 직군이냐」보다 「지금 움직여도 되느냐」가 먼저다.
   const item = tier === 2 ? PARQ_REST_ITEM : (tier === 1 ? r.low : r.items)[slot];
