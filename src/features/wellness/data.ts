@@ -52,7 +52,7 @@ export interface RoleContent {
  */
 export const ROLES: Record<Role, RoleContent> = {
   teacher: {
-    label: "교사 · 담임",
+    label: "교사",
     hint: "수업 중 판서와 성대 부담, 학부모 민원과 생활지도",
     accent: { line: "#7a6bc4" }, // 보라(브랜드)
     items: [
