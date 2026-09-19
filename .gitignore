@@ -5,3 +5,5 @@ next-env.d.ts
 *.tsbuildinfo
 .vercel
 .env*.local
+# 회귀 시험지(AI Hub 데이터 파생 · 재배포 금지 조항 때문에 레포 밖) — 없으면 해당 테스트는 skip
+/.bench

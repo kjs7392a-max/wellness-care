@@ -68,10 +68,10 @@ describe("characterOf / systemPromptFor", () => {
 });
 
 describe("SYSTEM_EXAMPLES — 좋은 답 예시", () => {
-  it("선생님/답 쌍 7개, 임상 용어·이모지 없음, 질문으로 끝나지 않는 답도 있다", () => {
+  it("선생님/답 쌍 10개, 임상 용어·이모지 없음, 질문으로 끝나지 않는 답도 있다", () => {
     const body = SYSTEM_EXAMPLES.split("## 좋은 답")[1] ?? "";
     const answers = SYSTEM_EXAMPLES.split("\n").filter((l) => l.startsWith("답: "));
-    expect(answers).toHaveLength(7);
+    expect(answers).toHaveLength(10);
     for (const w of ["우울증", "진단", "심리검사", "치료", "스트레스 지수", "인지 재구성", "반영"]) expect(body, w).not.toContain(w);
     expect(/\p{Extended_Pictographic}/u.test(SYSTEM_EXAMPLES)).toBe(false);
     expect(answers.some((l) => !l.trim().endsWith("?"))).toBe(true);
@@ -107,5 +107,42 @@ describe("charactersInDisplayOrder — 윗줄 여성 · 아랫줄 남성, 각 �
       const decade = Math.floor(c.age / 10) * 10;
       expect(c.persona, `${c.id}(${c.age}세)`).toContain(`${decade}대`);
     }
+  });
+});
+
+// 2026-09-19 — AI Hub 「공감형 대화」(NIA) 직장 동료 세션 36,290 공감 발화의 분포에서 도출한 규칙.
+// 기쁨 = 격려 46%·동조 44%·위로 5%·조언 6% / 부정 감정 = 동조 27~34% 1위 · 위로 · 조언 22~26% · 격려.
+describe("SYSTEM_CORE — 공감의 배합(공감형 대화 분포 기반)", () => {
+  const lines = SYSTEM_CORE.split("\n");
+  it("좋은 일에는 위로·조언을 붙이지 말라는 규칙이 있다", () => {
+    expect(lines.some((l) => /좋은 일|기쁜/.test(l) && /위로/.test(l) && /조언|제안/.test(l) && /(않|말|금지)/.test(l))).toBe(true);
+  });
+  it("무거운 말에는 동조 → 위로 → 제안 순서와 '네 번에 한 번' 상한이 있다", () => {
+    expect(lines.some((l) => /그럴 만하다|그럴 만/.test(l) && /위로/.test(l) && /네 번에 한 번|네 번 중 한 번/.test(l))).toBe(true);
+  });
+  it("당황에는 같이 놀라 주기부터라는 규칙이 있다", () => {
+    expect(lines.some((l) => /당황/.test(l) && /놀라/.test(l))).toBe(true);
+  });
+  it("프롬프트 본문엔 데이터셋 이름·작문 호칭이 없다(출처는 코드 주석·README 에만)", () => {
+    expect(SYSTEM_CORE).not.toMatch(/AI Hub|공감형 대화|NIA/);
+    expect(SYSTEM_EXAMPLES).not.toMatch(/AI Hub|공감형 대화|NIA|공감화자|감정화자/);
+  });
+});
+
+describe("SYSTEM_EXAMPLES — 새 예시 3쌍(좋은 일·당황·불안)", () => {
+  const pairs = (() => {
+    const ls = SYSTEM_EXAMPLES.split("\n");
+    const out: { q: string; a: string }[] = [];
+    for (let i = 0; i < ls.length - 1; i++) if (ls[i].startsWith("선생님: ") && ls[i + 1].startsWith("답: ")) out.push({ q: ls[i].slice(5), a: ls[i + 1].slice(3) });
+    return out;
+  })();
+  it("좋은 일 예시가 둘 이상이고 그 답에는 위로 어휘가 없다", () => {
+    const joy = pairs.filter((p) => /(맛있|칭찬|됐어요|합격|고맙다고|좋아졌|잘 됐)/.test(p.q));
+    expect(joy.length).toBeGreaterThanOrEqual(2);
+    for (const p of joy) expect(p.a, p.q).not.toMatch(/고생|애쓰|버티|힘드|위로/);
+  });
+  it("당황 예시와 불안 예시가 각 하나 이상 있다", () => {
+    expect(pairs.some((p) => /(당황|실수|잘못 보냈|헷갈)/.test(p.q))).toBe(true);
+    expect(pairs.some((p) => /(불안|걱정|잠이 안|떨려)/.test(p.q))).toBe(true);
   });
 });
