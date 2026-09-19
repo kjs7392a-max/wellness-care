@@ -57,6 +57,15 @@ describe("추천 음악 — 채널 셋 · 서버 목록(2026-09-19)", () => {
     expect(src).toMatch(/embedSrc\(ids\)/);
     expect(src).not.toMatch(/autoplay=1/);
   });
+  it("자리 = 성향 결과 2/2 의 추천 도서 카드 바로 아래(2026-09-19 사용자 지시) — 데일리 힐링 카드 목록에는 없다", () => {
+    const books = src.indexOf(">추천 도서</div>");
+    const call = src.indexOf("{renderMusicCard()}");
+    expect(books).toBeGreaterThan(0);
+    expect(call).toBeGreaterThan(books);
+    expect(call - books).toBeLessThan(900);
+    const healing = src.slice(src.indexOf("function renderHealingCards()"), src.indexOf("function renderPersonaPick()"));
+    expect(healing).not.toMatch(/renderMusicCard|MUSIC_CHANNELS/);
+  });
 });
 
 describe("운동 제안 제목 — 요일·시각 규칙은 suggestion.ts 한 곳(2026-09-19)", () => {

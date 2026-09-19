@@ -826,6 +826,49 @@ export default function WellnessApp() {
   }
 
   /**
+   * 추천 음악 — 채널 칩 셋(emptysilver · 클래식 · 가요) + 플레이어 하나. 목록은 서버가 하루 한 번 최신으로(music.ts) · 오기 전엔 고정 목록.
+   * 자리 = 성향 결과 2/2 「문장과 책」의 추천 도서 바로 아래(2026-09-19 사용자 지시 "다음 페이지 추천 도서 아래" — 데일리 힐링에선 뺐다).
+   */
+  function renderMusicCard() {
+          const ch = MUSIC_CHANNELS.find((c) => c.key === s.musicKey) ?? MUSIC_CHANNELS[0];
+          const pl = s.music?.[ch.key];
+          const ids = pl && pl.ids.length ? pl.ids : ch.fallbackIds;
+          return (
+            <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
+              <div style={sx("display:flex; align-items:center; gap:10px")}>
+                <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>🎧</div>
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {ch.label}</div>
+                  <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{ch.note} — 최신 {ids.length}편</div>
+                </div>
+              </div>
+              <div style={sx("display:flex; gap:6px")}>
+                {MUSIC_CHANNELS.map((c) => {
+                  const on = c.key === ch.key;
+                  return (
+                    <div key={c.key} onClick={() => patch({ musicKey: c.key })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:9px 4px; border-radius:11px; font-size:12.5px; font-weight:700; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#7a6bc4", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
+                      {c.key === "emptysilver" ? "emptysilver" : c.key === "classical" ? "클래식" : "가요"}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={sx("position:relative; width:100%; padding-top:56.25%; border-radius:14px; overflow:hidden; background:#0f0f0f")}>
+                <iframe
+                  key={ch.key}
+                  title={`추천 음악 · ${ch.label}`}
+                  src={embedSrc(ids)}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브에서 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다 · 목록은 하루 한 번 채널 최신 영상으로 바뀝니다</div>
+            </div>
+          );
+  }
+
+  /**
    * 데일리 힐링 카드 — 성향 테스트 + 추천 음악.
    * 음악(2026-09-17 사용자 지시 "일단 이거 하나만 임베딩") = 유튜브 채널 **emptysilver**(@emptysilver · 채널 ID UCyvNK9b_Rs7djuIQ4a7i5aw)의
    *   업로드 목록을 플레이어 하나로. 목록 ID = 채널 ID 의 UC→UU(유튜브 규칙). 음원을 담지 않고 유튜브 공식 임베드로만 재생 — 저작권·약관 문제 없음.
@@ -872,45 +915,6 @@ export default function WellnessApp() {
             ))}
           </div>
         )}
-        {/* 추천 음악 — 채널 칩 셋(emptysilver · 클래식 · 가요) + 플레이어 하나. 목록은 서버가 하루 한 번 최신으로(music.ts) · 오기 전엔 고정 목록. */}
-        {(() => {
-          const ch = MUSIC_CHANNELS.find((c) => c.key === s.musicKey) ?? MUSIC_CHANNELS[0];
-          const pl = s.music?.[ch.key];
-          const ids = pl && pl.ids.length ? pl.ids : ch.fallbackIds;
-          return (
-            <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
-              <div style={sx("display:flex; align-items:center; gap:10px")}>
-                <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>🎧</div>
-                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {ch.label}</div>
-                  <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{ch.note} — 최신 {ids.length}편</div>
-                </div>
-              </div>
-              <div style={sx("display:flex; gap:6px")}>
-                {MUSIC_CHANNELS.map((c) => {
-                  const on = c.key === ch.key;
-                  return (
-                    <div key={c.key} onClick={() => patch({ musicKey: c.key })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:9px 4px; border-radius:11px; font-size:12.5px; font-weight:700; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#7a6bc4", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
-                      {c.key === "emptysilver" ? "emptysilver" : c.key === "classical" ? "클래식" : "가요"}
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={sx("position:relative; width:100%; padding-top:56.25%; border-radius:14px; overflow:hidden; background:#0f0f0f")}>
-                <iframe
-                  key={ch.key}
-                  title={`추천 음악 · ${ch.label}`}
-                  src={embedSrc(ids)}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  loading="lazy"
-                />
-              </div>
-              <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브에서 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다 · 목록은 하루 한 번 채널 최신 영상으로 바뀝니다</div>
-            </div>
-          );
-        })()}
       </>
     );
   }
@@ -1060,6 +1064,7 @@ export default function WellnessApp() {
                   </a>
                 ))}
               </div>
+              {renderMusicCard()}
               <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_SOURCE}</div>
               <div style={sx("font-size:12px; font-weight:600; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_NOTICE}</div>
               {/* 버튼은 「유형 바꾸기 · 닫기」 둘만 — 결과 화면 끝의 「테스트로/다시 하기」는 사용자 지시로 뺐다(2026-09-19). 테스트 입구는 카드·격자 화면에만. */}
