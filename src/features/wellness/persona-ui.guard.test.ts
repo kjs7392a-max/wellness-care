@@ -48,3 +48,13 @@ describe("홈 주간 흐름 박스 — 버튼 둘(2026-09-19 사용자 지시)",
     expect(block).toMatch(/tab: "daily"/);
   });
 });
+
+describe("추천 음악 — 채널 셋 · 서버 목록(2026-09-19)", () => {
+  it("고정 상수(MUSIC_EMBED)는 사라지고, 라우트에서 목록을 받아 MUSIC_CHANNELS 칩으로 그린다", () => {
+    expect(src).not.toMatch(/MUSIC_EMBED/);
+    expect(src).toMatch(/fetch\("\/api\/wellness\/music"\)/);
+    expect(src).toMatch(/MUSIC_CHANNELS\.map\(/);
+    expect(src).toMatch(/embedSrc\(ids\)/);
+    expect(src).not.toMatch(/autoplay=1/);
+  });
+});

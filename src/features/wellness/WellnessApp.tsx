@@ -19,6 +19,7 @@ import {
 import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { greetingForHour } from "./greeting";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
+import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
@@ -27,11 +28,6 @@ import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SO
  *   2026-09-17 실측: 긴 영상 12편 중 임베드 허용 11편 · 5aSlkBcvWVQ 는 차단(playableInEmbed:false) · UIBMm0R0CpM 는 53초라 제외 → 10편.
  *   ⚠컴포넌트 안에 두면 렌더보다 늦게 초기화돼 TDZ 오류(실측) — 모듈 최상위에 둔다. 채널에 새 영상이 오르면 여기 id 만 더한다.
  */
-const MUSIC_EMBED = {
-  label: "emptysilver",
-  note: "바쁜 일상 속 잠시 쉬어 가는 편안한 음악 — 플레이리스트 10편",
-  ids: ["wvVsDNnEeZg", "Bl20EHC6J4c", "Nz0x8tTr4js", "b6P_EugaIx4", "WRKSsfLCNZU", "pIUwLACKjyY", "hLimS8htMmA", "OEZh_V4qNrs", "r8vyi0MHGK8", "qQKeuX0PC0I"],
-};
 import { riskLevel, RISK_REPLY } from "./risk";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -95,6 +91,9 @@ interface State {
   chat: StoredMsg[];
   /** 「계정 없이 둘러보기」 — 저장하지 않는다(공용 기기 보호). 로그인 화면에서 정해진다. */
   guest: boolean;
+  /** 추천 음악 — 고른 채널 · 서버(`/api/wellness/music`)가 준 플레이리스트(오기 전엔 각 채널 고정 목록). 2026-09-19. */
+  musicKey: MusicChannel["key"];
+  music: Record<string, Playlist> | null;
   beat: number;
   typing: boolean;
   input: string;
@@ -124,6 +123,7 @@ export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, perms: {}, area: "all", program: null,
+    musicKey: "emptysilver", music: null,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
@@ -146,6 +146,7 @@ export default function WellnessApp() {
     patch({ now: new Date() });
     const clock = setInterval(() => patch({ now: new Date() }), 10000);
     loadWeather();
+    loadMusic();
     return () => { clearInterval(clock); if (timerRef.current) clearInterval(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -165,6 +166,16 @@ export default function WellnessApp() {
     const el = chatRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [s.chat, s.typing, s.sheet]);
+
+  /** 추천 음악 플레이리스트 — 실패하면 music 은 null 그대로(화면이 각 채널 고정 목록으로 그린다). */
+  async function loadMusic() {
+    try {
+      const r = await fetch("/api/wellness/music");
+      if (!r.ok) return;
+      const j = (await r.json()) as { channels?: Record<string, Playlist> };
+      if (j.channels) patch({ music: j.channels });
+    } catch { /* 폴백 */ }
+  }
 
   async function loadWeather() {
     try {
@@ -860,27 +871,45 @@ export default function WellnessApp() {
             ))}
           </div>
         )}
-        {/* 추천 음악 — 유튜브 플레이어 하나. 16:9 비율 상자 안에 iframe. */}
-        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
-          <div style={sx("display:flex; align-items:center; gap:10px")}>
-            <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>🎧</div>
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-              <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {MUSIC_EMBED.label}</div>
-              <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{MUSIC_EMBED.note}</div>
+        {/* 추천 음악 — 채널 칩 셋(emptysilver · 클래식 · 가요) + 플레이어 하나. 목록은 서버가 하루 한 번 최신으로(music.ts) · 오기 전엔 고정 목록. */}
+        {(() => {
+          const ch = MUSIC_CHANNELS.find((c) => c.key === s.musicKey) ?? MUSIC_CHANNELS[0];
+          const pl = s.music?.[ch.key];
+          const ids = pl && pl.ids.length ? pl.ids : ch.fallbackIds;
+          return (
+            <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
+              <div style={sx("display:flex; align-items:center; gap:10px")}>
+                <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>🎧</div>
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {ch.label}</div>
+                  <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{ch.note} — 최신 {ids.length}편</div>
+                </div>
+              </div>
+              <div style={sx("display:flex; gap:6px")}>
+                {MUSIC_CHANNELS.map((c) => {
+                  const on = c.key === ch.key;
+                  return (
+                    <div key={c.key} onClick={() => patch({ musicKey: c.key })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:9px 4px; border-radius:11px; font-size:12.5px; font-weight:700; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#7a6bc4", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
+                      {c.key === "emptysilver" ? "emptysilver" : c.key === "classical" ? "클래식" : "가요"}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={sx("position:relative; width:100%; padding-top:56.25%; border-radius:14px; overflow:hidden; background:#0f0f0f")}>
+                <iframe
+                  key={ch.key}
+                  title={`추천 음악 · ${ch.label}`}
+                  src={embedSrc(ids)}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브에서 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다 · 목록은 하루 한 번 채널 최신 영상으로 바뀝니다</div>
             </div>
-          </div>
-          <div style={sx("position:relative; width:100%; padding-top:56.25%; border-radius:14px; overflow:hidden; background:#0f0f0f")}>
-            <iframe
-              title={`추천 음악 · ${MUSIC_EMBED.label}`}
-              src={`https://www.youtube-nocookie.com/embed/${MUSIC_EMBED.ids[0]}?playlist=${MUSIC_EMBED.ids.slice(1).join(",")}&rel=0`}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
-              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              loading="lazy"
-            />
-          </div>
-          <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브에서 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다</div>
-        </div>
+          );
+        })()}
       </>
     );
   }
