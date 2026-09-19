@@ -58,3 +58,9 @@ describe("추천 음악 — 채널 셋 · 서버 목록(2026-09-19)", () => {
     expect(src).not.toMatch(/autoplay=1/);
   });
 });
+
+describe("운동 제안 제목 — 요일·시각 규칙은 suggestion.ts 한 곳(2026-09-19)", () => {
+  it("화면에서 제목을 따로 고치지 않는다(「퇴근 전」 replace 없음)", () => {
+    expect(src).not.toMatch(/replace\(\/\^퇴근 전 \//);
+  });
+});

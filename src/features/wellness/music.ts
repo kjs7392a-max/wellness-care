@@ -29,10 +29,10 @@ export const MUSIC_CHANNELS: readonly MusicChannel[] = [
     fallbackIds: ["J9IAPulRLf8", "5cDyxFE_tMc", "vMPecVYh3oA", "e0Zyri8oNMk", "3molZdJ6Vf8", "52PrvhIOse8", "2T-FU4JH9V4", "82jTS6vaN7s"],
   },
   {
-    key: "kpop", label: "가요 · 안테나", note: "유희열 소속사 안테나 공식 채널 — 정승환·규현·페퍼톤스·권진아의 라이브와 뮤직비디오",
-    channelId: "UCwW6D9G9hegNPKYrQ0zivvQ",
-    // 09-19 실측(재생 가능 12편 중 앞 8)
-    fallbackIds: ["G0_kpwAue5U", "oLqLof_2imQ", "-bisvJRBoP4", "5LXlG8WtF4g", "7ukxrSbnFak", "-iTCD_gR5Rc", "IFjIIB0sgF4", "Zpm39r9T96w"],
+    key: "kpop", label: "가요 · EBS 스페이스 공감", note: "EBS 공식 채널 — 원곡자가 직접 부르는 라이브와 30분 모아듣기",
+    channelId: "UCmD_hRhMgxsf5e-6cEuxjSg",
+    // 09-19 실측(최근 12편 전부 라이브 음악 · 임베드 허용). 처음 고른 안테나는 브이로그가 섞여 사용자 지시로 교체("브이로그가 없는 채널로").
+    fallbackIds: ["iRJJ6GoypL8", "as9RZ54CLYM", "PL8fXUJ-mwM", "Kir4K7_KDyI", "pZGfrS2xlak", "47nzNGpjgsc", "G4uPo17QVNU", "8Z7Dg4Z777I"],
   },
 ];
 

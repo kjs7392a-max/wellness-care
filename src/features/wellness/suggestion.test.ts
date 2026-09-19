@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PINNED_SLOT, resolveSuggestion, suggestionChoices } from "./suggestion";
+import { DEMO_PINNED_SLOT, contextualItem, resolveSuggestion, suggestionChoices } from "./suggestion";
 import { PARQ_REST_ITEM, ROLES, type Role } from "./data";
 
 const ROLE_KEYS: Role[] = ["teacher", "admin", "care"];
@@ -48,10 +48,11 @@ describe("resolveSuggestion — 고정을 풀면(원래 설계)", () => {
     expect(resolveSuggestion({ role: "teacher", tier: 0, hour: 17, dow: 1 }, null).slot).toBe(2);
   });
 
-  it("직군별 항목·주말 판정", () => {
+  it("직군별 항목·주말 판정 — 주말엔 근무 표현이 떨어진 제목(2026-09-19 · contextualItem)", () => {
     const s = resolveSuggestion({ role: "admin", tier: 0, hour: 8, dow: 6 }, null);
-    expect(s.item.title).toBe("문서작업 중간 30초 눈 운동");
+    expect(s.item.title).toBe("30초 눈 운동");
     expect(s.isWeekend).toBe(true);
+    expect(resolveSuggestion({ role: "admin", tier: 0, hour: 8, dow: 3 }, null).item.title).toBe("문서작업 중간 30초 눈 운동");
   });
 });
 
@@ -136,5 +137,37 @@ describe("suggestionChoices — 시간대 1 + 부위 3", () => {
   it("자세 항목은 평소엔 전신 기지개, 낮은 강도엔 앉은 자리 허리(p15/p5)", () => {
     expect(suggestionChoices({ role: "care", tier: 0, hour: 8, dow: 1 })[3].item).toBe(byId("p15"));
     expect(suggestionChoices({ role: "care", tier: 1, hour: 8, dow: 1 })[3].item).toBe(byId("p5"));
+  });
+});
+
+// 2026-09-19 사용자: "오늘은 주말인데 「4교시 후 목·어깨 긴장 이완」이라는 제목이 있어 — 일·시간에 맞게".
+describe("contextualItem — 요일·시각에 맞는 제목", () => {
+  const teacher = (hour: number, dow: number) => resolveSuggestion({ role: "teacher", tier: 0, hour, dow }, null);
+  it("주말 낮엔 학교 시간 표현이 시간대 말로 바뀐다(수업 전→아침 · 4교시 후→한낮 · 퇴근 전→저녁)", () => {
+    expect(contextualItem(teacher(9, 6).item, { isWeekend: true, hour: 9 }).title).toBe("아침 목소리·후두 이완 호흡");
+    expect(contextualItem(teacher(13, 0).item, { isWeekend: true, hour: 13 }).title).toBe("한낮 목·어깨 긴장 이완");
+    expect(contextualItem(teacher(17, 6).item, { isWeekend: true, hour: 17 }).title).toBe("저녁 어깨·목 풀기");
+  });
+  it("행정·급식 직군의 근무 표현(문서작업 중간·서 있는 사이)도 주말엔 뗀다", () => {
+    const admin = resolveSuggestion({ role: "admin", tier: 0, hour: 9, dow: 6 }, null).item;
+    expect(contextualItem(admin, { isWeekend: true, hour: 9 }).title).toBe("30초 눈 운동");
+    const care = resolveSuggestion({ role: "care", tier: 0, hour: 13, dow: 0 }, null).item;
+    expect(contextualItem(care, { isWeekend: true, hour: 13 }).title).toBe("종아리 풀기");
+  });
+  it("평일 낮은 그대로", () => {
+    expect(contextualItem(teacher(13, 3).item, { isWeekend: false, hour: 13 }).title).toBe("4교시 후 목·어깨 긴장 이완");
+  });
+  it("밤(22~5시)엔 요일·직군과 무관하게 「잠들기 전 이완 호흡」(영상 있음)", () => {
+    for (const [hour, dow] of [[23, 3], [2, 6], [22, 1]] as const) {
+      const it2 = contextualItem(resolveSuggestion({ role: "admin", tier: 0, hour, dow }, null).item, { isWeekend: dow === 6, hour });
+      expect(it2.title).toBe("잠들기 전 이완 호흡");
+      expect(it2.video).toBeTruthy();
+    }
+    expect(contextualItem(teacher(5, 3).item, { isWeekend: false, hour: 5 }).title).toBe("수업 전 목소리·후두 이완 호흡");
+  });
+  it("suggestionChoices 의 첫 항목도 같은 규칙을 탄다(주말 정오 → 한낮 · 밤 → 잠들기 전)", () => {
+    expect(suggestionChoices({ role: "teacher", tier: 0, hour: 13, dow: 6 }, null)[0].item.title).toBe("한낮 목·어깨 긴장 이완");
+    expect(suggestionChoices({ role: "teacher", tier: 0, hour: 23, dow: 2 }, null)[0].item.title).toBe("잠들기 전 이완 호흡");
+    expect(suggestionChoices({ role: "teacher", tier: 0, hour: 13, dow: 2 }, null)[0].item.title).toBe("4교시 후 목·어깨 긴장 이완");
   });
 });

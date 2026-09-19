@@ -309,7 +309,8 @@ export default function WellnessApp() {
     // 주말·휴일엔 프로그램 이름의 평일 표현("퇴근 전 ")을 떼서 상황과 어긋나지 않게 한다.
     // (직접 고른 프로그램 st.program은 사용자가 고른 원래 이름 그대로 둔다.)
     const isWeekend = sug.isWeekend;
-    const itemTitle = isWeekend && !st.program ? item.title.replace(/^퇴근 전 /, "") : item.title;
+    // 요일·시각에 맞는 제목은 suggestion.ts `contextualItem` 이 sug.item 에 이미 적용했다(2026-09-19) — 여기서 다시 바꾸지 않는다.
+    const itemTitle = item.title;
     const area = st.area || "all";
     const libList = PROGRAMS
       .filter((pg) => area === "all" || pg.area === area)
@@ -745,7 +746,7 @@ export default function WellnessApp() {
                     <div style={{ ...sx("flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center"), background: first ? "rgba(255,255,255,0.22)" : "#f2edfa" }}>
                       <div style={{ ...sx("width:0; height:0; margin-left:3px; border-top:6px solid transparent; border-bottom:6px solid transparent"), borderLeft: `10px solid ${first ? "#fff" : "#7a6bc4"}` }} />
                     </div>
-                    <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{part && <><span style={sx("color:#7a6bc4")}>{part}</span>{" · "}</>}{v.isWeekend && first ? it.title.replace(/^퇴근 전 /, "") : it.title}</div>
+                    <div style={{ ...sx("flex:1; min-width:0; font-size:14px; font-weight:700; text-wrap:pretty"), color: first ? "#fff" : "#4a3f80" }}>{part && <><span style={sx("color:#7a6bc4")}>{part}</span>{" · "}</>}{it.title}</div>
                     <div style={{ ...sx("flex:none; font-size:16px"), color: first ? "rgba(255,255,255,0.8)" : "#7a6bc4" }}>›</div>
                   </div>
                 );

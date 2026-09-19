@@ -47,8 +47,43 @@ export function resolveSuggestion(
   const tier = args.tier;
   const r = ROLES[args.role];
   // 3단계는 직군을 보지 않는다 — 「어느 직군이냐」보다 「지금 움직여도 되느냐」가 먼저다.
-  const item = tier === 2 ? PARQ_REST_ITEM : (tier === 1 ? r.low : r.items)[slot];
+  const raw = tier === 2 ? PARQ_REST_ITEM : (tier === 1 ? r.low : r.items)[slot];
+  // 시연 고정(pinnedSlot) 중엔 평일 낮으로 본다 — 밤·주말 규칙도 끈다.
+  const item = pinnedSlot === null ? contextualItem(raw, { isWeekend, hour: args.hour }) : raw;
   return { slot, isWeekend, item };
+}
+
+/** 밤 = 22시~5시 미만(요일 무관). greeting.ts 의 「밤」 구간과 같다. */
+export const isNightHour = (hour: number): boolean => hour >= 22 || hour < 5;
+
+/** 주말·쉬는 날에 학교 시간 표현을 시간대 말로. 순서대로 첫 일치 하나만 바꾼다. */
+const WEEKEND_TITLE_REWRITES: ReadonlyArray<[RegExp, string]> = [
+  [/^수업 전 /, "아침 "],
+  [/^4교시 후 /, "한낮 "],
+  [/^퇴근 전 /, "저녁 "],
+  [/^문서작업 중간 /, ""],
+  [/^서 있는 사이 /, ""],
+];
+
+/**
+ * 요일·시각에 맞는 항목 — 2026-09-19 사용자: "오늘은 주말인데 「4교시 후 목·어깨 긴장 이완」이 있어 — 일·시간에 맞게".
+ *   · 밤(22~5시)엔 직군·요일과 무관하게 **「잠들기 전 이완 호흡」(p12)** — 09-17 에 「새벽에 「수업 전」이 첫째로 뜬다」로 남겨 둔 미결도 여기서 닫힘.
+ *   · 주말 낮엔 제목의 학교 시간 표현만 바꾼다(운동 자체는 같다 · 설명문은 그대로 — 홈 문구가 「오늘은 쉬는 날이네요」로 상황을 말한다).
+ *   · 평일 낮은 그대로. 숨 고르기(PARQ_REST_ITEM)는 어느 때나 그대로.
+ * 제목을 바꾸는 자리는 여기 하나 — 화면에서 `replace(/^퇴근 전 /, "")` 를 따로 하지 않는다(가드).
+ */
+export function contextualItem(item: StretchItem, ctx: { isWeekend: boolean; hour: number }): StretchItem {
+  if (item === PARQ_REST_ITEM) return item;
+  if (isNightHour(ctx.hour)) {
+    const night = PROGRAMS.find((p) => p.id === "p12");
+    if (!night) throw new Error("PROGRAMS 에 p12(잠들기 전 이완 호흡)가 없다");
+    return night;
+  }
+  if (!ctx.isWeekend) return item;
+  for (const [re, to] of WEEKEND_TITLE_REWRITES) {
+    if (re.test(item.title)) return { ...item, title: item.title.replace(re, to) };
+  }
+  return item;
 }
 
 /** 「지금 바로 시작하기」의 한 줄. `part` 가 있으면 부위 프로세스 항목(버튼에 「목 ·」처럼 앞에 붙인다), 없으면 시간대 항목. */
