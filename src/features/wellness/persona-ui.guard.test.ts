@@ -19,6 +19,7 @@ describe("WellnessApp — 유형 직접 선택", () => {
   it("결과 화면은 기울기(lean)가 있을 때만 막대를 그리고, 「유형 바꾸기」가 있다", () => {
     expect(src).toMatch(/done\.lean\s*(&&|\?)/);
     expect(src).toMatch(/유형 바꾸기/);
+    expect(src).not.toMatch(/"테스트로"|"다시 하기"/); // 결과 화면 끝 버튼은 「유형 바꾸기 · 닫기」 둘만(사용자 지시 2026-09-19)
   });
 });
 

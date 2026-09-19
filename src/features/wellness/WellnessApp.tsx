@@ -1028,9 +1028,9 @@ export default function WellnessApp() {
               </div>
               <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_SOURCE}</div>
               <div style={sx("font-size:12px; font-weight:600; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_NOTICE}</div>
+              {/* 버튼은 「유형 바꾸기 · 닫기」 둘만 — 결과 화면 끝의 「테스트로/다시 하기」는 사용자 지시로 뺐다(2026-09-19). 테스트 입구는 카드·격자 화면에만. */}
               <div style={sx("display:flex; gap:8px; padding-top:4px")}>
                 <div onClick={() => patch({ sheet: "personaPick" })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>유형 바꾸기</div>
-                <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0, personaDone: null })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>{done.source === "test" ? "다시 하기" : "테스트로"}</div>
                 <div onClick={close} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:800")}>닫기</div>
               </div>
               <div onClick={() => patch({ personaPage: 1 })} style={sx("cursor:pointer; text-align:center; font-size:13px; font-weight:700; color:#7a6bc4; padding:6px")}>‹ 앞 장</div>
