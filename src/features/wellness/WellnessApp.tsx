@@ -699,7 +699,11 @@ export default function WellnessApp() {
             없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
             "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
         {renderWeekFlow(
-          <div onClick={() => patch({ sheet: "month" })} style={sx("cursor:pointer; text-align:center; margin-top:4px; padding:13px 12px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>,
+          // 2026-09-19 사용자 지시: 「월간 기록 보기」를 반으로 줄이고 옆에 「케어&힐링 가기」 — 한 줄에 반씩.
+          <div style={sx("display:flex; gap:8px; margin-top:4px")}>
+            <div onClick={() => patch({ sheet: "month" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>
+            <div onClick={() => patch({ tab: "daily", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#2d7a5f; color:#fff; box-shadow:0 4px 12px rgba(45,122,95,0.28)")}>케어&힐링 가기 ›</div>
+          </div>,
         )}
 
         {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}

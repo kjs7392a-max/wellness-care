@@ -36,3 +36,15 @@ describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링�
     expect(src).toMatch(/target="_blank"/);
   });
 });
+
+describe("홈 주간 흐름 박스 — 버튼 둘(2026-09-19 사용자 지시)", () => {
+  it("「월간 기록 보기 ›」와 「케어&힐링 가기 ›」가 한 줄에 반씩(flex:1) 있고, 케어&힐링은 daily 탭으로 간다", () => {
+    const i = src.indexOf("월간 기록 보기 ›");
+    const j = src.indexOf("케어&힐링 가기 ›");
+    expect(i).toBeGreaterThan(0);
+    expect(j).toBeGreaterThan(i);
+    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), j + 40);
+    expect(block.match(/flex:1/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(block).toMatch(/tab: "daily"/);
+  });
+});
