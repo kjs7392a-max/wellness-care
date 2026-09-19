@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { riskLevel, RISK_REPLY } from "@/features/wellness/risk";
 import { systemPromptFor } from "@/features/wellness/characters";
+import { HISTORY_LIMIT } from "@/features/wellness/chat-store";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ risk: true, reply: RISK_REPLY });
   }
 
-  const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
+  const history = Array.isArray(body.history) ? body.history.slice(-HISTORY_LIMIT) : [];
   const month = new Date().getMonth() + 1;
   const system = systemPromptFor(body.character, month);
 

@@ -18,7 +18,8 @@ import {
 } from "./data";
 import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { greetingForHour } from "./greeting";
-import { PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, personaResult, type PersonaAnswers, type PersonaResult } from "./persona";
+import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
+import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
  * 데일리 힐링 추천 음악 — 유튜브 채널 emptysilver(@emptysilver · UCyvNK9b_Rs7djuIQ4a7i5aw)의 긴 플레이리스트 영상만 우리 순서로.
@@ -46,7 +47,6 @@ const DEFAULT_ROLE: Role = "teacher";
 const CONTENT_STATE: ContentState = "STABLE";
 const EMPTY_STATE = false;
 
-interface ChatMsg { role: "me" | "bot"; text: string; at: string }
 interface Session { title: string; time: string }
 
 interface State {
@@ -71,11 +71,14 @@ interface State {
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "daily" | "my";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaResult";
-  /** 마음 성향 테스트 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 말투에만 쓴다(persona.ts 머리 주석). */
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult";
+  /**
+   * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 말투·「오늘 해볼 것」·마음카드 밑 한 줄에만 쓴다(persona.ts 머리 주석).
+   * 2026-09-19: 결과는 테스트(lean 있음) 또는 **직접 선택**(lean null · `personaPick` 시트) — 사용자 "직접 선택하게 하고 테스트는 모르면".
+   */
   persona: PersonaAnswers;
   personaIdx: number;
-  personaDone: (PersonaResult & { at: string }) | null;
+  personaDone: PersonaDone | null;
   personaPage: 1 | 2;
   /** 오늘의 마음카드(SAM) 답 — 기분·긴장 1~5. 둘 다 있으면 오늘 기록 */
   sam: SamAnswer;
@@ -88,7 +91,10 @@ interface State {
   consent: [boolean, boolean];
   sessions: Session[];
   pickedToday: boolean;
-  chat: ChatMsg[];
+  /** 대화 말풍선 — 기기 저장(chat-store)과 같은 모양. `risk: true` 는 위험 판정 질문·고정 안내(서버 history 에서 뺀다). */
+  chat: StoredMsg[];
+  /** 「계정 없이 둘러보기」 — 저장하지 않는다(공용 기기 보호). 로그인 화면에서 정해진다. */
+  guest: boolean;
   beat: number;
   typing: boolean;
   input: string;
@@ -118,7 +124,7 @@ export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, perms: {}, area: "all", program: null,
-    authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
+    authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
@@ -143,6 +149,16 @@ export default function WellnessApp() {
     return () => { clearInterval(clock); if (timerRef.current) clearInterval(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 대화 기기 저장(2026-09-19) — 그 폰의 localStorage 에만. 캐릭터별 · 둘러보기(guest)는 안 남긴다 · 접근은 전부 이 두 함수로.
+  const storage = () => (typeof window === "undefined" ? null : window.localStorage);
+  const readChatStore = () => { try { return parseChatStore(storage()?.getItem(CHAT_STORE_KEY) ?? null); } catch { return parseChatStore(null); } };
+  const writeChatStore = (st: ReturnType<typeof parseChatStore>) => { try { storage()?.setItem(CHAT_STORE_KEY, serializeChatStore(st)); } catch { /* 저장 공간·사생활 모드 — 저장 못 해도 대화는 계속 */ } };
+  useEffect(() => {
+    if (!s.authed || s.guest || s.sheet !== "talk") return;
+    writeChatStore(setCharacterChat(readChatStore(), s.character, s.chat));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.chat, s.character, s.authed, s.guest, s.sheet]);
 
   // 채팅 자동 스크롤.
   useEffect(() => {
@@ -202,16 +218,16 @@ export default function WellnessApp() {
   async function send() {
     const t = (s.input || "").trim();
     if (!t || s.typing) return;
-    const historyForServer = s.chat.map((m) => ({ role: m.role, text: m.text }));
+    const risky = riskLevel(t) === 2;
     patchFn((st) => ({
-      chat: st.chat.concat([{ role: "me", text: t, at: stampAt(st.chat.length, st.now) }]),
+      chat: st.chat.concat([{ role: "me", text: t, at: stampAt(st.chat.length, st.now), ...(risky ? { risk: true as const } : {}) }]),
       input: "", typing: true,
     }));
 
-    // 클라 위험 판정 — 즉시 고정 응답(네트워크 없이).
-    if (riskLevel(t) === 2) {
+    // 클라 위험 판정 — 즉시 고정 응답(네트워크 없이). 질문·안내 둘 다 risk 표시(기기엔 남고 서버 history 엔 안 실린다).
+    if (risky) {
       setTimeout(() => patchFn((st) => ({
-        chat: st.chat.concat(RISK_REPLY.map((b, j) => ({ role: "bot" as const, text: b, at: stampAt(st.chat.length + j, st.now) }))),
+        chat: st.chat.concat(RISK_REPLY.map((b, j) => ({ role: "bot" as const, text: b, at: stampAt(st.chat.length + j, st.now), risk: true as const }))),
         typing: false, riskShown: true, beat: Math.max(st.beat, 4),
       })), 700);
       return;
@@ -221,12 +237,13 @@ export default function WellnessApp() {
       const r = await fetch("/api/wellness/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ history: historyForServer, message: t, character: s.character }),
+        body: JSON.stringify({ history: historyFor(s.chat), message: t, character: s.character }),
       });
       const j = await r.json();
       if (j.risk && Array.isArray(j.reply)) {
         patchFn((st) => ({
-          chat: st.chat.concat(j.reply.map((b: string, k: number) => ({ role: "bot" as const, text: b, at: stampAt(st.chat.length + k, st.now) }))),
+          chat: st.chat.map((m, i) => (i === st.chat.length - 1 && m.role === "me" ? { ...m, risk: true as const } : m))
+            .concat(j.reply.map((b: string, k: number) => ({ role: "bot" as const, text: b, at: stampAt(st.chat.length + k, st.now), risk: true as const }))),
           typing: false, riskShown: true, beat: Math.max(st.beat, 4),
         }));
         return;
@@ -360,6 +377,7 @@ export default function WellnessApp() {
           {/* 월간 기록 시트 — 홈의 「기록 보기」 버튼이 연다(my 탭과 같은 renderRecords). */}
           {s.sheet === "month" && renderRecords(true)}
           {s.sheet === "persona" && renderPersonaTest()}
+          {s.sheet === "personaPick" && renderPersonaPick()}
           {s.sheet === "personaResult" && renderPersonaResult()}
         </div>
       </div>
@@ -368,7 +386,7 @@ export default function WellnessApp() {
 
   function renderLogin() {
     const loginBtnBg = s.loginId && s.loginPw ? "#7a6bc4" : "#cdc3ea";
-    const doLogin = () => patch({ authed: true, ob: 0 });
+    const doLogin = () => patch({ authed: true, ob: 0, guest: s.loginId.trim() === "" });
     return (
       <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
         <div style={sx("flex:1; display:flex; flex-direction:column; justify-content:center; gap:26px; padding:0 26px")}>
@@ -803,14 +821,41 @@ export default function WellnessApp() {
     const t = done ? PERSONA_TYPES[done.type] : null;
     return (
       <>
-        <div onClick={() => (done ? patch({ sheet: "personaResult", personaPage: 1 }) : patch({ sheet: "persona", persona: {}, personaIdx: 0 }))} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.22), 0 2px 6px rgba(80,160,130,0.14)")}>
-          <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#2d7a5f; letter-spacing:-0.02em")}>{done ? done.type : "16"}</div>
-          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-            <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>마음 성향 테스트</div>
-            <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 · 40문항 · 5분"}</div>
+        {/* 마음 성향 — 유형이 없으면 두 갈래(내 유형 알아요 → 16개 고르기 / 모르겠어요 → 40문항). 테스트는 찾을 때만(2026-09-19 사용자 확정). */}
+        <div style={sx("display:flex; flex-direction:column; gap:12px; padding:22px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.22), 0 2px 6px rgba(80,160,130,0.14)")}>
+          <div onClick={() => done && patch({ sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
+            <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#2d7a5f; letter-spacing:-0.02em")}>{done ? done.type : "16"}</div>
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>마음 성향</div>
+              <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 중 내 것을 고르거나, 40문항으로 알아봐요"}</div>
+            </div>
+            {done && <div style={sx("flex:none; font-size:17px; color:#4fa585")}>↗</div>}
           </div>
-          <div style={sx("flex:none; font-size:17px; color:#4fa585")}>↗</div>
+          {!done && (
+            <div style={sx("display:flex; gap:8px")}>
+              <div onClick={() => patch({ sheet: "personaPick" })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 8px; border-radius:14px; background:#2d7a5f; color:#fff; font-size:13.5px; font-weight:800")}>내 유형 알아요</div>
+              <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0 })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 8px; border-radius:14px; background:#fff; border:1.5px solid #9ccdb8; color:#2d7a5f; font-size:13.5px; font-weight:800")}>모르겠어요 · 5분 테스트</div>
+            </div>
+          )}
         </div>
+        {/* 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만. */}
+        {done && t && (
+          <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
+            <div style={sx("display:flex; align-items:center; gap:10px")}>
+              <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#e9f7f1; display:flex; align-items:center; justify-content:center; font-size:16px")}>☘</div>
+              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>오늘 해볼 것 · {t.name}</div>
+                <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>이 성향에 잘 맞는 작은 것 셋 — 하나만 골라도, 안 해도 괜찮아요</div>
+              </div>
+            </div>
+            {t.todo.map((x) => (
+              <div key={x.title} style={sx("display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:13px; background:#f7fbf9; border:1px solid #d7ebe2")}>
+                <div style={sx("font-size:14px; font-weight:700; color:#245c48; line-height:1.5; text-wrap:pretty")}>{x.title}</div>
+                <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty")}>{x.why}</div>
+              </div>
+            ))}
+          </div>
+        )}
         {/* 추천 음악 — 유튜브 플레이어 하나. 16:9 비율 상자 안에 iframe. */}
         <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
           <div style={sx("display:flex; align-items:center; gap:10px")}>
@@ -836,6 +881,37 @@ export default function WellnessApp() {
     );
   }
 
+  /** 유형 직접 고르기 — 16개 격자(4×4 · I 줄 → E 줄). 고르면 lean 없이 저장하고 결과 시트로. 2026-09-19. */
+  function renderPersonaPick() {
+    const cur = s.personaDone?.type ?? null;
+    return (
+      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={() => patch({ sheet: cur ? "personaResult" : null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>내 유형 고르기</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>아는 유형을 누르면 바로 저장돼요 · 모르면 테스트로</div>
+          </div>
+        </div>
+        <div style={sx("flex:1; overflow-y:auto; padding:18px 20px 28px; display:flex; flex-direction:column; gap:14px")}>
+          <div style={sx("display:grid; grid-template-columns:repeat(4,1fr); gap:9px")}>
+            {PERSONA_CODES.map((code) => {
+              const on = code === cur;
+              return (
+                <div key={code} onClick={() => patch({ personaDone: pickedPersona(code), sheet: "personaResult", personaPage: 1 })}
+                  style={{ ...sx("cursor:pointer; text-align:center; padding:15px 0; border-radius:14px; font-size:14.5px; font-weight:800; letter-spacing:0.04em; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#4a3f80", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
+                  {code}
+                </div>
+              );
+            })}
+          </div>
+          <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0 })} style={sx("cursor:pointer; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>모르겠어요 · 40문항으로 알아보기</div>
+          <div style={sx("font-size:12px; font-weight:600; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_NOTICE}</div>
+        </div>
+      </div>
+    );
+  }
+
   /** 마음 성향 테스트 — 한 문항씩, 5점 척도. 다 답하면 결과를 저장하고 결과 시트로. */
   function renderPersonaTest() {
     const i = s.personaIdx;
@@ -845,7 +921,7 @@ export default function WellnessApp() {
     const pick = (score: number) => patchFn((st) => {
       const persona = { ...st.persona, [i]: score };
       const res = personaResult(persona);
-      if (res && i === total - 1) return { persona, personaDone: { ...res, at: new Date().toISOString() }, sheet: "personaResult" as const, personaPage: 1 as const };
+      if (res && i === total - 1) return { persona, personaDone: { ...res, source: "test" as const, at: new Date().toISOString() }, sheet: "personaResult" as const, personaPage: 1 as const };
       return { persona, personaIdx: Math.min(total - 1, i + 1) };
     });
     return (
@@ -909,10 +985,10 @@ export default function WellnessApp() {
                 <div style={sx("font-size:34px; font-weight:800; color:#245c48; letter-spacing:0.04em")}>{done.type}</div>
                 <div style={sx("font-size:17px; font-weight:700; color:#2d7a5f")}>{t.name}</div>
               </div>
-              {/* 기울기 — 막대만, 숫자·% 없음(앱 원칙). 가운데가 중립. */}
-              <div style={sx(card)}>
+              {/* 기울기 — 막대만, 숫자·% 없음(앱 원칙). 가운데가 중립. 직접 고른 유형(lean null)엔 그릴 근거가 없어 안 그린다. */}
+              {done.lean && <div style={sx(card)}>
                 {axes.map(({ key, left, right }) => {
-                  const v2 = done.lean[key]; // -1~1 · 양수 = 왼쪽(앞 글자)
+                  const v2 = done.lean![key]; // -1~1 · 양수 = 왼쪽(앞 글자)
                   const w = Math.round(Math.abs(v2) * 50);
                   return (
                     <div key={key} style={sx("display:flex; flex-direction:column; gap:4px")}>
@@ -924,7 +1000,8 @@ export default function WellnessApp() {
                     </div>
                   );
                 })}
-              </div>
+              </div>}
+              {!done.lean && <div style={sx("font-size:12px; color:#8ba8b3; line-height:1.6; text-wrap:pretty; padding:0 4px")}>직접 고른 유형이에요 · 40문항 테스트를 하면 네 축의 기울기도 함께 보여요.</div>}
               <div style={sx(card)}>
                 <div style={sx("font-size:13px; font-weight:800; color:#2d5c6e")}>이런 편이에요</div>
                 <div style={sx("font-size:14px; color:#3a4a72; line-height:1.75; text-wrap:pretty")}>{t.traits}</div>
@@ -943,12 +1020,17 @@ export default function WellnessApp() {
               </div>
               <div style={sx(card)}>
                 <div style={sx("font-size:13px; font-weight:800; color:#2d5c6e")}>추천 도서</div>
-                {t.books.map((b) => <div key={b} style={sx("font-size:14px; color:#3a4a72; line-height:1.6")}>{b}</div>)}
+                {t.books.map((b) => (
+                  <a key={b} href={bookSearchUrl(b)} target="_blank" rel="noreferrer" style={sx("display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:14px; color:#3a4a72; line-height:1.6; text-decoration:none")}>
+                    <span>{b}</span><span style={sx("flex:none; font-size:11.5px; font-weight:700; color:#03c75a")}>네이버에서 보기 ›</span>
+                  </a>
+                ))}
               </div>
               <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_SOURCE}</div>
               <div style={sx("font-size:12px; font-weight:600; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 4px")}>{PERSONA_NOTICE}</div>
               <div style={sx("display:flex; gap:8px; padding-top:4px")}>
-                <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0, personaDone: null })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>다시 하기</div>
+                <div onClick={() => patch({ sheet: "personaPick" })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>유형 바꾸기</div>
+                <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0, personaDone: null })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#fff; border:1.5px solid #cfc5ea; color:#7a6bc4; font-size:14px; font-weight:800")}>{done.source === "test" ? "다시 하기" : "테스트로"}</div>
                 <div onClick={close} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px; border-radius:14px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:800")}>닫기</div>
               </div>
               <div onClick={() => patch({ personaPage: 1 })} style={sx("cursor:pointer; text-align:center; font-size:13px; font-weight:700; color:#7a6bc4; padding:6px")}>‹ 앞 장</div>
@@ -1254,12 +1336,13 @@ export default function WellnessApp() {
         <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => patch({ wiped: true })} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patch({ wiped: true }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patchFn((st) => ({ chat: [{ role: "bot", text: characterOf(st.character).intro, at: stampAt(0, st.now) }], riskShown: false, beat: 0 })); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>이 기기 대화 전부 지우기</div>
         </div>
 
         <div style={sx("display:flex; gap:10px; padding:4px 0 8px")}>
           <div onClick={() => patch({ ob: 0 })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
-          <div onClick={() => patch({ authed: false, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
       </div>
@@ -1372,6 +1455,8 @@ export default function WellnessApp() {
                   {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #cfc5ea; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
                 </div>
                 <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.text}</div>
+                {/* 유형×시간대 한 줄(마음온도 「디렉팅」에서 골라 온 자리) — 유형이 있을 때만. 판정엔 안 들어가고 말투만(persona.ts 머리 주석). */}
+                {s.personaDone && <div style={sx("font-size:13.5px; font-weight:600; line-height:1.7; color:#5f5397; text-wrap:pretty; padding:10px 12px; border-radius:12px; background:#f2edfa; border:1px solid #cfc5ea")}>{PERSONA_TYPES[s.personaDone.type].name} · {personaDirecting(s.personaDone.type, s.now.getHours())}</div>}
                 <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물·배는 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장·통제감, 밤은 수면 문항, 교실 날씨는 Kunin Faces 만족 척도. 읽기는 정서 원형 모델(Russell 1980). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
@@ -1510,10 +1595,19 @@ export default function WellnessApp() {
   // 컴포넌트 return 뒤에 있으므로 반드시 function 선언(호이스팅) — const 면 클릭 때 TDZ 로 죽는다.
   function startTalkWith(id: CharacterId) {
     const c = characterOf(id);
-    patchFn((st) => ({
-      sheet: "talk", character: id, beat: 0, typing: false, riskShown: false,
-      chat: [{ role: "bot", text: c.intro, at: stampAt(0, st.now) }],
-    }));
+    patchFn((st) => {
+      // 2026-09-19: 계정 로그인이면 그 캐릭터의 지난 대화를 기기에서 이어간다(같은 상대 다시 눌러도 이어짐). 둘러보기는 늘 새 대화.
+      const saved = !st.guest ? readChatStore().byCharacter[id] : undefined;
+      const chat = saved && saved.length ? saved : [{ role: "bot" as const, text: c.intro, at: stampAt(0, st.now) }];
+      return { sheet: "talk", character: id, beat: 0, typing: false, riskShown: saved?.some((m) => m.risk) ?? false, chat };
+    });
+  }
+
+  /** 대화 지우기 — 그 캐릭터의 기기 저장 삭제 + 화면은 첫 인사부터. */
+  function clearTalk(id: CharacterId) {
+    writeChatStore(clearCharacterChat(readChatStore(), id));
+    const c = characterOf(id);
+    patchFn((st) => ({ beat: 0, typing: false, riskShown: false, chat: [{ role: "bot", text: c.intro, at: stampAt(0, st.now) }] }));
   }
 
   function renderMind() {
@@ -1643,8 +1737,11 @@ export default function WellnessApp() {
             {avatar(38)}
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 건강</div>
-              <div style={sx("font-size:11px; color:#8ba8b3")}>기록은 선생님만 봅니다</div>
+              <div style={sx("font-size:11px; color:#8ba8b3")}>{s.guest ? "둘러보기 중엔 대화가 저장되지 않아요" : "대화는 이 기기에만 저장돼요 · 서버에는 남지 않아요"}</div>
             </div>
+            {!s.guest && s.chat.length > 1 && (
+              <div onClick={() => clearTalk(s.character)} style={sx("cursor:pointer; flex:none; font-size:11.5px; font-weight:700; color:#8ba8b3; border:1px solid #c9d6dc; border-radius:999px; padding:5px 10px; background:#fff")}>대화 지우기</div>
+            )}
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>마음과 대화</div>
