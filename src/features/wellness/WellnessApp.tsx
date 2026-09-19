@@ -881,9 +881,10 @@ export default function WellnessApp() {
     return (
       <>
         {/* 마음 성향 — 유형이 없으면 두 갈래(내 유형 알아요 → 16개 고르기 / 모르겠어요 → 40문항). 테스트는 찾을 때만(2026-09-19 사용자 확정). */}
-        <div style={sx("display:flex; flex-direction:column; gap:12px; padding:22px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.22), 0 2px 6px rgba(80,160,130,0.14)")}>
+        {/* 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 값(여백·테두리·그림자 세기), 색만 초록 축. */}
+        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.26), 0 2px 6px rgba(80,160,130,0.16)")}>
           <div onClick={() => done && patch({ sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
-            <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#2d7a5f; letter-spacing:-0.02em")}>{done ? done.type : "16"}</div>
+            <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>🧭</div>
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>마음 성향</div>
               <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 중 내 것을 고르거나, 40문항으로 알아봐요"}</div>
@@ -892,18 +893,18 @@ export default function WellnessApp() {
           </div>
           {!done && (
             <div style={sx("display:flex; gap:8px")}>
-              <div onClick={() => patch({ sheet: "personaPick" })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 8px; border-radius:14px; background:#2d7a5f; color:#fff; font-size:13.5px; font-weight:800")}>내 유형 알아요</div>
-              <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0 })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 8px; border-radius:14px; background:#fff; border:1.5px solid #9ccdb8; color:#2d7a5f; font-size:13.5px; font-weight:800")}>모르겠어요 · 5분 테스트</div>
+              <div onClick={() => patch({ sheet: "personaPick" })} style={sx("cursor:pointer; flex:1; display:flex; align-items:center; justify-content:center; text-align:center; padding:13px 8px; border-radius:14px; background:#2d7a5f; color:#fff; font-size:13.5px; font-weight:800")}>내 유형 알아요</div>
+              <div onClick={() => patch({ sheet: "persona", persona: {}, personaIdx: 0 })} style={sx("cursor:pointer; flex:1; text-align:center; padding:13px 8px; border-radius:14px; background:#fff; border:1.5px solid #9ccdb8; color:#2d7a5f; font-size:13.5px; font-weight:800; line-height:1.35")}>모르겠어요<br />5분 테스트</div>
             </div>
           )}
         </div>
         {/* 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만. */}
         {done && t && (
-          <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
-            <div style={sx("display:flex; align-items:center; gap:10px")}>
-              <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#e9f7f1; display:flex; align-items:center; justify-content:center; font-size:16px")}>☘</div>
+          <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#f3faf6 0%,#eef4fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.26), 0 2px 6px rgba(80,160,130,0.16)")}>
+            <div style={sx("display:flex; align-items:center; gap:14px")}>
+              <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>☘</div>
               <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-                <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>오늘 해볼 것 · {t.name}</div>
+                <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>오늘 해볼 것 · {t.name}</div>
                 <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>이 성향에 잘 맞는 작은 것 셋 — 하나만 골라도, 안 해도 괜찮아요</div>
               </div>
             </div>
