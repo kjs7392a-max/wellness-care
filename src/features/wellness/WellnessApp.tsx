@@ -884,7 +884,7 @@ export default function WellnessApp() {
         {/* 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 값(여백·테두리·그림자 세기), 색만 초록 축. */}
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.26), 0 2px 6px rgba(80,160,130,0.16)")}>
           <div onClick={() => done && patch({ sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
-            <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>🧭</div>
+            <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-healing.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>마음 성향</div>
               <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 중 내 것을 고르거나, 40문항으로 알아봐요"}</div>
