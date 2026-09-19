@@ -881,8 +881,8 @@ export default function WellnessApp() {
     return (
       <>
         {/* 마음 성향 — 유형이 없으면 두 갈래(내 유형 알아요 → 16개 고르기 / 모르겠어요 → 40문항). 테스트는 찾을 때만(2026-09-19 사용자 확정). */}
-        {/* 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 값(여백·테두리·그림자 세기), 색만 초록 축. */}
-        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e9f7f1 0%,#e6f0fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.26), 0 2px 6px rgba(80,160,130,0.16)")}>
+        {/* 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 여백 · 색은 초록 축 · 테두리 1.5px·그림자는 한 단계 진하게(2026-09-19 사용자 "조금 더 진하게"). */}
+        <div style={sx("display:flex; flex-direction:column; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#dff3ea 0%,#dbe9f8 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
           <div onClick={() => done && patch({ sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-healing.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
@@ -900,7 +900,7 @@ export default function WellnessApp() {
         </div>
         {/* 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만. */}
         {done && t && (
-          <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#f3faf6 0%,#eef4fb 100%); border:1px solid #c5e3d6; box-shadow:0 10px 24px rgba(80,160,130,0.26), 0 2px 6px rgba(80,160,130,0.16)")}>
+          <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#e6f5ee 0%,#e2edf9 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
             <div style={sx("display:flex; align-items:center; gap:14px")}>
               <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>☘</div>
               <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
