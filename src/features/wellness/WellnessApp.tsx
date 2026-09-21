@@ -26,7 +26,7 @@ import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
-import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, type PersonaAnswers, type PersonaDone } from "./persona";
+import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
  * 데일리 힐링 추천 음악 — 유튜브 채널 emptysilver(@emptysilver · UCyvNK9b_Rs7djuIQ4a7i5aw)의 긴 플레이리스트 영상만 우리 순서로.
@@ -166,6 +166,7 @@ export default function WellnessApp() {
     mounted.current = true;
     patch({ now: new Date(), msgSeed: Math.random() });
     try { const p = parseProfile(window.localStorage.getItem(PROFILE_STORE_KEY)); if (p) patch({ dirProfile: p }); } catch { /* 저장소 없음 — 탭에서 다시 고르면 된다 */ }
+    try { const d = parsePersonaDone(window.localStorage.getItem(PERSONA_STORE_KEY)); if (d) patch({ personaDone: d }); } catch { /* 위와 같다 — 다시 고르면 된다 */ }
     const clock = setInterval(() => patch({ now: new Date() }), 10000);
     loadWeather();
     loadMusic();
@@ -182,6 +183,12 @@ export default function WellnessApp() {
     writeChatStore(setCharacterChat(readChatStore(), s.character, s.chat));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.chat, s.character, s.authed, s.guest, s.sheet]);
+
+  // 유형 기기 저장(2026-09-22) — 고르거나 테스트로 정해질 때마다. 지우는 쪽(설정·전체 파기)이 removeItem 을 부른다.
+  useEffect(() => {
+    if (!s.personaDone) return;
+    try { storage()?.setItem(PERSONA_STORE_KEY, serializePersonaDone(s.personaDone)); } catch { /* 저장 못 해도 이 세션은 쓴다 */ }
+  }, [s.personaDone]);
 
   // 채팅 자동 스크롤.
   useEffect(() => {
@@ -865,7 +872,8 @@ export default function WellnessApp() {
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
       { id: "walk", label: "오늘의 산책", emoji: "🌿", hint: "가볍게 걷기 좋은 코스 셋" },
     ];
-    const open = done ? s.dirTab : "persona";
+    // 2026-09-22 사용자: 유형 전에도 여섯 줄 전부 열린다 — 유형이 꼭 필요한 건 TO do it 뿐(renderTodoCard 가 안내). 코디 검색어는 유형 없으면 나이대만.
+    const open = s.dirTab;
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
@@ -874,12 +882,11 @@ export default function WellnessApp() {
         </div>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:14px 0 8px")}>
           {renderPersonaCard()}
-          {!done && <div style={sx("padding:11px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>위에서 내 유형을 고르면 아래 여섯 가지가 유형에 맞춰 열려요.</div>}
           {rows.map((x) => {
             const on = open === x.id;
             return (
               <div key={x.id} style={sx("display:flex; flex-direction:column; gap:12px")}>
-                <div data-dir-row={x.id} onClick={() => { if (!done) return; patch({ dirTab: s.dirTab === x.id ? "persona" : x.id }); }} style={{ ...sx("display:flex; align-items:center; gap:12px; padding:16px 16px; border-radius:18px; border:1.5px solid; transition:background 0.15s"), cursor: done ? "pointer" : "default", background: on ? "#2d7a5f" : "#fff", borderColor: on ? "#2d7a5f" : done ? "#9ccdb8" : "#e2e8ec", opacity: done ? 1 : 0.55, boxShadow: on ? "0 8px 20px rgba(45,122,95,0.24)" : "0 4px 12px rgba(45,92,110,0.06)" }}>
+                <div data-dir-row={x.id} onClick={() => patch({ dirTab: s.dirTab === x.id ? "persona" : x.id })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 16px; border-radius:18px; border:1.5px solid; transition:background 0.15s"), background: on ? "#2d7a5f" : "#fff", borderColor: on ? "#2d7a5f" : "#9ccdb8", boxShadow: on ? "0 8px 20px rgba(45,122,95,0.24)" : "0 4px 12px rgba(45,92,110,0.06)" }}>
                   <div style={{ ...sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px"), background: on ? "rgba(255,255,255,0.18)" : "#eef7f2" }}>{x.emoji}</div>
                   <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
                     <div style={{ ...sx("font-size:15px; font-weight:800; letter-spacing:-0.01em"), color: on ? "#fff" : "#245c48" }}>{x.label}</div>
@@ -1152,7 +1159,11 @@ export default function WellnessApp() {
   function renderTodoCard() {
     const done = s.personaDone;
     const t = done ? PERSONA_TYPES[done.type] : null;
-    if (!done || !t) return null;
+    if (!done || !t) {
+      return (
+        <div style={sx("padding:14px 16px; border-radius:16px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13.5px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>「오늘 해볼 것」은 성향에 맞춰 골라요. 위 「마음 성향」에서 내 유형을 먼저 골라 주세요.</div>
+      );
+    }
     return (
     // 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만.
           <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#e6f5ee 0%,#e2edf9 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
@@ -1626,6 +1637,18 @@ export default function WellnessApp() {
           </div>
         </div>
 
+        {/* 마음 성향 유형(기기 저장 · persona.ts PERSONA_STORE_KEY) — 2026-09-22. */}
+        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
+          <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>마음 성향 유형</div>
+          <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{s.personaDone ? `${s.personaDone.type} · ${PERSONA_TYPES[s.personaDone.type].name} — 이 기기에 저장돼 있어요.` : "아직 고르지 않았어요. 디렉팅 탭 「마음 성향」에서 고르면 이 기기에 저장돼요."}</div>
+          {s.personaDone && (
+            <div style={sx("display:flex; gap:8px")}>
+              <div onClick={() => patch({ sheet: "personaPick" })} style={sx("cursor:pointer; flex:1; text-align:center; padding:12px; border-radius:13px; border:1.5px solid #c4b8ec; background:#fff; font-size:13.5px; font-weight:800; color:#4a3f80")}>유형 바꾸기</div>
+              <div onClick={() => { try { storage()?.removeItem(PERSONA_STORE_KEY); } catch { /* 없어도 상태만 비우면 된다 */ } patch({ personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; flex:1; text-align:center; padding:12px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:13.5px; font-weight:800; color:#6b8c9a")}>유형 지우기</div>
+            </div>
+          )}
+        </div>
+
         {/* 디렉팅 성별·나이대(코디·메이크업용 · directing/profile.ts) — 2026-09-21. 지우면 그 탭에서 다시 묻는다. 전체 파기 때도 함께 지운다. */}
         <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>디렉팅 코디·메이크업 기준</div>
@@ -1636,7 +1659,7 @@ export default function WellnessApp() {
         <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {} }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
           <div onClick={() => { writeChatStore(clearAllChats()); patchFn((st) => ({ chat: [{ role: "bot", text: characterOf(st.character).intro, at: stampAt(0, st.now) }], riskShown: false, beat: 0 })); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>이 기기 대화 전부 지우기</div>
         </div>
 

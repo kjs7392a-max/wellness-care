@@ -136,6 +136,33 @@ export function pickedPersona(code: string, at: Date = new Date()): PersonaDone 
   return { type: code, lean: null, source: "picked", at: at.toISOString() };
 }
 
+/**
+ * 유형 기기 저장(2026-09-22 사용자 지시) — 그전엔 화면 메모리뿐이라 앱을 닫으면 사라져 디렉팅이 매번 잠긴 채 시작했다.
+ * localStorage(이 폰에만) · 접근은 WellnessApp 의 storage() 로 · 깨진 값은 null(저장소 때문에 앱이 죽지 않는다). 전체 파기 때 함께 지운다.
+ */
+export const PERSONA_STORE_KEY = "wellness-care:persona:v1";
+const PERSONA_AXES: readonly PersonaAxis[] = ["E", "N", "F", "J"];
+export const serializePersonaDone = (d: PersonaDone): string => JSON.stringify({ type: d.type, lean: d.lean, source: d.source, at: d.at });
+export function parsePersonaDone(raw: string | null): PersonaDone | null {
+  if (!raw) return null;
+  try {
+    const j = JSON.parse(raw) as { type?: unknown; lean?: unknown; source?: unknown; at?: unknown };
+    if (typeof j.type !== "string" || !(PERSONA_CODES as readonly string[]).includes(j.type)) return null;
+    if (j.source !== "test" && j.source !== "picked") return null;
+    if (typeof j.at !== "string") return null;
+    let lean: Record<PersonaAxis, number> | null = null;
+    if (j.lean !== null && j.lean !== undefined) {
+      if (typeof j.lean !== "object") return null;
+      const l = j.lean as Record<string, unknown>;
+      if (!PERSONA_AXES.every((k) => typeof l[k] === "number")) return null;
+      lean = { E: l.E as number, N: l.N as number, F: l.F as number, J: l.J as number };
+    }
+    return { type: j.type, lean, source: j.source, at: j.at };
+  } catch {
+    return null;
+  }
+}
+
 /** 시간대 마무리 — greeting.ts 와 같은 다섯 구간(5~11 아침 · 11~14 점심 · 14~18 오후 · 18~22 저녁 · 그 밖 밤). 유형 디렉팅 뒤에 붙는다. */
 export function slotClosing(hour: number): string {
   if (hour >= 5 && hour < 11) return "아침이니 오늘 하루 한 가지만 골라 두셔도 충분해요.";

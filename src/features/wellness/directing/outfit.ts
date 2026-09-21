@@ -156,7 +156,7 @@ export function outfitCard(scene: Scene, input: OutfitInput): OutfitCard {
     shoes: p.shoes,
     styleAnalysis: styleAnalysis(scene, age, input.temperature),
     blogSearchKeyword: blogKeyword(scene, input.gender, age, input.temperature, input.weatherCode),
-    naverSearchQuery: `${ageDecade(age)} ${input.mbti} 추천 코디`,
+    naverSearchQuery: [ageDecade(age), input.mbti, "추천 코디"].filter(Boolean).join(" "), // 유형 전(mbti "")엔 나이대만
   };
 }
 

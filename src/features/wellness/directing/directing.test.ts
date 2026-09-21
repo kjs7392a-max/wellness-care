@@ -47,6 +47,7 @@ describe("outfit — 원본 규칙", () => {
     expect(outfitCard("work", { ...base, temperature: 22 }).styleAnalysis).toContain("smart casual");
     expect(outfitCard("work", { ...base, ageBand: "50대", temperature: 22 }).styleAnalysis).toContain("classic elegant");
     expect(outfitCard("work", { ...base, temperature: 22 }).naverSearchQuery).toBe("30대 ENFP 추천 코디");
+    expect(outfitCard("work", { ...base, temperature: 22, mbti: "" }).naverSearchQuery).toBe("30대 추천 코디"); // 유형 전에도 열린다(2026-09-22)
     // 원본 rN 의 나이대 경계는 25~34 → 30대 · 35~44 → 40대(wp 와 다르다) — 그대로 둔다(화면 검색어는 wp 쪽 naverSearchQuery 를 쓴다).
     expect(outfitCard("work", { ...base, temperature: 22 }).blogSearchKeyword).toBe("여자 40대 봄 출근룩 코디");
     expect(outfitCard("work", { ...base, ageBand: "20대", temperature: 22 }).blogSearchKeyword).toBe("여자 30대 봄 출근룩 코디");

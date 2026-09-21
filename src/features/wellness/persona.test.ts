@@ -152,3 +152,23 @@ describe("bookSearchUrl — 네이버 책 검색 링크", () => {
     expect(decodeURIComponent(u.split("query=")[1])).toBe("스토너 존 윌리엄스");
   });
 });
+
+// 2026-09-22 사용자 지시: 유형을 기기에 저장(앱을 닫아도 디렉팅이 열려 있게). 깨진 값은 null.
+import { PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone } from "./persona";
+describe("유형 기기 저장 — 직렬화/파싱", () => {
+  it("고른 유형 · 테스트 유형 둘 다 왕복", () => {
+    const picked = pickedPersona("ENFP", new Date("2026-09-22T00:00:00Z"));
+    expect(parsePersonaDone(serializePersonaDone(picked))).toEqual(picked);
+    const tested = { type: "INFJ", lean: { E: -2, N: 1, F: 3, J: -1 } as Record<PersonaAxis, number>, source: "test" as const, at: "2026-09-22T00:00:00.000Z" };
+    expect(parsePersonaDone(serializePersonaDone(tested))).toEqual(tested);
+  });
+  it("없음·깨짐·모르는 유형·이상한 source 는 null", () => {
+    expect(parsePersonaDone(null)).toBeNull();
+    expect(parsePersonaDone("{")).toBeNull();
+    expect(parsePersonaDone(JSON.stringify({ type: "ABCD", lean: null, source: "picked", at: "x" }))).toBeNull();
+    expect(parsePersonaDone(JSON.stringify({ type: "ENFP", lean: null, source: "guess", at: "x" }))).toBeNull();
+  });
+  it("저장 키는 다른 저장소 키와 겹치지 않는다", () => {
+    expect(PERSONA_STORE_KEY).toBe("wellness-care:persona:v1");
+  });
+});

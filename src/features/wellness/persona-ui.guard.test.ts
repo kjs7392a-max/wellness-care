@@ -132,9 +132,16 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(healing).toMatch(/on && x\.id === "outfit" && \(s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
     expect(healing).toMatch(/on && x\.id === "sentences" && renderSentencesTab\(\)/);
     expect(healing).toMatch(/on && x\.id === "walk" && renderWalkTab\(\)/);
-    // 유형 전엔 줄이 잠긴다(눌러도 안 펼쳐진다) · 같은 줄을 다시 누르면 접힌다
-    expect(healing).toMatch(/const open = done \? s\.dirTab : "persona"/);
+    // 2026-09-22 사용자 "왜 탭이 비활성화되어 있어?" → 유형 전에도 여섯 줄 전부 열린다(잠금 없음) · 같은 줄을 다시 누르면 접힌다
+    expect(healing).toMatch(/const open = s\.dirTab;/);
+    expect(healing).not.toMatch(/opacity: done|if \(!done\) return/);
     expect(healing).toMatch(/dirTab: s\.dirTab === x\.id \? "persona" : x\.id/);
+    // 유형이 꼭 필요한 TO do it 만 안내 · 유형은 기기에 저장(마운트 로드 · 바뀔 때 저장 · 설정 「유형 바꾸기/지우기」 · 전체 파기 포함)
+    expect(fn("renderTodoCard")).toMatch(/내 유형을 먼저 골라 주세요/);
+    expect(src).toMatch(/parsePersonaDone\(window\.localStorage\.getItem\(PERSONA_STORE_KEY\)\)/);
+    expect(src).toMatch(/setItem\(PERSONA_STORE_KEY, serializePersonaDone\(s\.personaDone\)\)/);
+    expect(fn("renderSettings")).toMatch(/유형 지우기/);
+    expect(fn("renderSettings")).toMatch(/removeItem\(PERSONA_STORE_KEY\)[\s\S]{0,400}wiped: true/);
     // 규칙은 화면에서 다시 적지 않는다 — 순수 모듈 호출만
     expect(src).toMatch(/pickMakeup\(profile\.gender, ans as MakeupAnswers\)/);
     expect(src).toMatch(/outfitCards\(\{ temperature, weatherCode, gender: profile\.gender, ageBand: profile\.ageBand, mbti \}\)/);
