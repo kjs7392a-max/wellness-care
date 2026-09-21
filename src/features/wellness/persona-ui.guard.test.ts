@@ -89,8 +89,17 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(care).toMatch(/마음 건강 케어/);
     expect(care).toMatch(/buildDaySolution\(/);
     expect(care).toMatch(/v\.choices\.map/);
-    // 카드 둘이 먼저, 제안은 그 아래
-    expect(care.indexOf("마음 건강 케어")).toBeLessThan(care.indexOf("v.choices.map"));
+    // 2026-09-21 사용자 3차 지시: 「신체 건강 케어 + 운동 N가지 제안」이 한 박스, 「마음 건강 케어」가 한 박스.
+    // → 순서 = 신체 제목 → 제안(선택지) → 마음 제목. 신체 박스 안에서 library 로 가는 클릭은 머리줄에만.
+    const a = care.indexOf("신체 건강 케어"), b = care.indexOf("v.choices.map"), c = care.indexOf("마음 건강 케어");
+    expect(a).toBeLessThan(b);
+    expect(b).toBeLessThan(c);
+    expect(care).toMatch(/data-box="physical"/);
+    expect(care).toMatch(/data-box="mind"/);
+    // 신체 박스 하나 안에 제안이 있다 = physical 여는 자리와 mind 여는 자리 사이에 choices 가 있다
+    const p = care.indexOf('data-box="physical"'), m = care.indexOf('data-box="mind"');
+    expect(p).toBeLessThan(b);
+    expect(b).toBeLessThan(m);
     expect(care).not.toMatch(/renderHealingCards\(|데일리 힐링/);
     const healing = fn("renderHealing");
     expect(healing).toMatch(/데일리 힐링/);
