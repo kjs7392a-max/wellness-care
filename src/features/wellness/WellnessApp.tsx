@@ -829,12 +829,12 @@ export default function WellnessApp() {
     );
   }
 
-  /** 데일리 힐링 — 「케어」가 아니라 잠깐 쉬고 나를 들여다보는 것(마음 성향 · 오늘 해볼 것). 이름은 사용자 확정(「데일리 쉼표」는 반려). 2026-09-21 부터 「디렉팅」 탭 한 페이지. */
+  /** 「나를 위한 디렉팅」(옛 이름 데일리 힐링 · 2026-09-21 사용자 지시로 제목만 바꿈) — 「케어」가 아니라 잠깐 쉬고 나를 들여다보는 것(마음 성향 · 오늘 해볼 것). 이름은 사용자 확정(「데일리 쉼표」는 반려). 2026-09-21 부터 「디렉팅」 탭 한 페이지. */
   function renderHealing() {
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
-          <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리 힐링</div>
+          <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>나를 위한 디렉팅</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>가볍게 나를 알아보고, 잠시 음악으로 쉬어 가요.</div>
         </div>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 8px")}>

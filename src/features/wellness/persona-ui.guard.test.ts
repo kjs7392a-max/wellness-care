@@ -113,9 +113,11 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(mindBox).toMatch(/오늘의 마음카드/);
     expect(mindBox).toMatch(/sheet: "picture"/); // 마음카드 칩은 바로 그림 고르기로
     expect(mindBox).toMatch(/sheet: "mind"/);    // 대화 칩은 상대 고르기(마음 건강 시트)로
-    expect(care).not.toMatch(/renderHealingCards\(|데일리 힐링/);
+    expect(care).not.toMatch(/renderHealingCards\(|나를 위한 디렉팅/);
     const healing = fn("renderHealing");
-    expect(healing).toMatch(/데일리 힐링/);
+    // 2026-09-21 사용자 지시: 제목 「데일리 힐링」 → 「나를 위한 디렉팅」(일단 제목만).
+    expect(healing).toMatch(/>나를 위한 디렉팅</);
+    expect(healing).not.toMatch(/>데일리 힐링</);
     expect(healing).toMatch(/renderHealingCards\(/);
     expect(healing).not.toMatch(/신체 건강 케어|마음 건강 케어/);
     expect(src).toMatch(/s\.tab === "care" && renderCare\(\)/);
