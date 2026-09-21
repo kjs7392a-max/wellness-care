@@ -876,10 +876,12 @@ export default function WellnessApp() {
 
   /** 줄 하나의 본문 — 페이지(renderDirectingSheet)가 그린다. 규칙은 전부 directing/*.ts(순수·테스트) — 🚫 화면에서 다시 적지 말 것. */
   function renderDirectingBody(id: Exclude<DirTab, "persona">) {
+    // 2026-09-22 사용자 "전부 성별 나이는 물어야 하는 거 아냐?" → 마음온도 프로필 단계처럼 여섯 페이지 전부 성별·나이대를 먼저 받는다(한 번 · 기기 저장).
+    if (!s.dirProfile) return renderProfilePick();
     if (id === "todo") return renderTodoCard();
     if (id === "music") return <>{renderMusicCard()}{renderBooksCard()}</>;
-    if (id === "makeup") return s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업");
-    if (id === "outfit") return s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디");
+    if (id === "makeup") return renderMakeupTab(s.dirProfile);
+    if (id === "outfit") return renderOutfitTab(s.dirProfile);
     if (id === "sentences") return renderSentencesTab();
     return renderWalkTab();
   }
@@ -898,6 +900,18 @@ export default function WellnessApp() {
         </div>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:14px 0 8px")}>
           {renderPersonaCard()}
+          {/* 내 프로필(성별·나이대) — 마음온도 프로필 단계 자리. 없으면 여기서 바로 고르고, 있으면 값 + 「바꾸기」(2026-09-22). */}
+          {s.dirProfile ? (
+            <div data-profile-card onClick={() => patch({ dirProfile: null, dirDraft: { gender: s.dirProfile?.gender ?? null, ageBand: s.dirProfile?.ageBand ?? null } })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:13px 16px; border-radius:16px; background:#f7f5fc; border:1px solid #d9d2ec")}>
+              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                <div style={sx("font-size:12px; font-weight:800; color:#7a6bc4")}>내 프로필</div>
+                <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>{GENDER_LABEL[s.dirProfile.gender]} · {s.dirProfile.ageBand}</div>
+              </div>
+              <div style={sx("flex:none; font-size:12.5px; font-weight:800; color:#7a6bc4")}>바꾸기 ›</div>
+            </div>
+          ) : (
+            <div data-profile-card>{renderProfilePick()}</div>
+          )}
           {rows.map((x) => (
             <div key={x.id} data-dir-row={x.id} onClick={() => patch({ dirTab: x.id, sheet: "directing" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 16px; border-radius:18px; border:1.5px solid #9ccdb8; background:#fff; box-shadow:0 4px 12px rgba(45,92,110,0.06)")}>
               <div style={sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:#eef7f2")}>{x.emoji}</div>
@@ -958,8 +972,8 @@ export default function WellnessApp() {
     );
   }
 
-  /** 성별·나이대 한 번 고르기 — 코디·메이크업 탭 첫 진입(사용자 확정 2026-09-21). 기기에 저장(PROFILE_STORE_KEY) · 설정에서 바꿀 수 있다. */
-  function renderProfilePick(forWhat: string) {
+  /** 성별·나이대 한 번 고르기 — 디렉팅 어느 페이지든 첫 진입(2026-09-21 코디·메이크업만 → 2026-09-22 사용자 지시로 전부). 기기에 저장(PROFILE_STORE_KEY) · 목록 카드·설정에서 바꿀 수 있다. */
+  function renderProfilePick() {
     const d = s.dirDraft;
     const ready = d.gender !== null && d.ageBand !== null;
     const save = () => {
@@ -971,7 +985,7 @@ export default function WellnessApp() {
     const chip = (on: boolean) => ({ ...sx("cursor:pointer; flex:1; text-align:center; padding:11px 6px; border-radius:13px; font-size:13.5px; font-weight:800; border:1.5px solid; word-break:keep-all"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#4a3f80", borderColor: on ? "#7a6bc4" : "#c4b8ec" });
     return (
       <div style={sx("display:flex; flex-direction:column; gap:14px; padding:20px 18px; border-radius:22px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 10px 22px rgba(80,88,140,0.16)")}>
-        <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e")}>{forWhat}은 성별과 나이대에 맞춰 드려요</div>
+        <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e")}>디렉팅은 성별과 나이대에 맞춰 드려요</div>
         <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>한 번만 고르면 이 기기에 저장돼요. 설정에서 언제든 바꿀 수 있어요.</div>
         <div style={sx("font-size:12px; font-weight:800; color:#4a3f80")}>성별</div>
         <div style={sx("display:flex; gap:8px")}>

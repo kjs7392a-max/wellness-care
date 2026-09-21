@@ -138,8 +138,12 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     const body = fn("renderDirectingBody");
     expect(body).toMatch(/id === "todo"\) return renderTodoCard\(\)/);
     expect(body).toMatch(/id === "music"\) return <>\{renderMusicCard\(\)\}\{renderBooksCard\(\)\}<\/>/);
-    expect(body).toMatch(/id === "makeup"\) return s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
-    expect(body).toMatch(/id === "outfit"\) return s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
+    // 2026-09-22 사용자 "전부 성별 나이는 물어야" → 여섯 페이지 전부 프로필이 없으면 프로필 화면부터 · 목록에 「내 프로필」 카드
+    expect(body).toMatch(/if \(!s\.dirProfile\) return renderProfilePick\(\);/);
+    expect(body).toMatch(/id === "makeup"\) return renderMakeupTab\(s\.dirProfile\)/);
+    expect(body).toMatch(/id === "outfit"\) return renderOutfitTab\(s\.dirProfile\)/);
+    expect(healing).toMatch(/data-profile-card/);
+    expect(healing).toMatch(/renderProfilePick\(\)/);
     expect(body).toMatch(/id === "sentences"\) return renderSentencesTab\(\)/);
     expect(body).toMatch(/return renderWalkTab\(\)/);
     expect(fn("renderDirectingSheet")).toMatch(/onClick=\{\(\) => patch\(\{ sheet: null \}\)\}[^\n]*‹/);
