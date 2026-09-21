@@ -37,16 +37,26 @@ describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링�
   });
 });
 
-describe("주간 흐름 박스 — 버튼 둘(2026-09-19 사용자 지시 · 2026-09-21 홈에서 「나머지 페이지」 대기 코드로 이동)", () => {
-  it("「월간 기록 보기 ›」와 「케어 가기 ›」가 한 줄에 반씩(flex:1) 있고, 케어 가기는 care 탭으로 간다", () => {
+describe("주간 흐름 박스 — 단추는 「월간 기록 보기 ›」 하나(2026-09-21 사용자 지시: 케어 가기 삭제)", () => {
+  it("「월간 기록 보기 ›」만 있고 「케어 가기」·「케어&힐링 가기」는 없다", () => {
     const i = src.indexOf("월간 기록 보기 ›");
-    const j = src.indexOf("케어 가기 ›");
     expect(i).toBeGreaterThan(0);
-    expect(j).toBeGreaterThan(i);
-    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), j + 40);
-    expect(block.match(/flex:1/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
-    expect(block).toMatch(/tab: "care"/);
-    expect(src).not.toMatch(/케어&힐링 가기/);
+    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), i + 40);
+    expect(block).toMatch(/sheet: "month"/);
+    expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
+  });
+});
+
+describe("홈 웰컴 문장(30문장 카드) — 인사말과 균형(2026-09-21 사용자 지시 '조금 더 진하고 크게')", () => {
+  it("글자 15px 이상 · 굵기 600 이상 · 인사말과 같은 진한 색", () => {
+    const m = src.match(/<div style=\{sx\("([^"]*white-space:pre-line[^"]*)"\)\}>\{homeMessage\}/);
+    expect(m).not.toBeNull();
+    const css = m![1];
+    const size = Number(/font-size:([\d.]+)px/.exec(css)?.[1]);
+    const weight = Number(/font-weight:(\d+)/.exec(css)?.[1]);
+    expect(size).toBeGreaterThanOrEqual(15);
+    expect(weight).toBeGreaterThanOrEqual(600);
+    expect(css).toMatch(/color:#2d5c6e/);
   });
 });
 

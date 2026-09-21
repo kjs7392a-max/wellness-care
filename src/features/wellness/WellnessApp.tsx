@@ -640,7 +640,7 @@ export default function WellnessApp() {
 
         {/* 인사말 아래 한 토막 — 머리줄 안(설정 단추 옆 좁은 칸)에 넣으면 5~6줄이 세로로 길게 접혀 머리줄 전체를 밀어내므로 한 줄 아래 전폭으로. 줄바꿈은 원문대로(pre-line). */}
         {homeMessage && (
-          <div style={sx("margin-top:-4px; padding:12px 16px; border-radius:16px; background:#fff; border:1px solid #d9e6ea; font-size:14px; line-height:1.75; font-weight:500; color:#3f6b7c; white-space:pre-line; text-wrap:pretty; letter-spacing:-0.01em")}>{homeMessage}</div>
+          <div style={sx("margin-top:-4px; padding:12px 16px; border-radius:16px; background:#fff; border:1px solid #d9e6ea; font-size:15.5px; line-height:1.7; font-weight:600; color:#2d5c6e; white-space:pre-line; text-wrap:pretty; letter-spacing:-0.015em")}>{homeMessage}</div>
         )}
 
         {/* 오늘의 기록 */}
@@ -710,10 +710,9 @@ export default function WellnessApp() {
             없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
             "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
         {renderWeekFlow(
-          // 2026-09-19 사용자 지시: 「월간 기록 보기」를 반으로 줄이고 옆에 「케어&힐링 가기」 — 한 줄에 반씩.
+          // 2026-09-19 「월간 기록 보기」 반 + 「케어&힐링 가기」 반 → 2026-09-21 사용자 지시로 케어 가기 삭제(케어는 하단 탭에 있다) · 「월간 기록 보기」 하나가 한 줄.
           <div style={sx("display:flex; gap:8px; margin-top:4px")}>
             <div onClick={() => patch({ sheet: "month" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>
-            <div onClick={() => patch({ tab: "care", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#2d7a5f; color:#fff; box-shadow:0 4px 12px rgba(45,122,95,0.28)")}>케어 가기 ›</div>
           </div>,
         )}
 
