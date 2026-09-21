@@ -125,26 +125,29 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     // 2026-09-21 마음온도 「피드백」 이식 — 디렉팅 페이지는 탭 7개(마음 성향·TO do it·추천 음악·메이크업·코디·문장·산책)에 한 페이지씩.
     // 2026-09-21 사용자 정정 "칩을 만들지 말고 마음 성향 박스 아래 탭으로 · 수직 배열" → 마음 성향 카드는 항상 위 · 그 아래 세로 줄 6개(누르면 그 아래 펼침).
     expect(healing).not.toMatch(/data-dir-tab|overflow-x:auto/);
-    for (const id of ["todo", "music", "makeup", "outfit", "sentences", "walk"]) expect(healing, id).toContain(`{ id: "${id}"`);
-    expect(healing).not.toContain(`{ id: "persona"`);
+    const rowsFn = fn("directingRows"); // 줄 목록은 헬퍼 하나 — 목록 화면과 페이지가 같이 쓴다(2026-09-22)
+    for (const id of ["todo", "music", "makeup", "outfit", "sentences", "walk"]) expect(rowsFn, id).toContain(`{ id: "${id}"`);
+    expect(rowsFn).not.toContain(`{ id: "persona"`);
+    expect(healing).toMatch(/directingRows\(\)/);
     expect(healing).toMatch(/\{renderPersonaCard\(\)\}/);
-    expect(healing).toMatch(/data-dir-row=\{x\.id\}/);
+    // 2026-09-22 사용자 "탭을 누르면 아예 새로운 페이지에서" → 줄을 누르면 sheet "directing"(전체 화면 · ‹ 로 복귀) · 본문은 renderDirectingBody 한 곳.
+    expect(healing).toMatch(/data-dir-row=\{x\.id\} onClick=\{\(\) => patch\(\{ dirTab: x\.id, sheet: "directing" \}\)\}/);
     expect(healing).toMatch(/flex-direction:column/); // 세로 배열
-    expect(healing).toMatch(/on && x\.id === "todo" && renderTodoCard\(\)/);
-    expect(healing).toMatch(/on && x\.id === "music" && renderMusicCard\(\)/);
-    // 2026-09-22 사용자: 음악 줄에 추천 도서도 함께 · 줄 이름 「오늘의 추천음악&추천도서」
-    expect(healing).toMatch(/on && x\.id === "music" && renderBooksCard\(\)/);
-    expect(healing).toContain('label: "오늘의 추천음악&추천도서"');
+    expect(healing).not.toMatch(/renderTodoCard\(|renderMusicCard\(|renderMakeupTab\(|renderOutfitTab\(|renderSentencesTab\(|renderWalkTab\(/); // 목록 화면엔 본문이 없다
+    expect(src).toMatch(/s\.sheet === "directing" && renderDirectingSheet\(\)/);
+    const body = fn("renderDirectingBody");
+    expect(body).toMatch(/id === "todo"\) return renderTodoCard\(\)/);
+    expect(body).toMatch(/id === "music"\) return <>\{renderMusicCard\(\)\}\{renderBooksCard\(\)\}<\/>/);
+    expect(body).toMatch(/id === "makeup"\) return s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
+    expect(body).toMatch(/id === "outfit"\) return s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
+    expect(body).toMatch(/id === "sentences"\) return renderSentencesTab\(\)/);
+    expect(body).toMatch(/return renderWalkTab\(\)/);
+    expect(fn("renderDirectingSheet")).toMatch(/onClick=\{\(\) => patch\(\{ sheet: null \}\)\}[^\n]*‹/);
+    expect(src).toContain('label: "오늘의 추천음악&추천도서"');
     expect(fn("renderBooksCard")).toMatch(/t\.books\.map\(/);
     expect(fn("renderBooksCard")).toMatch(/bookSearchUrl\(b\)/);
-    expect(healing).toMatch(/on && x\.id === "makeup" && \(s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
-    expect(healing).toMatch(/on && x\.id === "outfit" && \(s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
-    expect(healing).toMatch(/on && x\.id === "sentences" && renderSentencesTab\(\)/);
-    expect(healing).toMatch(/on && x\.id === "walk" && renderWalkTab\(\)/);
-    // 2026-09-22 사용자 "왜 탭이 비활성화되어 있어?" → 유형 전에도 여섯 줄 전부 열린다(잠금 없음) · 같은 줄을 다시 누르면 접힌다
-    expect(healing).toMatch(/const open = s\.dirTab;/);
+    // 유형 전에도 여섯 줄 전부 열린다(잠금 없음)
     expect(healing).not.toMatch(/opacity: done|if \(!done\) return/);
-    expect(healing).toMatch(/dirTab: s\.dirTab === x\.id \? "persona" : x\.id/);
     // 유형이 꼭 필요한 TO do it 만 안내 · 유형은 기기에 저장(마운트 로드 · 바뀔 때 저장 · 설정 「유형 바꾸기/지우기」 · 전체 파기 포함)
     expect(fn("renderTodoCard")).toMatch(/내 유형을 먼저 골라 주세요/);
     expect(src).toMatch(/parsePersonaDone\(window\.localStorage\.getItem\(PERSONA_STORE_KEY\)\)/);
@@ -173,7 +176,7 @@ describe("추천 음악 — 채널 셋 · 서버 목록(2026-09-19)", () => {
   });
   it("자리 = 성향 결과 2/2 의 추천 도서 카드 바로 아래(2026-09-19 사용자 지시) — 데일리 힐링 카드 목록에는 없다", () => {
     const books = src.indexOf(">추천 도서</div>");
-    const call = src.indexOf("{renderMusicCard()}");
+    const call = src.indexOf("{renderMusicCard()}", books); // 디렉팅 페이지(renderDirectingBody)에도 같은 호출이 있어 도서 뒤에서 찾는다(2026-09-22)
     expect(books).toBeGreaterThan(0);
     expect(call).toBeGreaterThan(books);
     expect(call - books).toBeLessThan(900);

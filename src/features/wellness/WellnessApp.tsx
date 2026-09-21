@@ -77,7 +77,7 @@ interface State {
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "care" | "healing" | "my";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing";
   /**
    * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 말투·「오늘 해볼 것」·마음카드 밑 한 줄에만 쓴다(persona.ts 머리 주석).
    * 2026-09-19: 결과는 테스트(lean 있음) 또는 **직접 선택**(lean null · `personaPick` 시트) — 사용자 "직접 선택하게 하고 테스트는 모르면".
@@ -423,6 +423,7 @@ export default function WellnessApp() {
           {s.sheet === "persona" && renderPersonaTest()}
           {s.sheet === "personaPick" && renderPersonaPick()}
           {s.sheet === "personaResult" && renderPersonaResult()}
+          {s.sheet === "directing" && renderDirectingSheet()}
         </div>
       </div>
     </div>
@@ -861,10 +862,9 @@ export default function WellnessApp() {
    * (마음온도도 MBTI 를 고른 뒤에야 피드백이 나온다). 코디·메이크업은 성별·나이대가 있어야 — 없으면 그 탭 안에서 한 번 고른다.
    * 규칙·문장은 전부 directing/*.ts(순수·테스트) — 🚫 화면에서 다시 적지 말 것.
    */
-  function renderHealing() {
-    const done = s.personaDone;
-    // 2026-09-21 사용자 정정: 칩이 아니라 **마음 성향 박스 아래 세로 줄 6개**(마음온도 「피드백」 화면과 같은 꼴). 누르면 그 줄 아래로 펼쳐지고 같은 줄을 다시 누르면 접힌다 · 한 번에 하나.
-    const rows: { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] = [
+  /** 디렉팅 여섯 줄 — 이름·아이콘·한 줄 설명. 목록 화면(renderHealing)과 페이지(renderDirectingSheet)가 같은 것을 쓴다. */
+  function directingRows(): { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] {
+    return [
       { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
       { id: "music", label: "오늘의 추천음악&추천도서", emoji: "🎧", hint: "채널 셋 플레이리스트 · 내 성향에 맞는 책 두 권" },
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
@@ -872,8 +872,24 @@ export default function WellnessApp() {
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
       { id: "walk", label: "오늘의 산책", emoji: "🌿", hint: "가볍게 걷기 좋은 코스 셋" },
     ];
-    // 2026-09-22 사용자: 유형 전에도 여섯 줄 전부 열린다 — 유형이 꼭 필요한 건 TO do it 뿐(renderTodoCard 가 안내). 코디 검색어는 유형 없으면 나이대만.
-    const open = s.dirTab;
+  }
+
+  /** 줄 하나의 본문 — 페이지(renderDirectingSheet)가 그린다. 규칙은 전부 directing/*.ts(순수·테스트) — 🚫 화면에서 다시 적지 말 것. */
+  function renderDirectingBody(id: Exclude<DirTab, "persona">) {
+    if (id === "todo") return renderTodoCard();
+    if (id === "music") return <>{renderMusicCard()}{renderBooksCard()}</>;
+    if (id === "makeup") return s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업");
+    if (id === "outfit") return s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디");
+    if (id === "sentences") return renderSentencesTab();
+    return renderWalkTab();
+  }
+
+  /**
+   * 「나를 위한 디렉팅」(옛 데일리 힐링) — 마음 성향 카드 + 세로 줄 6개. 2026-09-22 사용자 지시 "탭을 누르면 아예 새로운 페이지에서" →
+   * 줄을 누르면 제자리 펼침이 아니라 **전체 화면 페이지(sheet "directing")** 로 연다(‹ 로 돌아옴). 유형 전에도 전부 열린다(TO do it·도서만 안내).
+   */
+  function renderHealing() {
+    const rows = directingRows();
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
@@ -882,28 +898,36 @@ export default function WellnessApp() {
         </div>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:14px 0 8px")}>
           {renderPersonaCard()}
-          {rows.map((x) => {
-            const on = open === x.id;
-            return (
-              <div key={x.id} style={sx("display:flex; flex-direction:column; gap:12px")}>
-                <div data-dir-row={x.id} onClick={() => patch({ dirTab: s.dirTab === x.id ? "persona" : x.id })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 16px; border-radius:18px; border:1.5px solid; transition:background 0.15s"), background: on ? "#2d7a5f" : "#fff", borderColor: on ? "#2d7a5f" : "#9ccdb8", boxShadow: on ? "0 8px 20px rgba(45,122,95,0.24)" : "0 4px 12px rgba(45,92,110,0.06)" }}>
-                  <div style={{ ...sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px"), background: on ? "rgba(255,255,255,0.18)" : "#eef7f2" }}>{x.emoji}</div>
-                  <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-                    <div style={{ ...sx("font-size:15px; font-weight:800; letter-spacing:-0.01em"), color: on ? "#fff" : "#245c48" }}>{x.label}</div>
-                    <div style={{ ...sx("font-size:12px; font-weight:500; line-height:1.4; text-wrap:pretty"), color: on ? "rgba(255,255,255,0.85)" : "#6b8c9a" }}>{x.hint}</div>
-                  </div>
-                  <div style={{ ...sx("flex:none; font-size:15px; transition:transform 0.2s"), color: on ? "#fff" : "#8ba8b3", transform: on ? "rotate(90deg)" : "none" }}>›</div>
-                </div>
-                {on && x.id === "todo" && renderTodoCard()}
-                {on && x.id === "music" && renderMusicCard()}
-                {on && x.id === "music" && renderBooksCard()}
-                {on && x.id === "makeup" && (s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업"))}
-                {on && x.id === "outfit" && (s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디"))}
-                {on && x.id === "sentences" && renderSentencesTab()}
-                {on && x.id === "walk" && renderWalkTab()}
+          {rows.map((x) => (
+            <div key={x.id} data-dir-row={x.id} onClick={() => patch({ dirTab: x.id, sheet: "directing" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:16px 16px; border-radius:18px; border:1.5px solid #9ccdb8; background:#fff; box-shadow:0 4px 12px rgba(45,92,110,0.06)")}>
+              <div style={sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:#eef7f2")}>{x.emoji}</div>
+              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                <div style={sx("font-size:15px; font-weight:800; letter-spacing:-0.01em; color:#245c48")}>{x.label}</div>
+                <div style={sx("font-size:12px; font-weight:500; line-height:1.4; text-wrap:pretty; color:#6b8c9a")}>{x.hint}</div>
               </div>
-            );
-          })}
+              <div style={sx("flex:none; font-size:15px; color:#8ba8b3")}>›</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /** 디렉팅 줄 하나의 전체 화면 페이지 — 다른 시트와 같은 껍데기(머리줄 ‹ · 제목 · 부제). */
+  function renderDirectingSheet() {
+    const id = s.dirTab === "persona" ? "todo" : s.dirTab;
+    const row = directingRows().find((r) => r.id === id) ?? directingRows()[0];
+    return (
+      <div data-directing-sheet={row.id} style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
+        <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{row.emoji} {row.label}</div>
+            <div style={sx("font-size:11px; color:#8ba8b3")}>{row.hint}</div>
+          </div>
+        </div>
+        <div style={sx("flex:1; overflow-y:auto; padding:18px 20px 28px; display:flex; flex-direction:column; gap:14px")}>
+          {renderDirectingBody(row.id)}
         </div>
       </div>
     );
