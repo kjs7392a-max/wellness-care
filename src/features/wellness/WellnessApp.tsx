@@ -866,7 +866,7 @@ export default function WellnessApp() {
     // 2026-09-21 사용자 정정: 칩이 아니라 **마음 성향 박스 아래 세로 줄 6개**(마음온도 「피드백」 화면과 같은 꼴). 누르면 그 줄 아래로 펼쳐지고 같은 줄을 다시 누르면 접힌다 · 한 번에 하나.
     const rows: { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] = [
       { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
-      { id: "music", label: "오늘의 추천 음악", emoji: "🎧", hint: "채널 셋 · 지금 시간에 어울리는 플레이리스트" },
+      { id: "music", label: "오늘의 추천음악&추천도서", emoji: "🎧", hint: "채널 셋 플레이리스트 · 내 성향에 맞는 책 두 권" },
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
       { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "오늘 날씨 · 네 가지 장면" },
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
@@ -896,6 +896,7 @@ export default function WellnessApp() {
                 </div>
                 {on && x.id === "todo" && renderTodoCard()}
                 {on && x.id === "music" && renderMusicCard()}
+                {on && x.id === "music" && renderBooksCard()}
                 {on && x.id === "makeup" && (s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업"))}
                 {on && x.id === "outfit" && (s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디"))}
                 {on && x.id === "sentences" && renderSentencesTab()}
@@ -904,6 +905,31 @@ export default function WellnessApp() {
             );
           })}
         </div>
+      </div>
+    );
+  }
+
+  /** 「추천음악&추천도서」 줄의 도서 — 유형별 두 권(성향 결과 2/2 와 같은 목록·같은 네이버 링크 · 2026-09-22 사용자 지시로 음악 아래 함께). 유형 없으면 안내. */
+  function renderBooksCard() {
+    const done = s.personaDone;
+    const t = done ? PERSONA_TYPES[done.type] : null;
+    if (!done || !t) {
+      return <div style={sx("padding:14px 16px; border-radius:16px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13.5px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>추천 도서는 성향에 맞춰 골라요. 위 「마음 성향」에서 내 유형을 먼저 골라 주세요.</div>;
+    }
+    return (
+      <div data-books-card style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
+        <div style={sx("display:flex; align-items:center; gap:10px")}>
+          <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>📚</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 도서 · {t.name}</div>
+            <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>{done.type} 성향에 잘 맞는 두 권</div>
+          </div>
+        </div>
+        {t.books.map((b) => (
+          <a key={b} href={bookSearchUrl(b)} target="_blank" rel="noreferrer" style={sx("display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 12px; border-radius:13px; background:#f7fbf9; border:1px solid #d7ebe2; font-size:14px; color:#3a4a72; line-height:1.6; text-decoration:none")}>
+            <span>{b}</span><span style={sx("flex:none; font-size:11.5px; font-weight:700; color:#03c75a")}>네이버에서 보기 ›</span>
+          </a>
+        ))}
       </div>
     );
   }
@@ -1137,11 +1163,12 @@ export default function WellnessApp() {
     // 마음 성향 — 유형이 없으면 두 갈래(내 유형 알아요 → 16개 고르기 / 모르겠어요 → 40문항). 테스트는 찾을 때만(2026-09-19 사용자 확정).
     // 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 여백 · 색은 초록 축 · 테두리 1.5px·그림자는 한 단계 진하게(2026-09-19 사용자 "조금 더 진하게").
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#dff3ea 0%,#dbe9f8 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
-          <div onClick={() => done && patch({ sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
+          {/* 2026-09-22 사용자: 「내 유형 알아요」로 고른 유형은 이미 아는 성향이라 피드백(결과 화면) 없음 → 머리줄은 「유형 바꾸기」(격자). 테스트로 정한 유형만 결과 다시 보기. */}
+          <div onClick={() => done && patch(done.source === "picked" ? { sheet: "personaPick" } : { sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-healing.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>마음 성향</div>
-              <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — 결과 다시 보기` : "16가지 성향 중 내 것을 고르거나, 40문항으로 알아봐요"}</div>
+              <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>{done && t ? `${done.type} · ${t.name} — ${done.source === "picked" ? "유형 바꾸기" : "결과 다시 보기"}` : "16가지 성향 중 내 것을 고르거나, 40문항으로 알아봐요"}</div>
             </div>
             {done && <div style={sx("flex:none; font-size:17px; color:#4fa585")}>↗</div>}
           </div>
@@ -1190,7 +1217,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={() => patch({ sheet: cur ? "personaResult" : null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>내 유형 고르기</div>
             <div style={sx("font-size:11px; color:#8ba8b3")}>아는 유형을 누르면 바로 저장돼요 · 모르면 테스트로</div>
@@ -1201,7 +1228,7 @@ export default function WellnessApp() {
             {PERSONA_CODES.map((code) => {
               const on = code === cur;
               return (
-                <div key={code} onClick={() => patch({ personaDone: pickedPersona(code), sheet: "personaResult", personaPage: 1 })}
+                <div key={code} onClick={() => patch({ personaDone: pickedPersona(code), sheet: null, dirTab: "persona" })}
                   style={{ ...sx("cursor:pointer; text-align:center; padding:15px 0; border-radius:14px; font-size:14.5px; font-weight:800; letter-spacing:0.04em; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#4a3f80", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
                   {code}
                 </div>

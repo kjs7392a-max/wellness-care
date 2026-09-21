@@ -15,6 +15,10 @@ describe("WellnessApp — 유형 직접 선택", () => {
     expect(src).toMatch(/모르겠어요/);
     expect(src).toMatch(/PERSONA_CODES\.map\(/);
     expect(src).toMatch(/pickedPersona\(/);
+    // 2026-09-22 사용자: 「내 유형 알아요」로 고르면 피드백(결과) 화면 없이 바로 디렉팅으로 — 격자 클릭이 personaResult 를 열지 않는다
+    expect(src).toMatch(/personaDone: pickedPersona\(code\), sheet: null/);
+    expect(src).not.toMatch(/pickedPersona\(code\), sheet: "personaResult"/);
+    expect(src).toMatch(/done\.source === "picked" \? \{ sheet: "personaPick" \}/);
   });
   it("결과 화면은 기울기(lean)가 있을 때만 막대를 그리고, 「유형 바꾸기」가 있다", () => {
     expect(src).toMatch(/done\.lean\s*(&&|\?)/);
@@ -128,6 +132,11 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(healing).toMatch(/flex-direction:column/); // 세로 배열
     expect(healing).toMatch(/on && x\.id === "todo" && renderTodoCard\(\)/);
     expect(healing).toMatch(/on && x\.id === "music" && renderMusicCard\(\)/);
+    // 2026-09-22 사용자: 음악 줄에 추천 도서도 함께 · 줄 이름 「오늘의 추천음악&추천도서」
+    expect(healing).toMatch(/on && x\.id === "music" && renderBooksCard\(\)/);
+    expect(healing).toContain('label: "오늘의 추천음악&추천도서"');
+    expect(fn("renderBooksCard")).toMatch(/t\.books\.map\(/);
+    expect(fn("renderBooksCard")).toMatch(/bookSearchUrl\(b\)/);
     expect(healing).toMatch(/on && x\.id === "makeup" && \(s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
     expect(healing).toMatch(/on && x\.id === "outfit" && \(s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
     expect(healing).toMatch(/on && x\.id === "sentences" && renderSentencesTab\(\)/);
