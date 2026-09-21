@@ -100,6 +100,14 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     const p = care.indexOf('data-box="physical"'), m = care.indexOf('data-box="mind"');
     expect(p).toBeLessThan(b);
     expect(b).toBeLessThan(m);
+    // 2026-09-21 사용자 4차 지시: 「데일리케어」 제목 삭제 · 날씨 한 줄(온도·산책하기 좋은 날) 삭제 · 마음 박스에 칩 둘.
+    expect(care).not.toMatch(/데일리케어/);
+    expect(care).not.toMatch(/wx\.label|wx\.note|wx\.dot/);
+    const mindBox = care.slice(m);
+    expect(mindBox).toMatch(/오늘, 어떤 하루였나요\?/);
+    expect(mindBox).toMatch(/오늘의 마음카드/);
+    expect(mindBox).toMatch(/sheet: "picture"/); // 마음카드 칩은 바로 그림 고르기로
+    expect(mindBox).toMatch(/sheet: "mind"/);    // 대화 칩은 상대 고르기(마음 건강 시트)로
     expect(care).not.toMatch(/renderHealingCards\(|데일리 힐링/);
     const healing = fn("renderHealing");
     expect(healing).toMatch(/데일리 힐링/);
