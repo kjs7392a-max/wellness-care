@@ -761,11 +761,11 @@ export default function WellnessApp() {
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
               <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강 케어</div>
-              {/* ⚠ 한글은 아무 데서나 끊긴다 — 「15 / 가지」로 갈라졌었다. keep-all 로 낱말을 붙여 둔다. */}
-              <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
             </div>
             <div style={sx("flex:none; font-size:17px; color:#e0876c")}>↗</div>
           </div>
+          {/* 2026-09-21 사용자 지시: 부제 「신체건강을 위한 간단한 운동 · N가지」 → 누르는 칩 「더 다양한 운동 N가지를 해보세요」(→ 운동 목록). 마음 박스 칩과 같은 꼴 · 신체 색. */}
+          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; text-align:center; min-height:46px; padding:10px 12px; border-radius:14px; background:#e0876c; color:#fff; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; box-shadow:0 4px 12px rgba(214,130,108,0.32); word-break:keep-all; text-wrap:pretty")}>더 다양한 운동 {v.libList.length}가지를 해보세요 <span style={sx("opacity:0.85")}>›</span></div>
           <div style={sx("height:1px; background:rgba(214,130,108,0.28)")} />
           {/* 날씨 한 줄(온도·산책하기 좋은 날)은 2026-09-21 사용자 지시로 삭제. 제안 문구(daySolution)가 날씨를 이미 말한다. */}
           {/* 「신체 건강을 위한 운동 N가지 제안」(2026-09-17 사용자 지시 · N = 실제 선택지 수라 숨 고르기 단계면 1가지) — 「AI」 표기는 뺐다.

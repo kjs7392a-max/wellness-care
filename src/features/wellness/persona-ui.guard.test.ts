@@ -100,6 +100,11 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     const p = care.indexOf('data-box="physical"'), m = care.indexOf('data-box="mind"');
     expect(p).toBeLessThan(b);
     expect(b).toBeLessThan(m);
+    // 2026-09-21 사용자 5차 지시: 신체 박스 부제 「신체건강을 위한 간단한 운동 · N가지」 → 누르는 칩 「더 다양한 운동 N가지를 해보세요」(→ 운동 목록).
+    const physBox = care.slice(p, m);
+    expect(physBox).not.toMatch(/간단한 운동/);
+    expect(physBox).toMatch(/더 다양한 운동 \{v\.libList\.length\}가지를 해보세요/);
+    expect(physBox).toMatch(/onClick=\{\(\) => patch\(\{ sheet: "library" \}\)\}[^\n]*더 다양한 운동/);
     // 2026-09-21 사용자 4차 지시: 「데일리케어」 제목 삭제 · 날씨 한 줄(온도·산책하기 좋은 날) 삭제 · 마음 박스에 칩 둘.
     expect(care).not.toMatch(/데일리케어/);
     expect(care).not.toMatch(/wx\.label|wx\.note|wx\.dot/);
