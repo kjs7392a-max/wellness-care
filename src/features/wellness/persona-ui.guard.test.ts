@@ -113,12 +113,27 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(mindBox).toMatch(/오늘의 마음카드/);
     expect(mindBox).toMatch(/sheet: "picture"/); // 마음카드 칩은 바로 그림 고르기로
     expect(mindBox).toMatch(/sheet: "mind"/);    // 대화 칩은 상대 고르기(마음 건강 시트)로
-    expect(care).not.toMatch(/renderHealingCards\(|나를 위한 디렉팅/);
+    expect(care).not.toMatch(/renderPersonaCard\(|renderTodoCard\(|나를 위한 디렉팅/);
     const healing = fn("renderHealing");
     // 2026-09-21 사용자 지시: 제목 「데일리 힐링」 → 「나를 위한 디렉팅」(일단 제목만).
     expect(healing).toMatch(/>나를 위한 디렉팅</);
     expect(healing).not.toMatch(/>데일리 힐링</);
-    expect(healing).toMatch(/renderHealingCards\(/);
+    // 2026-09-21 마음온도 「피드백」 이식 — 디렉팅 페이지는 탭 7개(마음 성향·TO do it·추천 음악·메이크업·코디·문장·산책)에 한 페이지씩.
+    for (const id of ["persona", "todo", "music", "makeup", "outfit", "sentences", "walk"]) expect(healing, id).toContain(`{ id: "${id}"`);
+    expect(healing).toMatch(/tab === "persona" && renderPersonaCard\(\)/);
+    expect(healing).toMatch(/tab === "todo" && renderTodoCard\(\)/);
+    expect(healing).toMatch(/tab === "music" && renderMusicCard\(\)/);
+    expect(healing).toMatch(/tab === "makeup" && \(s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
+    expect(healing).toMatch(/tab === "outfit" && \(s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
+    expect(healing).toMatch(/tab === "sentences" && renderSentencesTab\(\)/);
+    expect(healing).toMatch(/tab === "walk" && renderWalkTab\(\)/);
+    // 유형 전엔 「마음 성향」만 — 다른 탭을 눌러도 persona 로 접힌다
+    expect(healing).toMatch(/const tab = done \? s\.dirTab : "persona"/);
+    // 규칙은 화면에서 다시 적지 않는다 — 순수 모듈 호출만
+    expect(src).toMatch(/pickMakeup\(profile\.gender, ans as MakeupAnswers\)/);
+    expect(src).toMatch(/outfitCards\(\{ temperature, weatherCode, gender: profile\.gender, ageBand: profile\.ageBand, mbti \}\)/);
+    expect(src).toMatch(/sentencesFor\(input\)/);
+    expect(src).toMatch(/WALK_COURSES\.map\(/);
     expect(healing).not.toMatch(/신체 건강 케어|마음 건강 케어/);
     expect(src).toMatch(/s\.tab === "care" && renderCare\(\)/);
     expect(src).toMatch(/s\.tab === "healing" && renderHealing\(\)/);
@@ -140,7 +155,8 @@ describe("추천 음악 — 채널 셋 · 서버 목록(2026-09-19)", () => {
     expect(books).toBeGreaterThan(0);
     expect(call).toBeGreaterThan(books);
     expect(call - books).toBeLessThan(900);
-    const healing = src.slice(src.indexOf("function renderHealingCards()"), src.indexOf("function renderPersonaPick()"));
+    // 2026-09-21: 「추천 음악」은 디렉팅 탭(renderHealing 의 tab === "music")에서도 그린다 — 마음 성향·TO do it 카드 안에는 여전히 없다.
+    const healing = src.slice(src.indexOf("function renderPersonaCard()"), src.indexOf("function renderPersonaPick()"));
     expect(healing).not.toMatch(/renderMusicCard|MUSIC_CHANNELS/);
   });
 });

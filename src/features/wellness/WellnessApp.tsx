@@ -19,6 +19,11 @@ import {
 import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { greetingForHour } from "./greeting";
 import { pickHomeMessage } from "./homeMessage";
+import { AGE_BANDS, GENDER_LABEL, PROFILE_STORE_KEY, parseProfile, serializeProfile, type AgeBand, type DirectingProfile, type Gender } from "./directing/profile";
+import { MAKEUP_QUESTIONS, pickMakeup, weatherAnalysis, type MakeupAnswers } from "./directing/makeup";
+import { outfitCards } from "./directing/outfit";
+import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
+import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, type PersonaAnswers, type PersonaDone } from "./persona";
@@ -45,6 +50,8 @@ const CONTENT_STATE: ContentState = "STABLE";
 const EMPTY_STATE = false;
 
 interface Session { title: string; time: string }
+
+type DirTab = "persona" | "todo" | "music" | "makeup" | "outfit" | "sentences" | "walk";
 
 interface State {
   now: Date;
@@ -101,7 +108,16 @@ interface State {
   typing: boolean;
   input: string;
   consultOpen: boolean;
-  live: { key: WeatherKey; temp: number; feels: number } | null;
+  live: { key: WeatherKey; temp: number; feels: number; humidity: number | null } | null;
+  /** 날씨 조회에 쓴 좌표 — 「오늘의 산책」 지도 링크용(기본 서울시청이면 안 넘긴다). */
+  geo: { lat: number; lon: number; real: boolean } | null;
+  /** 「나를 위한 디렉팅」 안 탭(2026-09-21 사용자 지시 · 마음온도 「피드백」 이식). */
+  dirTab: DirTab;
+  /** 코디·메이크업용 성별·나이대(기기 저장 · directing/profile.ts). null = 아직 안 골랐다. */
+  dirProfile: DirectingProfile | null;
+  dirDraft: { gender: Gender | null; ageBand: AgeBand | null };
+  /** 메이크업 4문항 답(질감·톤·고민·목적). 넷 다 있어야 결과. */
+  makeupAns: Partial<MakeupAnswers>;
   recTab: "body" | "mind";
   /** 나의 기록에서 보고 있는 달(기본 = 이번 달). 화살표로 첫 기록 달까지. */
   recMonth: YearMonth;
@@ -126,6 +142,7 @@ export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     msgSeed: null,
+    geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {},
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, perms: {}, area: "all", program: null,
     musicKey: "emptysilver", music: null,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
@@ -148,6 +165,7 @@ export default function WellnessApp() {
   useEffect(() => {
     mounted.current = true;
     patch({ now: new Date(), msgSeed: Math.random() });
+    try { const p = parseProfile(window.localStorage.getItem(PROFILE_STORE_KEY)); if (p) patch({ dirProfile: p }); } catch { /* 저장소 없음 — 탭에서 다시 고르면 된다 */ }
     const clock = setInterval(() => patch({ now: new Date() }), 10000);
     loadWeather();
     loadMusic();
@@ -194,7 +212,7 @@ export default function WellnessApp() {
       const url =
         "https://api.open-meteo.com/v1/forecast?latitude=" + pos.lat +
         "&longitude=" + pos.lon +
-        "&current=temperature_2m,apparent_temperature,precipitation,weather_code&timezone=auto";
+        "&current=temperature_2m,apparent_temperature,precipitation,weather_code,relative_humidity_2m&timezone=auto";
       const r = await fetch(url);
       if (!r.ok) return;
       const j = await r.json();
@@ -207,7 +225,8 @@ export default function WellnessApp() {
       if (rain) key = "rain";
       else if (feels >= 31) key = "hot";
       else if (temp <= 4) key = "cold";
-      patch({ live: { key, temp, feels } });
+      const humidity = Number.isFinite(c.relative_humidity_2m) ? Math.round(c.relative_humidity_2m) : null;
+      patch({ live: { key, temp, feels, humidity }, geo: { lat: pos.lat, lon: pos.lon, real: !(pos.lat === 37.5665 && pos.lon === 126.978) } });
     } catch { /* 기본값 유지 */ }
   }
 
@@ -829,17 +848,219 @@ export default function WellnessApp() {
     );
   }
 
-  /** 「나를 위한 디렉팅」(옛 이름 데일리 힐링 · 2026-09-21 사용자 지시로 제목만 바꿈) — 「케어」가 아니라 잠깐 쉬고 나를 들여다보는 것(마음 성향 · 오늘 해볼 것). 이름은 사용자 확정(「데일리 쉼표」는 반려). 2026-09-21 부터 「디렉팅」 탭 한 페이지. */
+  /**
+   * 「나를 위한 디렉팅」(옛 데일리 힐링) — 2026-09-21 사용자 지시: 마음온도 「피드백」 칸을 **탭 하나에 한 페이지씩**.
+   * 탭 순서(사용자 확정) = 마음 성향 · TO do it · 추천 음악 · 메이크업 · 코디 · 문장 · 산책. 유형을 안 골랐으면 「마음 성향」만 열린다
+   * (마음온도도 MBTI 를 고른 뒤에야 피드백이 나온다). 코디·메이크업은 성별·나이대가 있어야 — 없으면 그 탭 안에서 한 번 고른다.
+   * 규칙·문장은 전부 directing/*.ts(순수·테스트) — 🚫 화면에서 다시 적지 말 것.
+   */
   function renderHealing() {
+    const done = s.personaDone;
+    const tabs: { id: DirTab; label: string }[] = [
+      { id: "persona", label: "마음 성향" }, { id: "todo", label: "TO do it" }, { id: "music", label: "추천 음악" },
+      { id: "makeup", label: s.dirProfile?.gender === "male" ? "데일리케어" : "메이크업" }, { id: "outfit", label: "코디" },
+      { id: "sentences", label: "문장" }, { id: "walk", label: "산책" },
+    ];
+    const tab = done ? s.dirTab : "persona";
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>나를 위한 디렉팅</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>가볍게 나를 알아보고, 잠시 음악으로 쉬어 가요.</div>
         </div>
-        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 8px")}>
-          {renderHealingCards()}
+        {/* 탭 칩 — 가로 스크롤. 유형 전엔 나머지가 흐리고 누르면 안내만. */}
+        <div style={sx("flex:none; display:flex; gap:7px; overflow-x:auto; padding:12px 0 4px; margin:0 -20px; padding-left:20px; padding-right:20px; scrollbar-width:none")}>
+          {tabs.map((x) => {
+            const on = tab === x.id;
+            const locked = !done && x.id !== "persona";
+            return (
+              <div key={x.id} data-dir-tab={x.id} onClick={() => patch({ dirTab: x.id })} style={{ ...sx("cursor:pointer; flex:none; padding:8px 13px; border-radius:999px; font-size:13px; font-weight:800; white-space:nowrap; border:1.5px solid; transition:background 0.15s"), background: on ? "#2d7a5f" : "#fff", color: on ? "#fff" : locked ? "#b5c8d0" : "#245c48", borderColor: on ? "#2d7a5f" : locked ? "#e2e8ec" : "#9ccdb8" }}>{x.label}</div>
+            );
+          })}
         </div>
+        {!done && s.dirTab !== "persona" && (
+          <div style={sx("flex:none; margin-top:8px; padding:11px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>먼저 「마음 성향」에서 내 유형을 골라 주세요. 그 다음 탭들이 유형에 맞춰 열려요.</div>
+        )}
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 8px")}>
+          {tab === "persona" && renderPersonaCard()}
+          {tab === "todo" && renderTodoCard()}
+          {tab === "music" && renderMusicCard()}
+          {tab === "makeup" && (s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업"))}
+          {tab === "outfit" && (s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디"))}
+          {tab === "sentences" && renderSentencesTab()}
+          {tab === "walk" && renderWalkTab()}
+        </div>
+      </div>
+    );
+  }
+
+  /** 성별·나이대 한 번 고르기 — 코디·메이크업 탭 첫 진입(사용자 확정 2026-09-21). 기기에 저장(PROFILE_STORE_KEY) · 설정에서 바꿀 수 있다. */
+  function renderProfilePick(forWhat: string) {
+    const d = s.dirDraft;
+    const ready = d.gender !== null && d.ageBand !== null;
+    const save = () => {
+      if (!ready) return;
+      const p: DirectingProfile = { gender: d.gender as Gender, ageBand: d.ageBand as AgeBand };
+      try { storage()?.setItem(PROFILE_STORE_KEY, serializeProfile(p)); } catch { /* 저장 못 해도 이 세션은 쓴다 */ }
+      patch({ dirProfile: p });
+    };
+    const chip = (on: boolean) => ({ ...sx("cursor:pointer; flex:1; text-align:center; padding:11px 6px; border-radius:13px; font-size:13.5px; font-weight:800; border:1.5px solid; word-break:keep-all"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#4a3f80", borderColor: on ? "#7a6bc4" : "#c4b8ec" });
+    return (
+      <div style={sx("display:flex; flex-direction:column; gap:14px; padding:20px 18px; border-radius:22px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 10px 22px rgba(80,88,140,0.16)")}>
+        <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e")}>{forWhat}은 성별과 나이대에 맞춰 드려요</div>
+        <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>한 번만 고르면 이 기기에 저장돼요. 설정에서 언제든 바꿀 수 있어요.</div>
+        <div style={sx("font-size:12px; font-weight:800; color:#4a3f80")}>성별</div>
+        <div style={sx("display:flex; gap:8px")}>
+          {(["female", "male"] as Gender[]).map((g) => <div key={g} onClick={() => patch({ dirDraft: { ...d, gender: g } })} style={chip(d.gender === g)}>{GENDER_LABEL[g]}</div>)}
+        </div>
+        <div style={sx("font-size:12px; font-weight:800; color:#4a3f80")}>나이대</div>
+        <div style={sx("display:grid; grid-template-columns:repeat(3,1fr); gap:8px")}>
+          {AGE_BANDS.map((b) => <div key={b} onClick={() => patch({ dirDraft: { ...d, ageBand: b } })} style={chip(d.ageBand === b)}>{b}</div>)}
+        </div>
+        <div onClick={save} style={{ ...sx("cursor:pointer; text-align:center; padding:14px; border-radius:14px; font-size:14px; font-weight:800; color:#fff; transition:background 0.2s"), background: ready ? "#2d7a5f" : "#c9d6dc" }}>저장하고 보기</div>
+      </div>
+    );
+  }
+
+  /** 오늘의 메이크업(여성) / 데일리케어(남성) — 마음온도 4문항 퀵 체크 → 표 한 줄. 규칙은 directing/makeup.ts. */
+  function renderMakeupTab(profile: DirectingProfile) {
+    const qs = MAKEUP_QUESTIONS[profile.gender];
+    const ans = s.makeupAns;
+    const complete = qs.every((q) => ans[q.key]);
+    const result = complete ? pickMakeup(profile.gender, ans as MakeupAnswers) : null;
+    const wxLine = complete && s.live ? weatherAnalysis(s.live.humidity !== null ? { temperature: s.live.temp, humidity: s.live.humidity } : null, ans.texture as string, ans.concern as string) : "";
+    return (
+      <div style={sx("display:flex; flex-direction:column; gap:14px")}>
+        <div style={sx("display:flex; flex-direction:column; gap:12px; padding:20px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.2)")}>
+          <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>{profile.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업"}</div>
+          <div style={sx("font-size:13px; color:#9a5f4c; line-height:1.6")}>지금 거울 속 내 모습은 어떤가요? (3초 퀵 체크)</div>
+          {s.live && s.live.humidity !== null && <div style={sx("font-size:12px; color:#9a5f4c; line-height:1.6; text-wrap:pretty")}>💡 현재 외부 데이터(기온 {s.live.temp}°C, 습도 {s.live.humidity}%)와 컨디션을 통합 분석합니다.</div>}
+          {qs.map((q) => (
+            <div key={q.key} style={sx("display:flex; flex-direction:column; gap:7px")}>
+              <div style={sx("font-size:12.5px; font-weight:800; color:#8a4a3c")}>{q.title}</div>
+              <div style={{ ...sx("display:grid; gap:7px"), gridTemplateColumns: `repeat(${q.options.length === 3 ? 3 : 2},1fr)` }}>
+                {q.options.map((o) => {
+                  const on = ans[q.key] === o.id;
+                  return (
+                    <div key={o.id} onClick={() => patch({ makeupAns: { ...ans, [q.key]: o.id } })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 6px; border-radius:13px; border:1.5px solid; text-align:center; word-break:keep-all"), background: on ? "#e0876c" : "#fff", color: on ? "#fff" : "#8a4a3c", borderColor: on ? "#e0876c" : "#f0cfc4" }}>
+                      <div style={sx("font-size:20px; line-height:1")}>{o.emoji}</div>
+                      <div style={sx("font-size:12.5px; font-weight:800; line-height:1.35")}>{o.label}</div>
+                      {o.sub && <div style={{ ...sx("font-size:10.5px; font-weight:600; line-height:1.3"), opacity: 0.85 }}>{o.sub}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        {result && (
+          <div data-makeup-result style={sx("display:flex; flex-direction:column; gap:12px; padding:20px 18px; border-radius:22px; background:#fff; border:1.5px solid #f0cfc4; box-shadow:0 10px 22px rgba(214,130,108,0.16)")}>
+            <div style={sx("display:flex; align-items:center; gap:10px")}>
+              <div style={sx("font-size:26px; line-height:1")}>{result.emoji}</div>
+              <div style={sx("flex:1; font-size:16px; font-weight:800; color:#8a4a3c; text-wrap:pretty")}>{result.title}</div>
+            </div>
+            {result.steps.map((st, i) => (
+              <div key={i} style={sx("display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:13px; background:#fff7f2; border:1px solid #f6e1d8")}>
+                <div style={sx("flex:none; width:24px; height:24px; border-radius:50%; background:#e0876c; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center")}>{i + 1}</div>
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                  <div style={sx("font-size:14px; font-weight:700; color:#8a4a3c")}>{st.icon} {st.step}</div>
+                  <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.5; text-wrap:pretty")}>{st.detail}</div>
+                </div>
+              </div>
+            ))}
+            <div style={sx("font-size:13px; color:#3f3a5e; line-height:1.7; white-space:pre-line; text-wrap:pretty; padding:12px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea")}>{result.tip}</div>
+            {wxLine && <div style={sx("font-size:12.5px; color:#3a4a72; line-height:1.6; text-wrap:pretty; padding:10px 12px; border-radius:12px; background:#eaf6fb; border:1px solid #c9dfe8")}>🌤 {wxLine}</div>}
+            <div onClick={() => patch({ makeupAns: {} })} style={sx("cursor:pointer; text-align:center; padding:11px; border-radius:13px; background:#fff; border:1.5px solid #f0cfc4; font-size:13px; font-weight:800; color:#8a4a3c")}>다시 고르기</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /** 오늘의 코디 — 네 장면 카드(아우터·팬츠·슈즈·스타일 분석·네이버 블로그). 규칙은 directing/outfit.ts. */
+  function renderOutfitTab(profile: DirectingProfile) {
+    const mbti = s.personaDone?.type ?? "";
+    const temperature = s.live ? s.live.temp : 20;
+    const weatherCode = s.live?.key === "rain" ? "Rain" : "Clear";
+    const cards = outfitCards({ temperature, weatherCode, gender: profile.gender, ageBand: profile.ageBand, mbti });
+    const tone: Record<string, { bg: string; ink: string; border: string }> = {
+      work: { bg: "linear-gradient(135deg,#eaf1ff 0%,#eef0fb 100%)", ink: "#2f4d8a", border: "#c9d6f2" },
+      casual: { bg: "linear-gradient(135deg,#e8f7ef 0%,#eaf6f0 100%)", ink: "#245c48", border: "#bfe2cf" },
+      date: { bg: "linear-gradient(135deg,#ffe9ef 0%,#fdeef3 100%)", ink: "#8a3a55", border: "#f2c7d4" },
+      gathering: { bg: "linear-gradient(135deg,#fff4dd 0%,#fff7e6 100%)", ink: "#7a5a12", border: "#f0dfae" },
+    };
+    return (
+      <div style={sx("display:flex; flex-direction:column; gap:14px")}>
+        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:10px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea")}><b style={sx("color:#4a3f80")}>{mbti}</b> 성향과 오늘 날씨를 분석한 맞춤 추천이에요 · {GENDER_LABEL[profile.gender]} · {profile.ageBand} · {temperature}°C</div>
+        {cards.map((c) => {
+          const tn = tone[c.scene];
+          return (
+            <div key={c.scene} data-outfit-scene={c.scene} style={{ ...sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:22px; border:1.5px solid; box-shadow:0 8px 20px rgba(45,92,110,0.08)"), background: tn.bg, borderColor: tn.border }}>
+              <div style={{ ...sx("font-size:12px; font-weight:800; letter-spacing:0.02em"), color: tn.ink }}>{c.timeLabel}</div>
+              <div style={sx("font-size:16px; font-weight:800; color:#2d3748")}>{c.headline}</div>
+              <div style={sx("font-size:13px; color:#3a4a72; line-height:1.65; text-wrap:pretty")}>{c.description}</div>
+              {[["🧥 아우터", c.outer], ["👖 팬츠", c.pants], ["👟 슈즈", c.shoes]].map(([label, it]) => {
+                const item = it as { name: string; description: string };
+                return (
+                  <div key={label as string} style={sx("display:flex; flex-direction:column; gap:4px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8); border:1px solid rgba(0,0,0,0.05)")}>
+                    <div style={sx("display:flex; align-items:center; gap:8px")}>
+                      <div style={{ ...sx("flex:none; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:800; background:#fff; border:1px solid"), color: tn.ink, borderColor: tn.border }}>{label as string}</div>
+                      <div style={sx("flex:1; min-width:0; font-size:14px; font-weight:800; color:#2d3748")}>{item.name}</div>
+                    </div>
+                    <div style={sx("font-size:12.5px; color:#4d5578; line-height:1.55; white-space:pre-line; text-wrap:pretty")}>{item.description}</div>
+                  </div>
+                );
+              })}
+              <div style={sx("display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8)")}>
+                <div style={{ ...sx("font-size:12px; font-weight:800"), color: tn.ink }}>💡 스타일 분석</div>
+                <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>{c.styleAnalysis}</div>
+              </div>
+              <a href={`https://search.naver.com/search.naver?query=${encodeURIComponent(c.naverSearchQuery)}`} target="_blank" rel="noopener noreferrer" style={{ ...sx("display:block; text-align:center; padding:12px; border-radius:13px; font-size:13px; font-weight:800; color:#fff; text-decoration:none"), background: tn.ink }}>네이버 블로그에서 더 보기 ›</a>
+              <div style={sx("text-align:center; font-size:11px; color:#8ba8b3")}>검색어: {c.naverSearchQuery}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /** 마음과 닮은 문장 — 오늘 마음카드로 상태를 정해 세 문장. 규칙은 directing/sentences.ts. */
+  function renderSentencesTab() {
+    const input = sentenceInputFromSam(samDone(s.sam) ? s.sam : null);
+    const lines = sentencesFor(input);
+    return (
+      <div style={sx("display:flex; flex-direction:column; gap:12px")}>
+        <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; padding:0 2px")}>마음과 닮은 문장</div>
+        {!samDone(s.sam) && <div style={sx("font-size:12.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>오늘의 마음카드를 하면 지금 마음에 더 가까운 문장이 골라져요.</div>}
+        {lines.map((l, i) => (
+          <div key={i} data-sentence style={sx("padding:16px 16px; border-radius:16px; background:#f2edfa; border-left:4px solid #9b8ad6; font-size:14.5px; font-style:italic; color:#3f3a5e; line-height:1.75; text-wrap:pretty")}>{l}</div>
+        ))}
+      </div>
+    );
+  }
+
+  /** 오늘의 산책 — 코스 3 + 지도. directing/walk.ts. */
+  function renderWalkTab() {
+    const map = walkMapUrl(s.geo?.real ? s.geo.lat : null, s.geo?.real ? s.geo.lon : null);
+    return (
+      <div style={sx("display:flex; flex-direction:column; gap:12px")}>
+        <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; padding:0 2px")}>오늘의 산책</div>
+        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>추천하는 산책 코스예요. 맑은 공기를 마시며 걸어보세요 🌿</div>
+        {WALK_COURSES.map((c) => (
+          <div key={c.id} data-walk-course style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:18px; background:linear-gradient(135deg,#eaf7f0 0%,#e6f4ee 100%); border:1.5px solid #bfe2cf")}>
+            <div style={sx("display:flex; align-items:center; gap:8px")}>
+              <div style={sx("flex:1; font-size:15px; font-weight:800; color:#245c48")}>{c.name}</div>
+              <div style={sx("flex:none; font-size:11.5px; font-weight:800; color:#245c48; padding:3px 9px; border-radius:999px; background:#fff; border:1px solid #bfe2cf")}>{difficultyMark(c.difficulty)} {c.difficulty}</div>
+            </div>
+            <div style={sx("font-size:12.5px; color:#3f7a64; font-weight:600")}>📍 {c.distance} · ⏱ {c.duration}</div>
+            <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>{c.description}</div>
+            <div style={sx("display:flex; flex-wrap:wrap; gap:6px")}>
+              {c.features.map((f) => <div key={f} style={sx("font-size:11.5px; font-weight:700; color:#245c48; padding:4px 9px; border-radius:999px; background:#fff; border:1px solid #d7ebe2")}>{f}</div>)}
+            </div>
+            <a href={`https://www.google.com/maps/search/${encodeURIComponent(c.searchQuery)}`} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:10px; border-radius:12px; background:#2d7a5f; color:#fff; font-size:13px; font-weight:800; text-decoration:none")}>지도에서 {c.searchQuery} 찾기 ›</a>
+          </div>
+        ))}
+        <a href={map} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800; text-decoration:none")}>내 주변 산책로 지도 열기 ›</a>
       </div>
     );
   }
@@ -888,19 +1109,19 @@ export default function WellnessApp() {
   }
 
   /**
-   * 데일리 힐링 카드 — 성향 테스트 + 추천 음악.
+   * (이력) 데일리 힐링 카드 — 성향 테스트 + 추천 음악. 2026-09-21 부터 아래 두 함수로 갈라져 디렉팅 탭에 하나씩.
    * 음악(2026-09-17 사용자 지시 "일단 이거 하나만 임베딩") = 유튜브 채널 **emptysilver**(@emptysilver · 채널 ID UCyvNK9b_Rs7djuIQ4a7i5aw)의
    *   업로드 목록을 플레이어 하나로. 목록 ID = 채널 ID 의 UC→UU(유튜브 규칙). 음원을 담지 않고 유튜브 공식 임베드로만 재생 — 저작권·약관 문제 없음.
    *   youtube-nocookie 도메인(추적 최소화) · 자동재생 없음 · 실측(09-17): 채널 긴 영상 11편 임베드 허용, 1편(5aSlkBcvWVQ) 차단 — 목록 재생 시 그 편은 건너뛴다.
    *   ⚠ 시간대별 3편 선곡은 보류(사용자 "일단 하나만"). 나중에 바꾸면 이 상수만.
    */
-  function renderHealingCards() {
+  /** 「마음 성향」 탭 카드 — 유형이 없으면 두 갈래(내 유형 알아요 / 5분 테스트) · 있으면 결과 다시 보기. (옛 renderHealingCards 의 앞 절반) */
+  function renderPersonaCard() {
     const done = s.personaDone;
     const t = done ? PERSONA_TYPES[done.type] : null;
     return (
-      <>
-        {/* 마음 성향 — 유형이 없으면 두 갈래(내 유형 알아요 → 16개 고르기 / 모르겠어요 → 40문항). 테스트는 찾을 때만(2026-09-19 사용자 확정). */}
-        {/* 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 여백 · 색은 초록 축 · 테두리 1.5px·그림자는 한 단계 진하게(2026-09-19 사용자 "조금 더 진하게"). */}
+    // 마음 성향 — 유형이 없으면 두 갈래(내 유형 알아요 → 16개 고르기 / 모르겠어요 → 40문항). 테스트는 찾을 때만(2026-09-19 사용자 확정).
+    // 2026-09-19 사용자: 데일리 힐링 박스도 위 「신체 건강 케어」처럼 그림자 카드로 · 앞에 이모티콘 · 「모르겠어요 / 5분 테스트」 두 줄. 카드 껍데기는 데일리케어 카드와 같은 여백 · 색은 초록 축 · 테두리 1.5px·그림자는 한 단계 진하게(2026-09-19 사용자 "조금 더 진하게").
         <div style={sx("display:flex; flex-direction:column; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#dff3ea 0%,#dbe9f8 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
           <div onClick={() => done && patch({ sheet: "personaResult", personaPage: 1 })} style={sx(`display:flex; align-items:center; gap:14px; ${done ? "cursor:pointer" : ""}`)}>
             <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-healing.png) center/cover`)} />
@@ -917,8 +1138,16 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
-        {/* 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만. */}
-        {done && t && (
+    );
+  }
+
+  /** 「TO do it」 탭 카드 — 유형별 「오늘 해볼 것」 셋(마음온도 TO do it 자리 · 9/19 이식분). (옛 renderHealingCards 의 뒤 절반) */
+  function renderTodoCard() {
+    const done = s.personaDone;
+    const t = done ? PERSONA_TYPES[done.type] : null;
+    if (!done || !t) return null;
+    return (
+    // 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만.
           <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#e6f5ee 0%,#e2edf9 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
             <div style={sx("display:flex; align-items:center; gap:14px")}>
               <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>☘</div>
@@ -934,8 +1163,6 @@ export default function WellnessApp() {
               </div>
             ))}
           </div>
-        )}
-      </>
     );
   }
 
@@ -1392,10 +1619,17 @@ export default function WellnessApp() {
           </div>
         </div>
 
+        {/* 디렉팅 성별·나이대(코디·메이크업용 · directing/profile.ts) — 2026-09-21. 지우면 그 탭에서 다시 묻는다. 전체 파기 때도 함께 지운다. */}
+        <div style={sx("display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
+          <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>디렉팅 코디·메이크업 기준</div>
+          <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>{s.dirProfile ? `${GENDER_LABEL[s.dirProfile.gender]} · ${s.dirProfile.ageBand} 기준으로 보여드리고 있어요.` : "아직 고르지 않았어요. 코디·메이크업 탭에 들어가면 한 번 물어봐요."}</div>
+          {s.dirProfile && <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); } catch { /* 없어도 상태만 비우면 된다 */ } patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {} }); }} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:13px; border:1.5px solid #c4b8ec; background:#fff; font-size:13.5px; font-weight:800; color:#4a3f80")}>다시 고르기</div>}
+        </div>
+
         <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => { writeChatStore(clearAllChats()); patch({ wiped: true }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {} }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
           <div onClick={() => { writeChatStore(clearAllChats()); patchFn((st) => ({ chat: [{ role: "bot", text: characterOf(st.character).intro, at: stampAt(0, st.now) }], riskShown: false, beat: 0 })); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>이 기기 대화 전부 지우기</div>
         </div>
 
