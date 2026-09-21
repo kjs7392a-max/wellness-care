@@ -69,7 +69,7 @@ interface State {
    * 아래 탭. 2026-09-13 사용자 지시로 바뀌었다 — 설정은 **상단 톱니**로 빠지고, 기록 탭은 없앴다.
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
-  tab: "home" | "daily" | "my";
+  tab: "home" | "care" | "healing" | "my";
   sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult";
   /**
    * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 말투·「오늘 해볼 것」·마음카드 밑 한 줄에만 쓴다(persona.ts 머리 주석).
@@ -379,7 +379,9 @@ export default function WellnessApp() {
           {!v.authed && renderLogin()}
           {v.onboarding && renderOnboarding()}
           {v.authed && !v.onboarding && s.tab === "home" && renderHome()}
-          {v.authed && !v.onboarding && s.tab === "daily" && renderDaily()}
+          {/* 2026-09-21 사용자 지시: 「케어&힐링」 한 페이지를 케어(신체·마음 카드) / 디렉팅(데일리 힐링) 두 탭으로. 홈은 「오늘의 기록」까지만. */}
+          {v.authed && !v.onboarding && s.tab === "care" && renderCare()}
+          {v.authed && !v.onboarding && s.tab === "healing" && renderHealing()}
           {/* my = 월간 기록(2026-09-13 사용자 지시로 주간 → 월간). 주간 흐름은 그 화면 맨 위(2026-09-17). */}
           {v.authed && !v.onboarding && s.tab === "my" && renderRecords()}
           {v.authed && !v.onboarding && renderTabs()}
@@ -600,25 +602,10 @@ export default function WellnessApp() {
   }
 
   function renderHome() {
-    const wx = v.wx;
-    const item = v.item;
     const greeting = EMPTY_STATE ? "천천히 시작해요" : greetingForHour(s.now.getHours());
     // 인사말 아래 30문장 중 하나 — 요일·시간대 묶음에서 마운트 시드로 고른다(2026-09-21 사용자 지시 · homeMessage.ts).
     const homeMessage = !EMPTY_STATE && s.msgSeed !== null ? pickHomeMessage({ hour: s.now.getHours(), dow: s.now.getDay() }, s.msgSeed) : null;
-    // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★안전 확인 강도. 조립은 daySolution.ts(순수·테스트).
-    // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
-    //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
-    // 🚫 이 문구를 화면 안에서 다시 조립하지 말 것 — 2026-09-13 까지 여기 있던 판이 안전 확인 답을 보지 않아,
-    //    "낮은 강도만 제안한다"고 약속한 분께 같은 화면이 걷기를 권하고 있었다.
-    const isWeekend = v.isWeekend;
-    const daySolution = buildDaySolution({
-      role: v.roleKey,
-      slot: v.slot,
-      isWeekend,
-      low: v.tier > 0,
-      weatherPrefer: wx.prefer,
-      feelsTxt: v.feelsTxt,
-    });
+    // 2026-09-21 사용자 지시: 홈은 「오늘의 기록」까지만. 그 아래 있던 주간 흐름·날씨·운동 제안은 renderHomeMore 로 옮겨 두었다(다음 단계에서 들어갈 페이지가 정해진다).
     // 걸음 반원 게이지 — 3단계·3색 구간(적음 0~40% · 평소 40~80% · 많음 80~100%) + 오늘 위치 노브.
     // ⚠ 등급이 아니라 '개인 평소 범위' 대비 편차다(제안서 일상변화 관점). 라벨도 적음/평소/많음(descriptive)만 쓴다.
     const stepFrac = 0.515; // 오늘 걸음의 게이지 위치(목업). 실데이터 연동 시 계산으로 대체.
@@ -718,6 +705,37 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
+        {/* 2단 타일(신체 건강·마음 건강)은 2026-09-13 사용자 지시로 **케어 탭**으로 옮겼다 — renderCare 참고. 🚫 홈에 되돌리지 말 것.
+        */}
+
+      </div>
+    );
+  }
+
+  /**
+   * 홈의 「오늘의 기록」 아래에 있던 나머지 — 주간 흐름 박스 · 날씨 · 「신체 건강을 위한 운동 N가지 제안」.
+   * 2026-09-21 사용자 지시("오늘의 기록까지만 현재 페이지로 … 나머지가 들어가는 페이지를 만들어 줘야 하는데 일단 데일리 힐링까지만")로
+   * 홈에서 뗐고, **어느 페이지에 들어갈지는 다음 단계**라 지금은 아무 데도 안 그린다(가드가 미배선을 못박음).
+   * 🚫 홈으로 되돌리지 말 것 · 🚫 지우지 말 것(다음 단계의 본체).
+   */
+  function renderHomeMore() {
+    const wx = v.wx;
+    // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★안전 확인 강도. 조립은 daySolution.ts(순수·테스트).
+    // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
+    //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
+    // 🚫 이 문구를 화면 안에서 다시 조립하지 말 것 — 2026-09-13 까지 여기 있던 판이 안전 확인 답을 보지 않아,
+    //    "낮은 강도만 제안한다"고 약속한 분께 같은 화면이 걷기를 권하고 있었다.
+    const isWeekend = v.isWeekend;
+    const daySolution = buildDaySolution({
+      role: v.roleKey,
+      slot: v.slot,
+      isWeekend,
+      low: v.tier > 0,
+      weatherPrefer: wx.prefer,
+      feelsTxt: v.feelsTxt,
+    });
+    return (
+      <div style={sx("flex:1; overflow-y:auto; display:grid; align-content:start; gap:16px; padding:10px 20px 96px")}>
         {/* 주간 흐름 박스 — 2026-09-17 사용자 지시: 옛 종합 컨디션 박스에서 큰 단계 글자·「최근 흐름」 한 줄·신체/마음 칩·「주간 기록 보기」를
             없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
             "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
@@ -725,7 +743,7 @@ export default function WellnessApp() {
           // 2026-09-19 사용자 지시: 「월간 기록 보기」를 반으로 줄이고 옆에 「케어&힐링 가기」 — 한 줄에 반씩.
           <div style={sx("display:flex; gap:8px; margin-top:4px")}>
             <div onClick={() => patch({ sheet: "month" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>
-            <div onClick={() => patch({ tab: "daily", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#2d7a5f; color:#fff; box-shadow:0 4px 12px rgba(45,122,95,0.28)")}>케어&힐링 가기 ›</div>
+            <div onClick={() => patch({ tab: "care", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#2d7a5f; color:#fff; box-shadow:0 4px 12px rgba(45,122,95,0.28)")}>케어 가기 ›</div>
           </div>,
         )}
 
@@ -778,9 +796,6 @@ export default function WellnessApp() {
           )}
         </div>
 
-        {/* 2단 타일(신체 건강·마음 건강)은 2026-09-13 사용자 지시로 **데일리케어 탭**으로 옮겼다 — renderDaily 참고. 🚫 홈에 되돌리지 말 것.
-        */}
-
       </div>
     );
   }
@@ -790,10 +805,10 @@ export default function WellnessApp() {
    * 데일리케어 — 신체 건강·마음 건강으로 들어가는 자리(2026-09-13 사용자 지시로 홈에서 옮겨 왔다).
    * 🚫 홈에 같은 카드를 다시 두지 말 것.
    */
-  function renderDaily() {
+  function renderCare() {
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
-        {/* 2026-09-17 사용자 지시: 탭 = 「케어&힐링」, 페이지는 구분선으로 「데일리케어」(케어 카드 둘) / 「데일리 힐링」(성향 테스트·추천 음악) 두 절. */}
+        {/* 2026-09-17 「케어&힐링」 한 페이지(구분선으로 두 절) → 2026-09-21 사용자 지시로 「케어」 탭 = 이 카드 둘만. 데일리 힐링은 renderHealing(「디렉팅」 탭). */}
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
@@ -823,9 +838,15 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        {/* ── 데일리 힐링 ── 「케어」가 아니라 잠깐 쉬고 나를 들여다보는 것(성향 테스트 · 시간대 추천 음악). 이름은 사용자 확정(「데일리 쉼표」는 케어와 결이 안 맞아 반려). */}
-        <div style={sx("flex:none; height:1px; background:#d9d2ec; margin:2px 0 18px")} />
-        <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px")}>
+      </div>
+    );
+  }
+
+  /** 데일리 힐링 — 「케어」가 아니라 잠깐 쉬고 나를 들여다보는 것(마음 성향 · 오늘 해볼 것). 이름은 사용자 확정(「데일리 쉼표」는 반려). 2026-09-21 부터 「디렉팅」 탭 한 페이지. */
+  function renderHealing() {
+    return (
+      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리 힐링</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>가볍게 나를 알아보고, 잠시 음악으로 쉬어 가요.</div>
         </div>
@@ -1415,9 +1436,15 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; padding:10px 16px 26px; background:rgba(255,255,255,0.96); border-top:1px solid #eaf2f5; backdrop-filter:blur(12px)")}>
         {tab("home", "홈", (c) => <div style={{ ...sx("width:20px; height:20px; border-radius:6px; border:2px solid"), borderColor: c }} />)}
-        {tab("daily", "케어&힐링", (c) => (
+        {tab("care", "케어", (c) => (
           <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
             <path d="M12 20s-7-4.4-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.6 12 20 12 20z" />
+          </svg>
+        ))}
+        {tab("healing", "디렉팅", (c) => (
+          <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M15.2 8.8l-2 5.4-5.4 2 2-5.4z" />
           </svg>
         ))}
         {tab("my", "my", (c) => (

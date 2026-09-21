@@ -37,15 +37,55 @@ describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링�
   });
 });
 
-describe("홈 주간 흐름 박스 — 버튼 둘(2026-09-19 사용자 지시)", () => {
-  it("「월간 기록 보기 ›」와 「케어&힐링 가기 ›」가 한 줄에 반씩(flex:1) 있고, 케어&힐링은 daily 탭으로 간다", () => {
+describe("주간 흐름 박스 — 버튼 둘(2026-09-19 사용자 지시 · 2026-09-21 홈에서 「나머지 페이지」 대기 코드로 이동)", () => {
+  it("「월간 기록 보기 ›」와 「케어 가기 ›」가 한 줄에 반씩(flex:1) 있고, 케어 가기는 care 탭으로 간다", () => {
     const i = src.indexOf("월간 기록 보기 ›");
-    const j = src.indexOf("케어&힐링 가기 ›");
+    const j = src.indexOf("케어 가기 ›");
     expect(i).toBeGreaterThan(0);
     expect(j).toBeGreaterThan(i);
     const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), j + 40);
     expect(block.match(/flex:1/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
-    expect(block).toMatch(/tab: "daily"/);
+    expect(block).toMatch(/tab: "care"/);
+    expect(src).not.toMatch(/케어&힐링 가기/);
+  });
+});
+
+// 2026-09-21 사용자 지시: 홈 = 「오늘의 기록」까지만 · 케어(신체·마음 카드 둘) 한 페이지 · 데일리 힐링 한 페이지. 나머지(주간 흐름·날씨·운동 제안)가 들어갈 페이지는 다음 단계.
+describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉팅(데일리 힐링) 탭", () => {
+  const fn = (name: string) => {
+    const a = src.indexOf(`function ${name}(`);
+    expect(a, name).toBeGreaterThan(0);
+    const b = src.indexOf("\n  function ", a + 10);
+    return src.slice(a, b < 0 ? undefined : b);
+  };
+  it("탭은 home · care · healing · my 넷이고 라벨은 홈·케어·디렉팅·my", () => {
+    expect(src).toMatch(/tab: "home" \| "care" \| "healing" \| "my"/);
+    const tabs = fn("renderTabs");
+    expect(tabs).toMatch(/tab\("care", "케어"/);
+    expect(tabs).toMatch(/tab\("healing", "디렉팅"/);
+    expect(tabs).not.toMatch(/"daily"|케어&힐링/);
+  });
+  it("홈은 오늘의 기록까지만 — 주간 흐름·날씨·운동 제안을 그리지 않는다(그 코드는 renderHomeMore 에 대기)", () => {
+    const home = fn("renderHome");
+    expect(home).toMatch(/오늘의 기록/);
+    expect(home).not.toMatch(/renderWeekFlow\(|buildDaySolution\(|v\.choices\.map|renderHomeMore\(/);
+    const more = fn("renderHomeMore");
+    expect(more).toMatch(/renderWeekFlow\(/);
+    expect(more).toMatch(/buildDaySolution\(/);
+    expect(more).toMatch(/v\.choices\.map/);
+  });
+  it("케어 페이지 = 신체·마음 카드 둘 · 데일리 힐링 페이지 = 힐링 카드 — 서로 섞이지 않는다", () => {
+    const care = fn("renderCare");
+    expect(care).toMatch(/신체 건강 케어/);
+    expect(care).toMatch(/마음 건강 케어/);
+    expect(care).not.toMatch(/renderHealingCards\(|데일리 힐링/);
+    const healing = fn("renderHealing");
+    expect(healing).toMatch(/데일리 힐링/);
+    expect(healing).toMatch(/renderHealingCards\(/);
+    expect(healing).not.toMatch(/신체 건강 케어|마음 건강 케어/);
+    expect(src).toMatch(/s\.tab === "care" && renderCare\(\)/);
+    expect(src).toMatch(/s\.tab === "healing" && renderHealing\(\)/);
+    expect(src).not.toMatch(/function renderDaily\(/);
   });
 });
 
