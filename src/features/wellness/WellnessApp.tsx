@@ -605,7 +605,7 @@ export default function WellnessApp() {
     const greeting = EMPTY_STATE ? "천천히 시작해요" : greetingForHour(s.now.getHours());
     // 인사말 아래 30문장 중 하나 — 요일·시간대 묶음에서 마운트 시드로 고른다(2026-09-21 사용자 지시 · homeMessage.ts).
     const homeMessage = !EMPTY_STATE && s.msgSeed !== null ? pickHomeMessage({ hour: s.now.getHours(), dow: s.now.getDay() }, s.msgSeed) : null;
-    // 2026-09-21 사용자 지시: 홈은 「오늘의 기록」까지만. 그 아래 있던 주간 흐름·날씨·운동 제안은 renderHomeMore 로 옮겨 두었다(다음 단계에서 들어갈 페이지가 정해진다).
+    // 2026-09-21 사용자 지시: 홈 = 인사말 · 오늘의 기록 · 주간 흐름 그래프까지. 날씨·「운동 N가지 제안」은 케어 탭(renderCare)으로 갔다.
     // 걸음 반원 게이지 — 3단계·3색 구간(적음 0~40% · 평소 40~80% · 많음 80~100%) + 오늘 위치 노브.
     // ⚠ 등급이 아니라 '개인 평소 범위' 대비 편차다(제안서 일상변화 관점). 라벨도 적음/평소/많음(descriptive)만 쓴다.
     const stepFrac = 0.515; // 오늘 걸음의 게이지 위치(목업). 실데이터 연동 시 계산으로 대체.
@@ -705,6 +705,19 @@ export default function WellnessApp() {
             </div>
           )}
         </div>
+        {/* 주간 흐름 박스(2026-09-21 사용자: 홈 「오늘의 기록」 아래 자리 그대로 · 날씨·운동 제안만 케어로 갔다)
+            — 2026-09-17 사용자 지시: 옛 종합 컨디션 박스에서 큰 단계 글자·「최근 흐름」 한 줄·신체/마음 칩·「주간 기록 보기」를
+            없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
+            "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
+        {renderWeekFlow(
+          // 2026-09-19 사용자 지시: 「월간 기록 보기」를 반으로 줄이고 옆에 「케어&힐링 가기」 — 한 줄에 반씩.
+          <div style={sx("display:flex; gap:8px; margin-top:4px")}>
+            <div onClick={() => patch({ sheet: "month" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>
+            <div onClick={() => patch({ tab: "care", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#2d7a5f; color:#fff; box-shadow:0 4px 12px rgba(45,122,95,0.28)")}>케어 가기 ›</div>
+          </div>,
+        )}
+
+
         {/* 2단 타일(신체 건강·마음 건강)은 2026-09-13 사용자 지시로 **케어 탭**으로 옮겼다 — renderCare 참고. 🚫 홈에 되돌리지 말 것.
         */}
 
@@ -712,13 +725,12 @@ export default function WellnessApp() {
     );
   }
 
+  /** 월별 기록장. `inSheet` 면 홈의 「기록 보기」가 띄우는 시트로, 아니면 **my 탭**의 화면으로. 내용은 같은 코드다. */
   /**
-   * 홈의 「오늘의 기록」 아래에 있던 나머지 — 주간 흐름 박스 · 날씨 · 「신체 건강을 위한 운동 N가지 제안」.
-   * 2026-09-21 사용자 지시("오늘의 기록까지만 현재 페이지로 … 나머지가 들어가는 페이지를 만들어 줘야 하는데 일단 데일리 힐링까지만")로
-   * 홈에서 뗐고, **어느 페이지에 들어갈지는 다음 단계**라 지금은 아무 데도 안 그린다(가드가 미배선을 못박음).
-   * 🚫 홈으로 되돌리지 말 것 · 🚫 지우지 말 것(다음 단계의 본체).
+   * 데일리케어 — 신체 건강·마음 건강으로 들어가는 자리(2026-09-13 사용자 지시로 홈에서 옮겨 왔다).
+   * 🚫 홈에 같은 카드를 다시 두지 말 것.
    */
-  function renderHomeMore() {
+  function renderCare() {
     const wx = v.wx;
     // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★안전 확인 강도. 조립은 daySolution.ts(순수·테스트).
     // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
@@ -735,20 +747,40 @@ export default function WellnessApp() {
       feelsTxt: v.feelsTxt,
     });
     return (
-      <div style={sx("flex:1; overflow-y:auto; display:grid; align-content:start; gap:16px; padding:10px 20px 96px")}>
-        {/* 주간 흐름 박스 — 2026-09-17 사용자 지시: 옛 종합 컨디션 박스에서 큰 단계 글자·「최근 흐름」 한 줄·신체/마음 칩·「주간 기록 보기」를
-            없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
-            "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
-        {renderWeekFlow(
-          // 2026-09-19 사용자 지시: 「월간 기록 보기」를 반으로 줄이고 옆에 「케어&힐링 가기」 — 한 줄에 반씩.
-          <div style={sx("display:flex; gap:8px; margin-top:4px")}>
-            <div onClick={() => patch({ sheet: "month" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>
-            <div onClick={() => patch({ tab: "care", sheet: null })} style={sx("flex:1; cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#2d7a5f; color:#fff; box-shadow:0 4px 12px rgba(45,122,95,0.28)")}>케어 가기 ›</div>
-          </div>,
-        )}
+      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
+        {/* 2026-09-17 「케어&힐링」 한 페이지(구분선으로 두 절) → 2026-09-21 사용자 지시로 「케어」 탭 = 이 카드 둘만. 데일리 힐링은 renderHealing(「디렉팅」 탭). */}
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
+          <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
+          <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
+        </div>
+        {/* 2026-09-13 사용자 지시: 나란히가 아니라 **위아래로**, 그리고 **가운데로**.
+            이 탭엔 카드 둘뿐이라 위에 붙여 두면 아래가 통째로 빈다 → 제목은 위에 두고 카드는 남은 높이의 가운데.
+            ⚠ 카드를 더 키워도 봤는데(아이콘 60px) **부제가 두 줄로 접혀** 되돌렸다 — 폭이 좁아 「…운동 / · 15가지」처럼 꼬리만 남는다.
+            화면이 짧으면 `overflow-y:auto` 로 그대로 스크롤된다. */}
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 22px")}>
+          {/* 가로로 길어졌으므로 아이콘 → 글 → 화살표 **한 줄**로. 세로 2열 시절의 「아이콘 위 / 글 아래」는 옆이 텅 빈다. */}
+          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
+            <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강 케어</div>
+              {/* ⚠ 한글은 아무 데서나 끊긴다 — 「15 / 가지」로 갈라졌었다. keep-all 로 낱말을 붙여 둔다. */}
+              <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
+            </div>
+            <div style={sx("flex:none; font-size:17px; color:#e0876c")}>↗</div>
+          </div>
+          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
+            <div style={sx(`width:50px; height:50px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
+            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
+              <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>마음 건강 케어</div>
+              <div style={sx("font-size:12.5px; color:#5f5397; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>마음건강을 위한 짧은 대화와 마음카드</div>
+            </div>
+            <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
+          </div>
+        </div>
 
+        {/* 2026-09-21 사용자 지시: 홈에 있던 날씨 한 줄 + 「신체 건강을 위한 운동 N가지 제안」을 케어 카드 둘 아래로. */}
         {/* 날씨 — 맨 위 한 줄(사용자 지시). 제안 카드 안에 있을 땐 시작 버튼을 아래로 밀었다. */}
-        <div style={sx("display:flex; align-items:center; gap:9px; margin-top:-4px")}>
+        <div style={sx("display:flex; align-items:center; gap:9px; margin-top:2px")}>
           <div style={sx("flex:none; display:flex; align-items:center; gap:8px; min-height:32px; padding:0 13px; border-radius:999px; background:#fff; border:1px solid #c9d6dc")}>
             <div style={{ ...sx("width:9px; height:9px; border-radius:50%; flex:none"), background: wx.dot }} />
             <div style={sx("font-size:13px; font-weight:700; color:#3a4a72; white-space:nowrap")}>{wx.label}</div>
@@ -794,48 +826,6 @@ export default function WellnessApp() {
               <div style={sx("flex:1; min-width:0; font-size:12.5px; font-weight:500; color:#4a3f80; line-height:1.6; text-wrap:pretty")}>{parqNotice(v.tier)}</div>
             </div>
           )}
-        </div>
-
-      </div>
-    );
-  }
-
-  /** 월별 기록장. `inSheet` 면 홈의 「기록 보기」가 띄우는 시트로, 아니면 **my 탭**의 화면으로. 내용은 같은 코드다. */
-  /**
-   * 데일리케어 — 신체 건강·마음 건강으로 들어가는 자리(2026-09-13 사용자 지시로 홈에서 옮겨 왔다).
-   * 🚫 홈에 같은 카드를 다시 두지 말 것.
-   */
-  function renderCare() {
-    return (
-      <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
-        {/* 2026-09-17 「케어&힐링」 한 페이지(구분선으로 두 절) → 2026-09-21 사용자 지시로 「케어」 탭 = 이 카드 둘만. 데일리 힐링은 renderHealing(「디렉팅」 탭). */}
-        <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
-          <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>데일리케어</div>
-          <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>몸과 마음, 오늘 챙기고 싶은 쪽을 골라보세요. 한 번에 1분이면 충분합니다.</div>
-        </div>
-        {/* 2026-09-13 사용자 지시: 나란히가 아니라 **위아래로**, 그리고 **가운데로**.
-            이 탭엔 카드 둘뿐이라 위에 붙여 두면 아래가 통째로 빈다 → 제목은 위에 두고 카드는 남은 높이의 가운데.
-            ⚠ 카드를 더 키워도 봤는데(아이콘 60px) **부제가 두 줄로 접혀** 되돌렸다 — 폭이 좁아 「…운동 / · 15가지」처럼 꼬리만 남는다.
-            화면이 짧으면 `overflow-y:auto` 로 그대로 스크롤된다. */}
-        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 22px")}>
-          {/* 가로로 길어졌으므로 아이콘 → 글 → 화살표 **한 줄**로. 세로 2열 시절의 「아이콘 위 / 글 아래」는 옆이 텅 빈다. */}
-          <div onClick={() => patch({ sheet: "library" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#fff1e4 0%,#ffe6ec 100%); border:1px solid #f6cfc4; box-shadow:0 10px 24px rgba(214,130,108,0.26), 0 2px 6px rgba(214,130,108,0.16)")}>
-            <div style={sx(`width:50px; height:50px; flex:none; border-radius:15px; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:16px; font-weight:700; color:#8a4a3c")}>신체 건강 케어</div>
-              {/* ⚠ 한글은 아무 데서나 끊긴다 — 「15 / 가지」로 갈라졌었다. keep-all 로 낱말을 붙여 둔다. */}
-              <div style={sx("font-size:12.5px; color:#9a5f4c; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>신체건강을 위한 간단한 운동 · {v.libList.length}가지</div>
-            </div>
-            <div style={sx("flex:none; font-size:17px; color:#e0876c")}>↗</div>
-          </div>
-          <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; display:flex; align-items:center; gap:14px; padding:26px 18px; border-radius:22px; background:linear-gradient(120deg,#e8f3ff 0%,#ede7fb 100%); border:1px solid #d2cbf0; box-shadow:0 10px 24px rgba(110,95,190,0.26), 0 2px 6px rgba(110,95,190,0.16)")}>
-            <div style={sx(`width:50px; height:50px; flex:none; border-radius:50%; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:4px")}>
-              <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>마음 건강 케어</div>
-              <div style={sx("font-size:12.5px; color:#5f5397; line-height:1.55; text-wrap:pretty; word-break:keep-all")}>마음건강을 위한 짧은 대화와 마음카드</div>
-            </div>
-            <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
-          </div>
         </div>
 
       </div>

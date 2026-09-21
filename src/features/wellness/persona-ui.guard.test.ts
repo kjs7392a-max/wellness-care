@@ -65,19 +65,22 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(tabs).toMatch(/tab\("healing", "디렉팅"/);
     expect(tabs).not.toMatch(/"daily"|케어&힐링/);
   });
-  it("홈은 오늘의 기록까지만 — 주간 흐름·날씨·운동 제안을 그리지 않는다(그 코드는 renderHomeMore 에 대기)", () => {
+  // 2026-09-21 사용자 2차 지시: "그래프는 오늘 하루도 고생 많으셨어요 페이지(홈)에, 제안과 운동 4가지는 케어 페이지에".
+  it("홈 = 오늘의 기록 + 주간 흐름 그래프 — 날씨·운동 제안은 없다(케어로 갔다)", () => {
     const home = fn("renderHome");
     expect(home).toMatch(/오늘의 기록/);
-    expect(home).not.toMatch(/renderWeekFlow\(|buildDaySolution\(|v\.choices\.map|renderHomeMore\(/);
-    const more = fn("renderHomeMore");
-    expect(more).toMatch(/renderWeekFlow\(/);
-    expect(more).toMatch(/buildDaySolution\(/);
-    expect(more).toMatch(/v\.choices\.map/);
+    expect(home).toMatch(/renderWeekFlow\(/);
+    expect(home).not.toMatch(/buildDaySolution\(|v\.choices\.map/);
+    expect(src).not.toMatch(/renderHomeMore/); // 대기 코드는 다 제자리를 찾았다
   });
-  it("케어 페이지 = 신체·마음 카드 둘 · 데일리 힐링 페이지 = 힐링 카드 — 서로 섞이지 않는다", () => {
+  it("케어 페이지 = 신체·마음 카드 둘 + 날씨 + 운동 N가지 제안 · 데일리 힐링 페이지 = 힐링 카드 — 서로 섞이지 않는다", () => {
     const care = fn("renderCare");
     expect(care).toMatch(/신체 건강 케어/);
     expect(care).toMatch(/마음 건강 케어/);
+    expect(care).toMatch(/buildDaySolution\(/);
+    expect(care).toMatch(/v\.choices\.map/);
+    // 카드 둘이 먼저, 제안은 그 아래
+    expect(care.indexOf("마음 건강 케어")).toBeLessThan(care.indexOf("v.choices.map"));
     expect(care).not.toMatch(/renderHealingCards\(|데일리 힐링/);
     const healing = fn("renderHealing");
     expect(healing).toMatch(/데일리 힐링/);
