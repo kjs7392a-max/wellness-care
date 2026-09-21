@@ -18,6 +18,7 @@ import {
 } from "./data";
 import { DELAY_QUESTIONS, FOLLOW_UPS, SAFETY_QUESTIONS, delayActive, delayNotice, followUpGroupsFor, safetyComplete, safetyTier, type DelayAnswers } from "./safety-screen";
 import { greetingForHour } from "./greeting";
+import { pickHomeMessage } from "./homeMessage";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, type PersonaAnswers, type PersonaDone } from "./persona";
@@ -47,6 +48,8 @@ interface Session { title: string; time: string }
 
 interface State {
   now: Date;
+  /** 홈 30문장 랜덤 시드 — 마운트 때 한 번(homeMessage.ts). null = 아직 마운트 전(서버 렌더)이라 안 그린다. */
+  msgSeed: number | null;
   parq: Record<number, boolean>;
   /** 2단(후속) 답. 키 = "묶음.하위". 안 뜬 묶음의 옛 답이 남아도 판정은 뜬 묶음만 본다(safety-screen.ts). */
   parq2: Record<string, boolean>;
@@ -122,6 +125,7 @@ function stampAt(n: number, ref?: Date): string {
 export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
+    msgSeed: null,
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, perms: {}, area: "all", program: null,
     musicKey: "emptysilver", music: null,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
@@ -143,7 +147,7 @@ export default function WellnessApp() {
   // 마운트: 실제 시각으로 교체 + 10초 시계 + 날씨.
   useEffect(() => {
     mounted.current = true;
-    patch({ now: new Date() });
+    patch({ now: new Date(), msgSeed: Math.random() });
     const clock = setInterval(() => patch({ now: new Date() }), 10000);
     loadWeather();
     loadMusic();
@@ -599,6 +603,8 @@ export default function WellnessApp() {
     const wx = v.wx;
     const item = v.item;
     const greeting = EMPTY_STATE ? "천천히 시작해요" : greetingForHour(s.now.getHours());
+    // 인사말 아래 30문장 중 하나 — 요일·시간대 묶음에서 마운트 시드로 고른다(2026-09-21 사용자 지시 · homeMessage.ts).
+    const homeMessage = !EMPTY_STATE && s.msgSeed !== null ? pickHomeMessage({ hour: s.now.getHours(), dow: s.now.getDay() }, s.msgSeed) : null;
     // AI 오늘의 제안 문구 — 요일(주말/평일)·시간대·직군 + ★안전 확인 강도. 조립은 daySolution.ts(순수·테스트).
     // ⚠ 걸음·활동 수치는 아직 목업이라, 문구도 단정("~했어요") 대신 추정("~기 쉬워요")으로 둔다.
     //    공휴일(평일 중 쉬는 날)은 학사일정 연동 전이라 감지 못 함 — 주말만 '쉬는 날'로 처리(Phase 2에서 확장).
@@ -644,6 +650,11 @@ export default function WellnessApp() {
             <div style={sx("font-size:12.5px; font-weight:700; color:#7a6bc4; white-space:nowrap")}>설정</div>
           </div>
         </div>
+
+        {/* 인사말 아래 한 토막 — 머리줄 안(설정 단추 옆 좁은 칸)에 넣으면 5~6줄이 세로로 길게 접혀 머리줄 전체를 밀어내므로 한 줄 아래 전폭으로. 줄바꿈은 원문대로(pre-line). */}
+        {homeMessage && (
+          <div style={sx("margin-top:-4px; padding:12px 16px; border-radius:16px; background:#fff; border:1px solid #d9e6ea; font-size:14px; line-height:1.75; font-weight:500; color:#3f6b7c; white-space:pre-line; text-wrap:pretty; letter-spacing:-0.01em")}>{homeMessage}</div>
+        )}
 
         {/* 오늘의 기록 */}
         <div style={sx("display:grid; gap:11px")}>
