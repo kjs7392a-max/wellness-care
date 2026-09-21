@@ -856,39 +856,46 @@ export default function WellnessApp() {
    */
   function renderHealing() {
     const done = s.personaDone;
-    const tabs: { id: DirTab; label: string }[] = [
-      { id: "persona", label: "마음 성향" }, { id: "todo", label: "TO do it" }, { id: "music", label: "추천 음악" },
-      { id: "makeup", label: s.dirProfile?.gender === "male" ? "데일리케어" : "메이크업" }, { id: "outfit", label: "코디" },
-      { id: "sentences", label: "문장" }, { id: "walk", label: "산책" },
+    // 2026-09-21 사용자 정정: 칩이 아니라 **마음 성향 박스 아래 세로 줄 6개**(마음온도 「피드백」 화면과 같은 꼴). 누르면 그 줄 아래로 펼쳐지고 같은 줄을 다시 누르면 접힌다 · 한 번에 하나.
+    const rows: { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] = [
+      { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
+      { id: "music", label: "오늘의 추천 음악", emoji: "🎧", hint: "채널 셋 · 지금 시간에 어울리는 플레이리스트" },
+      { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
+      { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "오늘 날씨 · 네 가지 장면" },
+      { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
+      { id: "walk", label: "오늘의 산책", emoji: "🌿", hint: "가볍게 걷기 좋은 코스 셋" },
     ];
-    const tab = done ? s.dirTab : "persona";
+    const open = done ? s.dirTab : "persona";
     return (
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:14px 20px 96px")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:5px; padding-top:6px")}>
           <div style={sx("font-size:22px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em")}>나를 위한 디렉팅</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>가볍게 나를 알아보고, 잠시 음악으로 쉬어 가요.</div>
         </div>
-        {/* 탭 칩 — 가로 스크롤. 유형 전엔 나머지가 흐리고 누르면 안내만. */}
-        <div style={sx("flex:none; display:flex; gap:7px; overflow-x:auto; padding:12px 0 4px; margin:0 -20px; padding-left:20px; padding-right:20px; scrollbar-width:none")}>
-          {tabs.map((x) => {
-            const on = tab === x.id;
-            const locked = !done && x.id !== "persona";
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:14px 0 8px")}>
+          {renderPersonaCard()}
+          {!done && <div style={sx("padding:11px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>위에서 내 유형을 고르면 아래 여섯 가지가 유형에 맞춰 열려요.</div>}
+          {rows.map((x) => {
+            const on = open === x.id;
             return (
-              <div key={x.id} data-dir-tab={x.id} onClick={() => patch({ dirTab: x.id })} style={{ ...sx("cursor:pointer; flex:none; padding:8px 13px; border-radius:999px; font-size:13px; font-weight:800; white-space:nowrap; border:1.5px solid; transition:background 0.15s"), background: on ? "#2d7a5f" : "#fff", color: on ? "#fff" : locked ? "#b5c8d0" : "#245c48", borderColor: on ? "#2d7a5f" : locked ? "#e2e8ec" : "#9ccdb8" }}>{x.label}</div>
+              <div key={x.id} style={sx("display:flex; flex-direction:column; gap:12px")}>
+                <div data-dir-row={x.id} onClick={() => { if (!done) return; patch({ dirTab: s.dirTab === x.id ? "persona" : x.id }); }} style={{ ...sx("display:flex; align-items:center; gap:12px; padding:16px 16px; border-radius:18px; border:1.5px solid; transition:background 0.15s"), cursor: done ? "pointer" : "default", background: on ? "#2d7a5f" : "#fff", borderColor: on ? "#2d7a5f" : done ? "#9ccdb8" : "#e2e8ec", opacity: done ? 1 : 0.55, boxShadow: on ? "0 8px 20px rgba(45,122,95,0.24)" : "0 4px 12px rgba(45,92,110,0.06)" }}>
+                  <div style={{ ...sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px"), background: on ? "rgba(255,255,255,0.18)" : "#eef7f2" }}>{x.emoji}</div>
+                  <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                    <div style={{ ...sx("font-size:15px; font-weight:800; letter-spacing:-0.01em"), color: on ? "#fff" : "#245c48" }}>{x.label}</div>
+                    <div style={{ ...sx("font-size:12px; font-weight:500; line-height:1.4; text-wrap:pretty"), color: on ? "rgba(255,255,255,0.85)" : "#6b8c9a" }}>{x.hint}</div>
+                  </div>
+                  <div style={{ ...sx("flex:none; font-size:15px; transition:transform 0.2s"), color: on ? "#fff" : "#8ba8b3", transform: on ? "rotate(90deg)" : "none" }}>›</div>
+                </div>
+                {on && x.id === "todo" && renderTodoCard()}
+                {on && x.id === "music" && renderMusicCard()}
+                {on && x.id === "makeup" && (s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업"))}
+                {on && x.id === "outfit" && (s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디"))}
+                {on && x.id === "sentences" && renderSentencesTab()}
+                {on && x.id === "walk" && renderWalkTab()}
+              </div>
             );
           })}
-        </div>
-        {!done && s.dirTab !== "persona" && (
-          <div style={sx("flex:none; margin-top:8px; padding:11px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>먼저 「마음 성향」에서 내 유형을 골라 주세요. 그 다음 탭들이 유형에 맞춰 열려요.</div>
-        )}
-        <div style={sx("flex:none; display:flex; flex-direction:column; gap:16px; padding:14px 0 8px")}>
-          {tab === "persona" && renderPersonaCard()}
-          {tab === "todo" && renderTodoCard()}
-          {tab === "music" && renderMusicCard()}
-          {tab === "makeup" && (s.dirProfile ? renderMakeupTab(s.dirProfile) : renderProfilePick("메이크업"))}
-          {tab === "outfit" && (s.dirProfile ? renderOutfitTab(s.dirProfile) : renderProfilePick("코디"))}
-          {tab === "sentences" && renderSentencesTab()}
-          {tab === "walk" && renderWalkTab()}
         </div>
       </div>
     );

@@ -119,16 +119,22 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(healing).toMatch(/>나를 위한 디렉팅</);
     expect(healing).not.toMatch(/>데일리 힐링</);
     // 2026-09-21 마음온도 「피드백」 이식 — 디렉팅 페이지는 탭 7개(마음 성향·TO do it·추천 음악·메이크업·코디·문장·산책)에 한 페이지씩.
-    for (const id of ["persona", "todo", "music", "makeup", "outfit", "sentences", "walk"]) expect(healing, id).toContain(`{ id: "${id}"`);
-    expect(healing).toMatch(/tab === "persona" && renderPersonaCard\(\)/);
-    expect(healing).toMatch(/tab === "todo" && renderTodoCard\(\)/);
-    expect(healing).toMatch(/tab === "music" && renderMusicCard\(\)/);
-    expect(healing).toMatch(/tab === "makeup" && \(s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
-    expect(healing).toMatch(/tab === "outfit" && \(s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
-    expect(healing).toMatch(/tab === "sentences" && renderSentencesTab\(\)/);
-    expect(healing).toMatch(/tab === "walk" && renderWalkTab\(\)/);
-    // 유형 전엔 「마음 성향」만 — 다른 탭을 눌러도 persona 로 접힌다
-    expect(healing).toMatch(/const tab = done \? s\.dirTab : "persona"/);
+    // 2026-09-21 사용자 정정 "칩을 만들지 말고 마음 성향 박스 아래 탭으로 · 수직 배열" → 마음 성향 카드는 항상 위 · 그 아래 세로 줄 6개(누르면 그 아래 펼침).
+    expect(healing).not.toMatch(/data-dir-tab|overflow-x:auto/);
+    for (const id of ["todo", "music", "makeup", "outfit", "sentences", "walk"]) expect(healing, id).toContain(`{ id: "${id}"`);
+    expect(healing).not.toContain(`{ id: "persona"`);
+    expect(healing).toMatch(/\{renderPersonaCard\(\)\}/);
+    expect(healing).toMatch(/data-dir-row=\{x\.id\}/);
+    expect(healing).toMatch(/flex-direction:column/); // 세로 배열
+    expect(healing).toMatch(/on && x\.id === "todo" && renderTodoCard\(\)/);
+    expect(healing).toMatch(/on && x\.id === "music" && renderMusicCard\(\)/);
+    expect(healing).toMatch(/on && x\.id === "makeup" && \(s\.dirProfile \? renderMakeupTab\(s\.dirProfile\) : renderProfilePick\(/);
+    expect(healing).toMatch(/on && x\.id === "outfit" && \(s\.dirProfile \? renderOutfitTab\(s\.dirProfile\) : renderProfilePick\(/);
+    expect(healing).toMatch(/on && x\.id === "sentences" && renderSentencesTab\(\)/);
+    expect(healing).toMatch(/on && x\.id === "walk" && renderWalkTab\(\)/);
+    // 유형 전엔 줄이 잠긴다(눌러도 안 펼쳐진다) · 같은 줄을 다시 누르면 접힌다
+    expect(healing).toMatch(/const open = done \? s\.dirTab : "persona"/);
+    expect(healing).toMatch(/dirTab: s\.dirTab === x\.id \? "persona" : x\.id/);
     // 규칙은 화면에서 다시 적지 않는다 — 순수 모듈 호출만
     expect(src).toMatch(/pickMakeup\(profile\.gender, ans as MakeupAnswers\)/);
     expect(src).toMatch(/outfitCards\(\{ temperature, weatherCode, gender: profile\.gender, ageBand: profile\.ageBand, mbti \}\)/);
