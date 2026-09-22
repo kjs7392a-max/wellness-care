@@ -212,3 +212,22 @@ describe("마음 건강 — 이름은 「오늘, 어떤 하루였나요?」 하�
     expect(head).toMatch(/sheet: "mind"/); // 돌아가는 길(‹)은 남는다
   });
 });
+
+// 2026-09-22 사용자 확정 「나」 = 이어 말하기 — 말로 묻고 답은 글로.
+describe("음성 입력 — 마이크는 지원할 때만 · 판정은 speech.ts 한 곳 · 답을 읽어 주지 않는다", () => {
+  it("micOk 일 때만 마이크를 그리고, 누르면 toggleMic", () => {
+    expect(src).toMatch(/\{s\.micOk && \(/);
+    expect(src).toMatch(/onClick=\{toggleMic\}/);
+  });
+  it("판정은 speech.ts 를 쓴다 — 화면이 다시 적지 않는다", () => {
+    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "cleanTranscript(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
+      expect(src, fn).toContain(fn);
+    }
+  });
+  it("답이 온 뒤 다시 듣는 판단은 shouldResume 로만 한다(위험 응답이면 안 듣는다)", () => {
+    expect(src).toMatch(/shouldResume\(\{ keepOn: s\.micKeep, riskShown: s\.riskShown \}\)/);
+  });
+  it("답을 소리로 읽어 주지 않는다 — 마이크가 제 소리를 되받는다", () => {
+    expect(src).not.toMatch(/speechSynthesis|SpeechSynthesisUtterance/);
+  });
+});

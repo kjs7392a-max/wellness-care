@@ -25,6 +25,7 @@ import { outfitCards } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
+import { SILENT_STOP_MS, cleanTranscript, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
@@ -126,7 +127,33 @@ interface State {
   character: CharacterId;
   /** 아바타 이미지를 못 읽은 캐릭터(파일 아직 없음) — 글자 아바타로 대신 그린다 */
   avatarMissing: Partial<Record<CharacterId, boolean>>;
+  /**
+   * 음성 입력(2026-09-22 사용자 확정 「나」= 이어 말하기) — 말로 묻고 답은 글로.
+   *   micOk   : 이 브라우저가 음성 인식을 하는가(마운트 때 한 번 판정 · 아니면 마이크를 안 그린다)
+   *   mic     : off 꺼짐 / listening 듣는 중 / waiting 답을 기다리는 중(듣기는 잠시 멈춤)
+   *   micKeep : 「이어 말하기」 — 답이 온 뒤 스스로 다시 듣는다. 마이크를 한 번 더 누르면 꺼진다.
+   *   micNote : 권한 거부 같은 안내 한 줄
+   *   micTold : 처음 한 번 안내를 보였는가
+   */
+  micOk: boolean;
+  mic: MicState;
+  micKeep: boolean;
+  micNote: string;
+  micTold: boolean;
 }
+
+/**
+ * 브라우저 음성 인식의 최소 모양 — 표준 타입이 `lib.dom` 에 없거나 브라우저마다 갈려 우리가 쓰는 것만 적는다.
+ * 🚫 any 로 열지 말 것(콜백 이름 하나 틀리면 조용히 안 듣는다).
+ */
+type SpeechResultEvent = { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> };
+type SpeechLike = {
+  lang: string; interimResults: boolean; continuous: boolean;
+  start: () => void; stop: () => void;
+  onresult: ((e: SpeechResultEvent) => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+};
 
 function stampAt(n: number, ref?: Date): string {
   const d = ref || new Date();
@@ -151,6 +178,7 @@ export default function WellnessApp() {
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
     character: DEFAULT_CHARACTER, avatarMissing: {},
+    micOk: false, mic: "off", micKeep: false, micNote: "", micTold: false,
   }));
 
   const patch = (p: Partial<State>) => setS((st) => ({ ...st, ...p }));
@@ -160,6 +188,11 @@ export default function WellnessApp() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
   const mounted = useRef(false);
+  /** 음성 인식기 하나 · 마지막으로 말소리를 들은 시각 · 최신 send 를 부르기 위한 손잡이(인식 콜백은 옛 렌더를 붙잡는다). */
+  const recRef = useRef<SpeechLike | null>(null);
+  const voiceAtRef = useRef(0);
+  const keepRef = useRef(false);
+  const sendRef = useRef<(text?: string) => void>(() => {});
 
   // 마운트: 실제 시각으로 교체 + 10초 시계 + 날씨.
   useEffect(() => {
@@ -167,6 +200,7 @@ export default function WellnessApp() {
     patch({ now: new Date(), msgSeed: Math.random() });
     try { const p = parseProfile(window.localStorage.getItem(PROFILE_STORE_KEY)); if (p) patch({ dirProfile: p }); } catch { /* 저장소 없음 — 탭에서 다시 고르면 된다 */ }
     try { const d = parsePersonaDone(window.localStorage.getItem(PERSONA_STORE_KEY)); if (d) patch({ personaDone: d }); } catch { /* 위와 같다 — 다시 고르면 된다 */ }
+    patch({ micOk: speechSupport(window as unknown as Parameters<typeof speechSupport>[0]) });
     const clock = setInterval(() => patch({ now: new Date() }), 10000);
     loadWeather();
     loadMusic();
@@ -256,8 +290,76 @@ export default function WellnessApp() {
     }, 900);
   }
 
-  async function send() {
-    const t = (s.input || "").trim();
+  /**
+   * ---- 음성 입력(말로 묻고 답은 글로) ----
+   * 2026-09-22 사용자 확정: 마이크를 한 번 켜면 「이어 말하기」 — 답이 온 뒤 스스로 다시 듣는다.
+   * 판정(지원 여부·보낼지·다시 들을지·몇 초 뒤 끌지)은 전부 speech.ts 에 있다(이 레포엔 jsdom 이 없다).
+   * 🚫 답을 소리로 읽어 주지 말 것 — 마이크가 그 소리를 받아 되묻는다.
+   */
+  function stopMic(note = "") {
+    keepRef.current = false;
+    try { recRef.current?.stop(); } catch { /* 이미 멈춘 인식기 — 무시 */ }
+    recRef.current = null;
+    patch({ mic: "off", micKeep: false, micNote: note });
+  }
+
+  /** 인식기 하나를 만들어 듣기 시작. 이미 듣는 중이면 아무것도 안 한다. */
+  function startMic() {
+    const Ctor = recognitionCtor(typeof window === "undefined" ? undefined : (window as unknown as Parameters<typeof recognitionCtor>[0]));
+    if (!Ctor) { patch({ micOk: false }); return; }
+    try { recRef.current?.stop(); } catch { /* 위와 같다 */ }
+    const rec = new Ctor() as SpeechLike;
+    rec.lang = "ko-KR";
+    rec.interimResults = true;   // 말하는 동안 입력칸에 차오르게
+    rec.continuous = false;      // 한 마디가 끝나면 onend — 이어 말하기는 우리가 다시 연다
+    recRef.current = rec;
+    voiceAtRef.current = Date.now();
+
+    rec.onresult = (e: SpeechResultEvent) => {
+      voiceAtRef.current = Date.now();
+      let interim = "", fin = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) fin += r[0].transcript; else interim += r[0].transcript;
+      }
+      if (interim) patch({ input: cleanTranscript(interim) });
+      if (fin) {
+        const t = cleanTranscript(fin);
+        patch({ input: "" });
+        if (shouldSend(t)) { patch({ mic: "waiting" }); sendRef.current(t); }
+      }
+    };
+
+    rec.onerror = (e: { error?: string }) => {
+      // 권한 거부는 사람이 풀어야 한다 — 조용히 꺼지면 왜 안 되는지 알 수 없다.
+      if (e?.error === "not-allowed" || e?.error === "service-not-allowed") { stopMic("마이크를 허용해 주세요. 주소창 옆 자물쇠에서 바꿀 수 있어요."); return; }
+      if (e?.error === "no-speech") return; // 말이 없었을 뿐 — onend 가 이어서 판단한다
+      stopMic("");
+    };
+
+    rec.onend = () => {
+      // 한 마디가 끝났다. 답을 기다리는 중이면 그대로 두고(답이 온 뒤 다시 연다),
+      // 아직 듣는 중이었다면 = 아무 말이 없었던 것 → 너무 오래 조용하면 스스로 끈다.
+      patchFn((st) => {
+        if (st.mic !== "listening") return null;
+        if (!keepRef.current) return { mic: "off" };
+        if (Date.now() - voiceAtRef.current > SILENT_STOP_MS) { keepRef.current = false; return { mic: "off", micKeep: false, micNote: "" }; }
+        setTimeout(() => { if (keepRef.current) startMic(); }, 120);
+        return null;
+      });
+    };
+
+    try { rec.start(); keepRef.current = true; patch({ mic: "listening", micKeep: true, micNote: "", micTold: true }); }
+    catch { stopMic(""); }
+  }
+
+  function toggleMic() {
+    if (s.mic === "off") startMic(); else stopMic("");
+  }
+
+  async function send(text?: string) {
+    // text 가 오면 음성 입력(말한 것) · 없으면 입력칸. 2026-09-22 음성 추가 전에는 인자가 없었다.
+    const t = (text ?? s.input ?? "").trim();
     if (!t || s.typing) return;
     const risky = riskLevel(t) === 2;
     patchFn((st) => ({
@@ -301,6 +403,19 @@ export default function WellnessApp() {
       scripted();
     }
   }
+
+  // 인식 콜백은 만들어진 순간의 send 를 붙잡는다 — 손잡이로 항상 최신 것을 부른다.
+  sendRef.current = send;
+
+  // 답이 다 온 순간(typing true→false) 「이어 말하기」면 다시 듣는다.
+  // ★ 위험 응답이 뜬 자리에서는 다시 듣지 않는다(shouldResume) — 그 화면은 상담 안내를 읽는 자리다.
+  useEffect(() => {
+    if (s.mic !== "waiting" || s.typing) return;
+    if (!shouldResume({ keepOn: s.micKeep, riskShown: s.riskShown })) { stopMic(""); return; }
+    const t = setTimeout(() => { if (keepRef.current) startMic(); }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.typing, s.mic, s.micKeep, s.riskShown]);
 
   function tick() {
     patchFn((st) => {
@@ -2179,9 +2294,28 @@ export default function WellnessApp() {
               <div onClick={() => patch({ consultOpen: true })} style={sx("cursor:pointer; text-align:center; border:1px solid #cfc5ea; background:#f8f5fd; color:#7a6bc4; font-size:13.5px; font-weight:700; padding:13px; border-radius:14px")}>🌿 마음쉼 상담 익명으로 신청하기</div>
             </div>
           )}
+          {/* 2026-09-22 음성 입력 — 말로 묻고 답은 글로. 쓸 수 없는 브라우저(micOk=false)에서는 마이크를 안 그린다. */}
+          {(s.mic !== "off" || s.micNote) && (
+            <div style={sx("padding:10px 16px 0; display:flex; align-items:center; gap:7px")}>
+              {s.mic === "listening" && <span style={sx("width:8px; height:8px; border-radius:50%; background:#e0574f; animation:dotPulse 1.2s infinite; flex:none")} />}
+              <div style={sx("font-size:12px; font-weight:600; color:#7a6bc4; line-height:1.5; text-wrap:pretty")}>{s.micNote || micHint(s.mic)}</div>
+            </div>
+          )}
+          {s.mic !== "off" && !s.micNote && (
+            <div style={sx("padding:4px 16px 0; font-size:11.5px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>말소리는 글자로만 바뀌어요 · 마이크를 한 번 더 누르면 멈춥니다</div>
+          )}
           <div style={sx("display:flex; align-items:center; gap:9px; padding:14px 14px 22px")}>
-            <input value={s.input} onChange={(e) => patch({ input: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="아무 말이나 괜찮아요, 그냥 적어보세요" style={sx("flex:1; min-width:0; border:none; background:#f4f1fb; border-radius:999px; padding:13px 16px; font-size:14px; color:#2d5c6e; outline:none; font-family:inherit")} />
-            <div onClick={send} style={sx("cursor:pointer; width:44px; height:44px; flex:none; border-radius:50%; background:#7a6bc4; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(91,181,207,0.35)")}>↑</div>
+            {s.micOk && (
+              <div onClick={toggleMic} aria-label="음성으로 말하기" style={{ ...sx("cursor:pointer; width:44px; height:44px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid"), background: s.mic === "off" ? "#f4f1fb" : "#fdecea", borderColor: s.mic === "off" ? "#d9d1f2" : "#e9a9a3" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke={s.mic === "off" ? "#7a6bc4" : "#d0453c"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                  <rect x="9" y="3" width="6" height="11" rx="3" />
+                  <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" />
+                  <path d="M12 18v3" />
+                </svg>
+              </div>
+            )}
+            <input value={s.input} onChange={(e) => patch({ input: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder={s.micOk ? "적거나, 🎤 를 눌러 말하세요" : "아무 말이나 괜찮아요, 그냥 적어보세요"} style={sx("flex:1; min-width:0; border:none; background:#f4f1fb; border-radius:999px; padding:13px 16px; font-size:14px; color:#2d5c6e; outline:none; font-family:inherit")} />
+            <div onClick={() => send()} style={sx("cursor:pointer; width:44px; height:44px; flex:none; border-radius:50%; background:#7a6bc4; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(91,181,207,0.35)")}>↑</div>
           </div>
         </div>
 
