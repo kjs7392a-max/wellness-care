@@ -2151,10 +2151,14 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        {/* 두 섹션이 화면을 반씩 꽉 채운다(사용자 지시) — 위 「오늘, 어떤 하루였나요?」, 구분선, 아래 「오늘의 마음카드」. 세로가 모자란 폰에서만 스크롤. */}
+        {/* 두 섹션이 화면을 반씩 꽉 채운다(사용자 지시) — 위 「오늘, 어떤 하루였나요?」, 구분선, 아래 「오늘의 마음카드」. 세로가 모자란 폰에서만 스크롤.
+            ★ 2026-09-22 사용자 사진(폰에서 두 섹션이 겹침) — 원인은 `flex:1`(= shrink 1)이라 세로가 모자라면 박스가 내용보다
+              작게 줄어드는데 넘친 내용을 자르지도 스크롤하지도 않아 아래 섹션 위로 흘러나온 것(실측 375×600 에서
+              clientHeight 247 < scrollHeight 294). → **`flex:1 0 auto`** = 늘어나되 줄어들지는 않는다(기준 높이 = 내용).
+            🚫 여기 두 곳을 `flex:1` 로 되돌리지 말 것(가드). */}
         <div style={sx("flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column")}>
           {/* 「오늘, 어떤 하루였나요?」 — 상대는 여기서 그림만 보고 고른다(이름·역할 표기 없음, 사용자 지시). 누르면 그 상대와 새 대화. */}
-          <div style={sx("flex:1; min-height:230px; display:flex; flex-direction:column; justify-content:center; gap:18px; padding:22px 22px 20px")}>
+          <div style={sx("flex:1 0 auto; min-height:230px; display:flex; flex-direction:column; justify-content:center; gap:18px; padding:22px 22px 20px")}>
             <div style={sx("display:flex; flex-direction:column; gap:6px; text-align:center")}>
               <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>오늘, 어떤 하루였나요?</div>
               <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요.<br />오늘 하루 선생님의 마음을 열어보세요.</div>
@@ -2189,7 +2193,7 @@ export default function WellnessApp() {
           <div style={sx("flex:none; height:2px; background:#b3c2cb; margin:0 22px; border-radius:2px")} />
 
           {/* 오늘의 마음카드 — 섹션 전체가 버튼 */}
-          <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px 22px 26px; text-align:center")}>
+          <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1 0 auto; min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px 22px 26px; text-align:center")}>
             <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>오늘의 마음카드</div>
             <div style={sx(`width:92px; height:92px; flex:none; border-radius:26px; overflow:hidden; background:url(${IMG}/probe-mood.png) center/cover; box-shadow:0 6px 18px rgba(45,92,110,0.14)`)} />
             <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>말로 꺼내기 어려운 날엔<br />끌리는 그림을 하나 골라 보세요</div>

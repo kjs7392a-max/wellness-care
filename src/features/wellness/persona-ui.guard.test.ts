@@ -243,3 +243,12 @@ describe("케어 탭 마음 박스 — 대화·마음카드는 세로 줄 둘(�
     expect(block).toMatch(/flex-direction:column/);
   });
 });
+
+// 2026-09-22 폰에서 두 섹션이 겹쳤다 — flex:1 은 세로가 모자라면 박스를 내용보다 작게 줄인다(넘친 내용이 아래로 흘러나온다).
+describe("마음 건강 시트 — 두 섹션은 줄어들지 않는다(flex:1 0 auto)", () => {
+  it("min-height:230px 를 가진 두 섹션이 모두 flex:1 0 auto 다", () => {
+    const hits = src.match(/flex:1 0 auto; min-height:230px/g) ?? [];
+    expect(hits.length).toBe(2);
+    expect(src).not.toMatch(/flex:1; min-height:230px/);
+  });
+});
