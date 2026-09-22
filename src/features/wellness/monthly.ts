@@ -20,7 +20,7 @@ export interface DayRecord {
   done: { id: string; n: number }[];
   /** 오늘의 마음카드(기분·긴장). 안 한 날은 null */
   sam: { valence: SamScore; arousal: SamScore } | null;
-  /** 마음과 대화 횟수(내용은 안 담는다) */
+  /** 「오늘, 어떤 하루였나요?」 횟수(내용은 안 담는다) */
   chats: number;
 }
 

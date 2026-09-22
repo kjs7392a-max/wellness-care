@@ -47,7 +47,7 @@ export interface MindInput {
   pictureDays: number;
   /** 그중 무거운 날 수 — SAM 기분 ≤2 (sam.ts samWeight) */
   heavyDays: number;
-  /** 「마음과 대화」 횟수 — 내용이 아니라 횟수만 */
+  /** 「오늘, 어떤 하루였나요?」 횟수 — 내용이 아니라 횟수만 */
   chatCount: number;
   /** 이번 주 위험어 안내가 한 번이라도 떴는지 */
   riskFlagged: boolean;
@@ -97,7 +97,7 @@ export function suggestion(body: Level | null, mind: Level | null): string {
   const T: Record<string, string> = {
     "high-high": "좋은 흐름이에요. 지금 하던 대로만 이어가 보세요.",
     "high-mid": "가볍게 몸을 풀며 유지해 보세요.",
-    "high-low": "몸은 괜찮은데 마음이 먼저 지쳤어요. 오늘은 마음과 대화에 잠깐 들러 보세요.",
+    "high-low": "몸은 괜찮은데 마음이 먼저 지쳤어요. 오늘은 「오늘, 어떤 하루였나요?」에 잠깐 들러 보세요.",
     "mid-high": "마음이 편한 주예요. 1분 기지개로 몸도 따라가게 해 보세요.",
     "mid-mid": "무난한 한 주예요. 퇴근 전 1분 몸풀기 하나만 더해 보세요.",
     "mid-low": "마음이 조금 무거운 주예요. 오늘은 숨 고르기 1분이면 충분해요.",
@@ -122,7 +122,7 @@ export function mindEvidence(m: MindInput): string[] {
   return [
     `오늘의 마음카드 ${m.pictureDays}일 기록`,
     `무거운 결 ${m.heavyDays}일`,
-    `마음과 대화 ${m.chatCount}번`,
+    `「오늘, 어떤 하루였나요?」 ${m.chatCount}번`,
   ];
 }
 
@@ -194,7 +194,7 @@ export function dayMindEvidence(m: DayMindInput): string[] {
     : m.pick === "light" ? "오늘의 마음카드: 가벼운 결"
     : m.pick === "neutral" ? "오늘의 마음카드: 그저 그런 결"
     : "오늘의 마음카드: 기록 없음";
-  return [pick, `마음과 대화 ${m.chatCount}번`];
+  return [pick, `「오늘, 어떤 하루였나요?」 ${m.chatCount}번`];
 }
 
 /** 「어제 · 9월 11일(금)」 — 홈 카드 제목용 */

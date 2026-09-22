@@ -1,7 +1,7 @@
 import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
 
 /**
- * 「마음과 대화」 캐릭터 6명 (2026-09-13 두 명 추가).
+ * 「오늘, 어떤 하루였나요?」 캐릭터 6명 (2026-09-13 두 명 추가).
  *
  * ★★ **이 앱은 「역할 고르기」를 시키지 않는다**(2026-09-13 사용자: *"우리의 취지는 그런 역할 선택을 하지 않으려는 거야"*).
  *   고르는 화면에는 **그림만** 뜬다 — `role`·`title`·`blurb`·`gender` 는 **화면에 한 글자도 안 나온다.**
@@ -9,7 +9,7 @@ import { SYSTEM_CORE, SYSTEM_EXAMPLES, seasonLine } from "./risk";
  *   (설계 의도를 적어 둔 값이라 지우지 않았다). 🚫 **카드에 역할 이름을 붙이지 말 것.**
  *   → 캐릭터를 더할 때 정할 것은 역할이 아니라 **얼굴과 말투(persona)** 다.
  *
- * 캐릭터에 개인 이름은 없다 — 이름은 전부 「마음과 대화」 하나다(2026-09-12 사용자 지시).
+ * 캐릭터에 개인 이름은 없다 — 이름은 전부 「오늘, 어떤 하루였나요?」 하나다(2026-09-12 사용자 지시 · 2026-09-22 이름 변경).
  * 「선생님」 호칭은 역할에 안 붙인다(사용자 지시).
  * 페르소나는 말투·관점 한 단락만 다르고, 밑바닥 기법·금지 규칙(SYSTEM_CORE)·위험어 게이트는 전원 공통이다.
  * 아바타: 전부 같은 화풍(3D 애니메이션풍·정면 상반신·단색 배경)의 public/wellness/images/char-{id}.png
@@ -157,7 +157,7 @@ export function charactersInDisplayOrder(): Character[] {
 export const DEFAULT_CHARACTER: CharacterId = "peer";
 
 /** 캐릭터의 표시 이름은 전부 이것 하나 — 개인 이름을 두지 않는다(사용자 지시). */
-export const CHARACTER_DISPLAY_NAME = "마음과 대화";
+export const CHARACTER_DISPLAY_NAME = "오늘, 어떤 하루였나요?";
 
 export function isCharacterId(v: unknown): v is CharacterId {
   return typeof v === "string" && CHARACTERS.some((c) => c.id === v);

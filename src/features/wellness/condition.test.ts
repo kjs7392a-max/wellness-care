@@ -98,6 +98,6 @@ describe("하루 단위(어제)", () => {
     expect(flowText([3, 4, 3])).toBe("보통 → 좋음 → 보통");
     expect(flowText([null, 4])).toBe("— → 좋음");
     expect(dayBodyEvidence({ stretchCount: 2, moveVsUsual: 0, stepsVsUsual: 0 })[0]).toBe("스트레칭 2번");
-    expect(dayMindEvidence({ pick: "light", chatCount: 1, riskFlagged: false })).toEqual(["오늘의 마음카드: 가벼운 결", "마음과 대화 1번"]);
+    expect(dayMindEvidence({ pick: "light", chatCount: 1, riskFlagged: false })).toEqual(["오늘의 마음카드: 가벼운 결", "「오늘, 어떤 하루였나요?」 1번"]);
   });
 });

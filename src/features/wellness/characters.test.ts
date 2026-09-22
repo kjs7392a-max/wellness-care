@@ -18,8 +18,8 @@ describe("CHARACTERS", () => {
   it("역할 이름은 화면에 안 나오지만, 이미지가 깨졌을 때 그릴 첫 글자는 있어야 한다", () => {
     for (const c of CHARACTERS) expect(c.role.trim().length, c.id).toBeGreaterThan(0);
   });
-  it("역할에 「선생님」이 붙지 않고, 개인 이름이 없다 — 표시 이름은 「마음과 대화」 하나(사용자 지시)", () => {
-    expect(CHARACTER_DISPLAY_NAME).toBe("마음과 대화");
+  it("역할에 「선생님」이 붙지 않고, 개인 이름이 없다 — 표시 이름은 「오늘, 어떤 하루였나요?」 하나(2026-09-22 사용자 지시로 개명)", () => {
+    expect(CHARACTER_DISPLAY_NAME).toBe("오늘, 어떤 하루였나요?");
     for (const c of CHARACTERS) {
       expect(c.role).not.toContain("선생님");
       expect("name" in c).toBe(false);

@@ -197,3 +197,18 @@ describe("운동 제안 제목 — 요일·시각 규칙은 suggestion.ts 한 �
     expect(src).not.toMatch(/replace\(\/\^퇴근 전 \//);
   });
 });
+
+// 2026-09-22 사용자 지시: 「마음과 대화」 → 「오늘, 어떤 하루였나요?」 · 캐릭터 고르고 들어간 대화 화면엔 탭 줄 없음.
+describe("마음 건강 — 이름은 「오늘, 어떤 하루였나요?」 하나 · 대화 화면엔 탭 줄 없음", () => {
+  it("화면 코드 어디에도 「마음과 대화」 글자가 없다", () => {
+    expect(src).not.toMatch(/마음과 대화/);
+  });
+  it("대화 화면(chatRef 가 있는 블록) 머리줄에 「오늘의 마음카드」 탭이 없다", () => {
+    const i = src.indexOf("ref={chatRef}");
+    expect(i).toBeGreaterThan(0);
+    const head = src.slice(src.lastIndexOf("animation:wFade 0.2s", i), i);
+    expect(head).not.toMatch(/오늘의 마음카드/);
+    expect(head).not.toMatch(/sheet: "picture"/);
+    expect(head).toMatch(/sheet: "mind"/); // 돌아가는 길(‹)은 남는다
+  });
+});

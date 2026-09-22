@@ -122,7 +122,7 @@ interface State {
   /** 나의 기록에서 보고 있는 달(기본 = 이번 달). 화살표로 첫 기록 달까지. */
   recMonth: YearMonth;
   riskShown: boolean;
-  /** 「마음과 대화」 상대. 바꾸면 대화가 새로 시작된다. */
+  /** 「오늘, 어떤 하루였나요?」 상대. 바꾸면 대화가 새로 시작된다. */
   character: CharacterId;
   /** 아바타 이미지를 못 읽은 캐릭터(파일 아직 없음) — 글자 아바타로 대신 그린다 */
   avatarMissing: Partial<Record<CharacterId, boolean>>;
@@ -849,7 +849,7 @@ export default function WellnessApp() {
             </div>
             <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
           </div>
-          {/* 2026-09-21 사용자 지시: 칩 둘 — 「오늘, 어떤 하루였나요?」= 마음과 대화(상대 고르기 = 마음 건강 시트) · 「오늘의 마음카드」= 그림 고르기로 바로. */}
+          {/* 2026-09-21 사용자 지시: 칩 둘 — 「오늘, 어떤 하루였나요?」= 대화(상대 고르기 = 마음 건강 시트) · 「오늘의 마음카드」= 그림 고르기로 바로. */}
           <div style={sx("display:flex; gap:8px")}>
             <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; flex:1; display:flex; align-items:center; justify-content:center; text-align:center; min-height:46px; padding:10px 8px; border-radius:14px; background:#7a6bc4; color:#fff; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; box-shadow:0 4px 12px rgba(122,107,196,0.32); word-break:keep-all; text-wrap:pretty")}>오늘, 어떤 하루였나요?</div>
             <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; display:flex; align-items:center; justify-content:center; text-align:center; min-height:46px; padding:10px 8px; border-radius:14px; background:#fff; border:1.5px solid #c4b8ec; color:#4a3f80; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; word-break:keep-all")}>오늘의 마음카드</div>
@@ -1435,7 +1435,7 @@ export default function WellnessApp() {
       { label: "오늘 " + v.itemTitle + " 해보기", go: () => patch({ sheet: "content" }) },
     ];
     const mindActions = [
-      { label: "마음과 대화에 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
+      { label: "「오늘, 어떤 하루였나요?」에서 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
       { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM }) },
     ];
     const heavyRatio = M.pictureDays ? M.heavyDays / M.pictureDays : 0;
@@ -1589,10 +1589,10 @@ export default function WellnessApp() {
               {[
                 { k: "마음카드", v: `${M.pictureDays}일` },
                 { k: "무거운 날", v: `${M.heavyDays}일` },
-                { k: "마음과 대화", v: `${M.chats}번` },
+                { k: "오늘, 어떤 하루였나요?", v: `${M.chats}번` },
               ].map((x) => (
                 <div key={x.k} style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; padding:14px 12px; border-radius:18px; background:linear-gradient(150deg,#f3eefb 0%,#eaf3fb 100%); border:1px solid #c7c0e8")}>
-                  <div style={sx("font-size:11px; font-weight:700; color:#5f5397; white-space:nowrap")}>{x.k}</div>
+                  <div style={sx("font-size:11px; font-weight:700; color:#5f5397; word-break:keep-all; text-wrap:pretty; line-height:1.35")}>{x.k}</div>
                   <div style={sx("font-size:19px; font-weight:800; color:#4a3f80; letter-spacing:-0.02em; line-height:1; white-space:nowrap")}>{x.v}</div>
                 </div>
               ))}
@@ -1796,7 +1796,7 @@ export default function WellnessApp() {
             </div>
           </div>
           <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
-            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #c9d6dc")}>마음과 대화</div>
+            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #c9d6dc")}>오늘, 어떤 하루였나요?</div>
             <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>오늘의 마음카드</div>
           </div>
         </div>
@@ -2022,12 +2022,12 @@ export default function WellnessApp() {
           </div>
         </div>
 
-        {/* 두 섹션이 화면을 반씩 꽉 채운다(사용자 지시) — 위 「마음과 대화」, 구분선, 아래 「오늘의 마음카드」. 세로가 모자란 폰에서만 스크롤. */}
+        {/* 두 섹션이 화면을 반씩 꽉 채운다(사용자 지시) — 위 「오늘, 어떤 하루였나요?」, 구분선, 아래 「오늘의 마음카드」. 세로가 모자란 폰에서만 스크롤. */}
         <div style={sx("flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column")}>
-          {/* 마음과 대화 — 상대는 여기서 그림만 보고 고른다(이름·역할 표기 없음, 사용자 지시). 누르면 그 상대와 새 대화. */}
+          {/* 「오늘, 어떤 하루였나요?」 — 상대는 여기서 그림만 보고 고른다(이름·역할 표기 없음, 사용자 지시). 누르면 그 상대와 새 대화. */}
           <div style={sx("flex:1; min-height:230px; display:flex; flex-direction:column; justify-content:center; gap:18px; padding:22px 22px 20px")}>
             <div style={sx("display:flex; flex-direction:column; gap:6px; text-align:center")}>
-              <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>마음과 대화</div>
+              <div style={sx("font-size:18px; font-weight:800; color:#2d5c6e")}>오늘, 어떤 하루였나요?</div>
               <div style={sx("font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>일상대화를 편하게 할 수 있어요.<br />오늘 하루 선생님의 마음을 열어보세요.</div>
             </div>
             {(() => {
@@ -2142,10 +2142,8 @@ export default function WellnessApp() {
               <div onClick={() => clearTalk(s.character)} style={sx("cursor:pointer; flex:none; font-size:11.5px; font-weight:700; color:#8ba8b3; border:1px solid #c9d6dc; border-radius:999px; padding:5px 10px; background:#fff")}>대화 지우기</div>
             )}
           </div>
-          <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
-            <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>마음과 대화</div>
-            <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #c9d6dc")}>오늘의 마음카드</div>
-          </div>
+          {/* 2026-09-22 사용자 지시: 캐릭터를 고르고 들어온 대화 화면에는 탭 줄(「마음과 대화」·「오늘의 마음카드」)을 두지 않는다.
+              🚫 여기에 탭을 되살리지 말 것 — 돌아가는 길은 머리줄 ‹(마음 건강). */}
         </div>
 
         <div ref={chatRef} style={sx("flex:1; overflow-y:auto; padding:18px 14px 14px; display:flex; flex-direction:column; gap:12px")}>

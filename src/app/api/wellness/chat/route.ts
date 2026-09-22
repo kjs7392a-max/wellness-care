@@ -7,7 +7,7 @@ import { HISTORY_LIMIT } from "@/features/wellness/chat-store";
 export const runtime = "nodejs";
 
 /**
- * 「마음과 대화」 서버 중계. 캐릭터(character)는 허용 목록으로만 받고 모르면 기본 캐릭터.
+ * 「오늘, 어떤 하루였나요?」 서버 중계. 캐릭터(character)는 허용 목록으로만 받고 모르면 기본 캐릭터.
  * - API 키는 서버 환경변수(ANTHROPIC_API_KEY)에서만 읽는다. 클라이언트에 노출하지 않는다.
  * - 위험어 판정을 서버에서도 다시 수행한다(클라 단독 판정은 우회 가능하므로 신뢰 불가).
  *   L2면 LLM을 건너뛰고 고정 응답만 반환한다.
