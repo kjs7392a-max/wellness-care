@@ -41,12 +41,14 @@ describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링�
   });
 });
 
-describe("주간 흐름 박스 — 단추는 「월간 기록 보기 ›」 하나(2026-09-21 사용자 지시: 케어 가기 삭제)", () => {
-  it("「월간 기록 보기 ›」만 있고 「케어 가기」·「케어&힐링 가기」는 없다", () => {
+describe("주간 흐름 박스 — 「월간 기록 보기 ›」 + 그 밑 「데일리케어 바로가기」·「디렉팅 바로가기」(2026-09-22 사용자 지시)", () => {
+  it("월간은 sheet month · 바로가기 둘은 tab care / tab healing · 옛 「케어 가기」·「케어&힐링 가기」는 없다", () => {
     const i = src.indexOf("월간 기록 보기 ›");
     expect(i).toBeGreaterThan(0);
-    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), i + 40);
+    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("디렉팅 바로가기 ›", i) + 20);
     expect(block).toMatch(/sheet: "month"/);
+    expect(block).toMatch(/patch\(\{ tab: "care" \}\)\} style=[^>]*>데일리케어 바로가기 ›/);
+    expect(block).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>디렉팅 바로가기 ›/);
     expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
   });
 });
@@ -72,10 +74,10 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     const b = src.indexOf("\n  function ", a + 10);
     return src.slice(a, b < 0 ? undefined : b);
   };
-  it("탭은 home · care · healing · my 넷이고 라벨은 홈·케어·디렉팅·my", () => {
+  it("탭은 home · care · healing · my 넷이고 라벨은 홈·데일리 케어·디렉팅·my(2026-09-22 케어→데일리 케어)", () => {
     expect(src).toMatch(/tab: "home" \| "care" \| "healing" \| "my"/);
     const tabs = fn("renderTabs");
-    expect(tabs).toMatch(/tab\("care", "케어"/);
+    expect(tabs).toMatch(/tab\("care", "데일리 케어"/);
     expect(tabs).toMatch(/tab\("healing", "디렉팅"/);
     expect(tabs).not.toMatch(/"daily"|케어&힐링/);
   });
