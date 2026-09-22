@@ -231,3 +231,15 @@ describe("음성 입력 — 마이크는 지원할 때만 · 판정은 speech.ts
     expect(src).not.toMatch(/speechSynthesis|SpeechSynthesisUtterance/);
   });
 });
+
+// 2026-09-22 사용자 "구분이 겹쳐 보인다" → 마음 박스의 둘은 나란한 칩이 아니라 세로 줄 둘.
+describe("케어 탭 마음 박스 — 대화·마음카드는 세로 줄 둘(가로 두 칸 금지)", () => {
+  it("data-mind-row 두 줄이고 각각 sheet mind / picture 로 간다", () => {
+    expect(src).toMatch(/data-mind-row=\{x\.id\}/);
+    const i = src.indexOf('data-mind-row');
+    const block = src.slice(src.lastIndexOf("flex-direction:column", i) - 200, i);
+    expect(block).toMatch(/id: "talk"[\s\S]*sheet: "mind"/);
+    expect(block).toMatch(/id: "card"[\s\S]*sheet: "picture", sam: EMPTY_SAM/);
+    expect(block).toMatch(/flex-direction:column/);
+  });
+});

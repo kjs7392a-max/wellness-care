@@ -964,10 +964,24 @@ export default function WellnessApp() {
             </div>
             <div style={sx("flex:none; font-size:17px; color:#8a7cd0")}>↗</div>
           </div>
-          {/* 2026-09-21 사용자 지시: 칩 둘 — 「오늘, 어떤 하루였나요?」= 대화(상대 고르기 = 마음 건강 시트) · 「오늘의 마음카드」= 그림 고르기로 바로. */}
-          <div style={sx("display:flex; gap:8px")}>
-            <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; flex:1; display:flex; align-items:center; justify-content:center; text-align:center; min-height:46px; padding:10px 8px; border-radius:14px; background:#7a6bc4; color:#fff; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; box-shadow:0 4px 12px rgba(122,107,196,0.32); word-break:keep-all; text-wrap:pretty")}>오늘, 어떤 하루였나요?</div>
-            <div onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM })} style={sx("cursor:pointer; flex:1; display:flex; align-items:center; justify-content:center; text-align:center; min-height:46px; padding:10px 8px; border-radius:14px; background:#fff; border:1.5px solid #c4b8ec; color:#4a3f80; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; word-break:keep-all")}>오늘의 마음카드</div>
+          {/* 2026-09-21 사용자 지시: 둘 — 「오늘, 어떤 하루였나요?」= 대화(상대 고르기 = 마음 건강 시트) · 「오늘의 마음카드」= 그림 고르기로 바로.
+              2026-09-22 사용자 "구분이 겹쳐 보인다"(실측 겹침은 없었다 — 8px 간격에 같은 색·굵기라 한 덩어리로 읽혔다)
+              → 나란한 칩을 버리고 **세로 두 줄**(디렉팅 탭 줄과 같은 모양: 아이콘 · 이름+한 줄 설명 · ›).
+              🚫 다시 가로 두 칸으로 되돌리지 말 것(가드). */}
+          <div style={sx("display:flex; flex-direction:column; gap:10px")}>
+            {[
+              { id: "talk", emoji: "💬", label: "오늘, 어떤 하루였나요?", hint: "말이나 글로 편하게 · 답은 글로 와요", go: () => patch({ sheet: "mind" }) },
+              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 다섯 장으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM }) },
+            ].map((x) => (
+              <div key={x.id} data-mind-row={x.id} onClick={x.go} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:18px; border:1.5px solid #c4b8ec; background:#fff; box-shadow:0 4px 12px rgba(110,95,190,0.10)")}>
+                <div style={sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:#f2edfa")}>{x.emoji}</div>
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                  <div style={sx("font-size:15px; font-weight:800; letter-spacing:-0.01em; color:#4a3f80; word-break:keep-all; text-wrap:pretty")}>{x.label}</div>
+                  <div style={sx("font-size:12px; font-weight:500; line-height:1.4; text-wrap:pretty; color:#6b8c9a")}>{x.hint}</div>
+                </div>
+                <div style={sx("flex:none; font-size:15px; color:#8a7cd0")}>›</div>
+              </div>
+            ))}
           </div>
           </div>
         </div>
