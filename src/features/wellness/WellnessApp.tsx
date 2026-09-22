@@ -738,12 +738,12 @@ export default function WellnessApp() {
             "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
         {renderWeekFlow(
           // 2026-09-19 「월간 기록 보기」 반 + 「케어&힐링 가기」 반 → 2026-09-21 사용자 지시로 케어 가기 삭제 · 「월간 기록 보기」 하나가 한 줄
-          // → 2026-09-22 사용자 지시: 그 밑에 「데일리케어 바로가기」·「디렉팅 바로가기」 두 단추(탭 이동 · 보조 단추 색).
+          // → 2026-09-22 사용자 지시: 그 밑에 「데일리케어 바로가기」·「디렉팅 바로가기」 두 단추(탭 이동) · 색 = 파스텔 두 축(케어 민트 / 디렉팅 라벤더 · 사용자 "너무 튀지 않은 파스텔로").
           <div style={sx("display:flex; flex-direction:column; gap:8px; margin-top:4px")}>
             <div onClick={() => patch({ sheet: "month" })} style={sx("cursor:pointer; text-align:center; padding:13px 8px; border-radius:13px; font-size:14px; font-weight:800; letter-spacing:-0.01em; background:#7a6bc4; color:#fff; box-shadow:0 4px 12px rgba(122,107,196,0.32)")}>월간 기록 보기 ›</div>
             <div style={sx("display:flex; gap:8px")}>
-              <div onClick={() => patch({ tab: "care" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:12px 8px; border-radius:13px; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; background:#efeafb; color:#5f5397; border:1.5px solid #d9d1f2")}>데일리케어 바로가기 ›</div>
-              <div onClick={() => patch({ tab: "healing" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:12px 8px; border-radius:13px; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; background:#efeafb; color:#5f5397; border:1.5px solid #d9d1f2")}>디렉팅 바로가기 ›</div>
+              <div onClick={() => patch({ tab: "care" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:12px 8px; border-radius:13px; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; background:#d9f0ea; color:#2b7a6f; border:1.5px solid #bfe3d9; box-shadow:0 3px 10px rgba(58,163,154,0.14)")}>데일리케어 바로가기 ›</div>
+              <div onClick={() => patch({ tab: "healing" })} style={sx("flex:1; cursor:pointer; text-align:center; padding:12px 8px; border-radius:13px; font-size:13.5px; font-weight:800; letter-spacing:-0.01em; background:#e6e0f8; color:#5f5397; border:1.5px solid #cfc4ef; box-shadow:0 3px 10px rgba(122,107,196,0.14)")}>디렉팅 바로가기 ›</div>
             </div>
           </div>,
         )}
