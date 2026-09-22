@@ -252,3 +252,18 @@ describe("마음 건강 시트 — 두 섹션은 줄어들지 않는다(flex:1 0
     expect(src).not.toMatch(/flex:1; min-height:230px/);
   });
 });
+
+// 2026-09-22 사용자 "말하고 나면 차단·허용이 계속 나온다" — 마디마다 인식을 새로 시작하면 브라우저가 매번 새 요청으로 본다.
+describe("음성 입력 — 마이크는 한 번 열면 끝까지(허용 창이 매번 뜨지 않게)", () => {
+  it("continuous 는 true 고, false 로 두지 않는다", () => {
+    expect(src).toMatch(/rec\.continuous = true;/);
+    expect(src).not.toMatch(/rec\.continuous = false/);
+  });
+  it("이미 인식기가 있으면 새로 만들지 않고 그것을 다시 start 한다", () => {
+    expect(src).toMatch(/if \(recRef\.current\) \{[\s\S]{0,200}recRef\.current\.start\(\)/);
+  });
+  it("답을 쓰는 동안에도 인식기를 끊지 않는다 — 보내지만 않는다(waitingRef)", () => {
+    expect(src).toMatch(/if \(waitingRef\.current\) return;/);
+    expect(src).toMatch(/waitingRef\.current = true; patch\(\{ mic: "waiting" \}\)/);
+  });
+});

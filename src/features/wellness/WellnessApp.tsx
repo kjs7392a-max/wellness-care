@@ -193,6 +193,8 @@ export default function WellnessApp() {
   const voiceAtRef = useRef(0);
   const keepRef = useRef(false);
   const sendRef = useRef<(text?: string) => void>(() => {});
+  /** 답을 기다리는 중인가 — 인식 콜백이 읽는다(그동안엔 듣기만 하고 보내지 않는다). */
+  const waitingRef = useRef(false);
 
   // 마운트: 실제 시각으로 교체 + 10초 시계 + 날씨.
   useEffect(() => {
@@ -294,24 +296,42 @@ export default function WellnessApp() {
    * ---- 음성 입력(말로 묻고 답은 글로) ----
    * 2026-09-22 사용자 확정: 마이크를 한 번 켜면 「이어 말하기」 — 답이 온 뒤 스스로 다시 듣는다.
    * 판정(지원 여부·보낼지·다시 들을지·몇 초 뒤 끌지)은 전부 speech.ts 에 있다(이 레포엔 jsdom 이 없다).
+   *
+   * ★ 2026-09-22 사용자 "말하고 나면 차단·허용이 계속 나온다" —
+   *   그전엔 continuous:false 로 **한 마디마다 인식을 새로 시작**했고, 브라우저는 그것을 매번 새 마이크 요청으로 본다.
+   *   → **한 번 켜면 끝까지 열어 둔다**(continuous:true · 인식기 하나를 재사용 · 답을 쓰는 동안에도 끊지 않는다).
+   *   🚫 continuous 를 false 로 되돌리거나 턴마다 새 인식기를 만들지 말 것(가드) — 허용 창이 다시 매번 뜬다.
+   *   ⚠ 앱 안 브라우저(카톡 등)는 허용을 기억하지 않아 **페이지를 열 때마다 한 번**은 남는다 — 코드로 못 없앤다.
    * 🚫 답을 소리로 읽어 주지 말 것 — 마이크가 그 소리를 받아 되묻는다.
    */
   function stopMic(note = "") {
     keepRef.current = false;
+    waitingRef.current = false;
     try { recRef.current?.stop(); } catch { /* 이미 멈춘 인식기 — 무시 */ }
     recRef.current = null;
     patch({ mic: "off", micKeep: false, micNote: note });
   }
 
-  /** 인식기 하나를 만들어 듣기 시작. 이미 듣는 중이면 아무것도 안 한다. */
+  /**
+   * 마이크를 연다. 인식기는 **한 번만 만들고 끝까지 재사용**한다 — 턴마다 새로 만들면 브라우저가
+   * 매번 새 마이크 요청으로 보고 허용 창을 다시 띄운다(2026-09-22 사용자 보고).
+   */
   function startMic() {
+    if (recRef.current) {
+      // 이미 만들어 둔 인식기 — 브라우저가 조용해서 스스로 끝낸 경우에만 다시 start. 새로 만들지 않는다.
+      try { recRef.current.start(); } catch { /* 이미 듣는 중이면 예외 — 그대로 두면 된다 */ }
+      keepRef.current = true;
+      waitingRef.current = false;
+      voiceAtRef.current = Date.now();
+      patch({ mic: "listening", micKeep: true, micNote: "", micTold: true });
+      return;
+    }
     const Ctor = recognitionCtor(typeof window === "undefined" ? undefined : (window as unknown as Parameters<typeof recognitionCtor>[0]));
     if (!Ctor) { patch({ micOk: false }); return; }
-    try { recRef.current?.stop(); } catch { /* 위와 같다 */ }
     const rec = new Ctor() as SpeechLike;
     rec.lang = "ko-KR";
     rec.interimResults = true;   // 말하는 동안 입력칸에 차오르게
-    rec.continuous = false;      // 한 마디가 끝나면 onend — 이어 말하기는 우리가 다시 연다
+    rec.continuous = true;       // ★ 한 번 열면 끝까지 — 마디마다 끊으면 허용 창이 매번 뜬다
     recRef.current = rec;
     voiceAtRef.current = Date.now();
 
@@ -322,31 +342,29 @@ export default function WellnessApp() {
         const r = e.results[i];
         if (r.isFinal) fin += r[0].transcript; else interim += r[0].transcript;
       }
+      // 답을 쓰는 동안에는 듣기만 하고 보내지 않는다(마이크는 열어 둔 채). 끊으면 다음 말에 허용 창이 또 뜬다.
+      if (waitingRef.current) return;
       if (interim) patch({ input: cleanTranscript(interim) });
       if (fin) {
         const t = cleanTranscript(fin);
         patch({ input: "" });
-        if (shouldSend(t)) { patch({ mic: "waiting" }); sendRef.current(t); }
+        if (shouldSend(t)) { waitingRef.current = true; patch({ mic: "waiting" }); sendRef.current(t); }
       }
     };
 
     rec.onerror = (e: { error?: string }) => {
       // 권한 거부는 사람이 풀어야 한다 — 조용히 꺼지면 왜 안 되는지 알 수 없다.
       if (e?.error === "not-allowed" || e?.error === "service-not-allowed") { stopMic("마이크를 허용해 주세요. 주소창 옆 자물쇠에서 바꿀 수 있어요."); return; }
-      if (e?.error === "no-speech") return; // 말이 없었을 뿐 — onend 가 이어서 판단한다
+      if (e?.error === "no-speech" || e?.error === "aborted") return; // 말이 없었을 뿐 — onend 가 이어서 판단한다
       stopMic("");
     };
 
     rec.onend = () => {
-      // 한 마디가 끝났다. 답을 기다리는 중이면 그대로 두고(답이 온 뒤 다시 연다),
-      // 아직 듣는 중이었다면 = 아무 말이 없었던 것 → 너무 오래 조용하면 스스로 끈다.
-      patchFn((st) => {
-        if (st.mic !== "listening") return null;
-        if (!keepRef.current) return { mic: "off" };
-        if (Date.now() - voiceAtRef.current > SILENT_STOP_MS) { keepRef.current = false; return { mic: "off", micKeep: false, micNote: "" }; }
-        setTimeout(() => { if (keepRef.current) startMic(); }, 120);
-        return null;
-      });
+      // continuous 여도 브라우저가 오래 조용하면 스스로 끝낸다. 켜 둔 상태면 **같은 인식기**를 다시 start
+      // (새로 만들지 않는다 = 허용 창이 다시 안 뜬다). 너무 오래 조용했으면 그만 듣는다.
+      if (!keepRef.current) { patch({ mic: "off" }); return; }
+      if (Date.now() - voiceAtRef.current > SILENT_STOP_MS) { keepRef.current = false; patch({ mic: "off", micKeep: false, micNote: "" }); return; }
+      setTimeout(() => { if (keepRef.current && recRef.current) { try { recRef.current.start(); } catch { /* 이미 돌고 있다 */ } } }, 150);
     };
 
     try { rec.start(); keepRef.current = true; patch({ mic: "listening", micKeep: true, micNote: "", micTold: true }); }
@@ -412,7 +430,13 @@ export default function WellnessApp() {
   useEffect(() => {
     if (s.mic !== "waiting" || s.typing) return;
     if (!shouldResume({ keepOn: s.micKeep, riskShown: s.riskShown })) { stopMic(""); return; }
-    const t = setTimeout(() => { if (keepRef.current) startMic(); }, 350);
+    // 마이크는 내내 열려 있었다 — 다시 「듣는 중」으로 돌리기만 한다(start 를 또 부르면 허용 창이 뜰 수 있다).
+    const t = setTimeout(() => {
+      if (!keepRef.current) return;
+      waitingRef.current = false;
+      voiceAtRef.current = Date.now();
+      patch({ mic: "listening" });
+    }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.typing, s.mic, s.micKeep, s.riskShown]);
