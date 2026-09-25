@@ -25,7 +25,7 @@ import { outfitCards } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
-import { SEND_PAUSE_MS, SILENT_STOP_MS, cleanTranscript, heardSince, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
+import { SEND_PAUSE_MS, SILENT_STOP_MS, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
@@ -353,7 +353,7 @@ export default function WellnessApp() {
       voiceAtRef.current = Date.now();
       // ★ 조각이 끝날(isFinal) 때마다 보내지 않는다 — continuous 에서는 단어마다 끝나 한 단어씩 끊겨 갔다(2026-09-25).
       //   아직 안 보낸 조각을 전부 이어 입력칸에 보여 주고, 말이 SEND_PAUSE_MS 멈추면 한 번에 보낸다.
-      const t = cleanTranscript(`${carryRef.current} ${heardSince(e.results, sentUpToRef.current)}`);
+      const t = mergeHeard([carryRef.current, heardSince(e.results, sentUpToRef.current)]);
       heardRef.current = t;
       upToRef.current = e.results.length;
       patch({ input: t });

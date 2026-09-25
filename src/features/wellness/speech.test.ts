@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEND_PAUSE_MS, SILENT_STOP_MS, cleanTranscript, heardSince, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
+import { SEND_PAUSE_MS, SILENT_STOP_MS, cleanTranscript, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
 
 const ctor = function () {} as unknown as new () => unknown;
 
@@ -80,5 +80,21 @@ describe("heardSince / SEND_PAUSE_MS — 한 조각마다 보내지 않고 말�
   it("멈춤 기준은 1.5초 — 짧으면 또 끊기고 길면 답이 늦다", () => {
     expect(SEND_PAUSE_MS).toBe(1500);
     expect(SEND_PAUSE_MS).toBeLessThan(SILENT_STOP_MS);
+  });
+});
+
+describe("mergeHeard — 안드로이드 크롬은 앞 말까지 누적해 다시 준다(2026-09-25 「오늘오늘오늘 오늘 하루…」)", () => {
+  it("사용자 폰에서 실제로 온 모양 → 한 문장", () => {
+    expect(mergeHeard(["오늘", "오늘", "오늘", "오늘", "오늘 하루", "오늘 하루 힘들었어", "오늘하루 힘들었어"])).toBe("오늘하루 힘들었어");
+  });
+  it("누적이 아니라 새 조각이면 이어 붙인다(데스크톱 크롬 모양)", () => {
+    expect(mergeHeard(["오늘", "하루는", "힘들었어"])).toBe("오늘 하루는 힘들었어");
+  });
+  it("뒤 조각이 앞 문장 안에 이미 있으면 버린다 · 빈 조각은 무시", () => {
+    expect(mergeHeard(["오늘 하루 힘들었어", "힘들었어", ""])).toBe("오늘 하루 힘들었어");
+  });
+  it("heardSince 도 같은 규칙으로 잇는다", () => {
+    const res = ["오늘", "오늘 하루", "오늘 하루 힘들었어"].map((t) => Object.assign([{ transcript: t }], { isFinal: true }));
+    expect(heardSince(res, 0)).toBe("오늘 하루 힘들었어");
   });
 });

@@ -88,5 +88,29 @@ type HeardResult = ArrayLike<{ transcript: string }> & { isFinal: boolean };
 export function heardSince(results: ArrayLike<HeardResult>, from: number): string {
   const parts: string[] = [];
   for (let i = Math.max(0, from); i < results.length; i++) parts.push(results[i][0]?.transcript ?? "");
-  return cleanTranscript(parts.join(" "));
+  return mergeHeard(parts);
+}
+
+/** 공백을 뺀 모양 — 「오늘 하루」와 「오늘하루」를 같은 말로 본다. */
+const bare = (t: string) => t.replace(/\s+/g, "");
+
+/**
+ * 조각들을 한 문장으로 잇는다.
+ * ★ 2026-09-25 사용자 폰(안드로이드 크롬): 「오늘 하루 힘들었어」 한 번 말했는데
+ *   「오늘오늘오늘오늘 오늘 하루 오늘 하루 힘들었어 오늘하루 힘들었어」로 나왔다 — 조각마다 **앞 말까지 누적해** 다시 준다.
+ *   → 새 조각이 지금까지 이은 말로 시작하면 **바꿔 끼우고**, 이미 그 안에 있으면 **버리고**, 아니면 이어 붙인다.
+ *   데스크톱 크롬처럼 새 조각만 주는 브라우저는 그대로 이어 붙는다.
+ * ⚠ 대가: 같은 말을 일부러 되풀이한 것(「좋아 좋아」)은 하나로 접힐 수 있다 — 누적 반복보다 작은 손해라 받아들인다.
+ */
+export function mergeHeard(parts: readonly string[]): string {
+  let out = "";
+  for (const raw of parts) {
+    const p = cleanTranscript(raw);
+    if (!p) continue;
+    const bo = bare(out), bp = bare(p);
+    if (!bo || bp.startsWith(bo)) out = p;            // 누적 조각 — 앞 말을 포함한 더 긴 문장으로 바꿔 끼운다
+    else if (bo.includes(bp)) continue;               // 이미 들은 말 — 버린다
+    else out = `${out} ${p}`;                         // 새 조각 — 이어 붙인다
+  }
+  return cleanTranscript(out);
 }

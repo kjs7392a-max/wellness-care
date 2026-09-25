@@ -220,7 +220,7 @@ describe("음성 입력 — 마이크는 지원할 때만 · 판정은 speech.ts
     expect(src).toMatch(/onClick=\{toggleMic\}/);
   });
   it("판정은 speech.ts 를 쓴다 — 화면이 다시 적지 않는다", () => {
-    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "heardSince(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
+    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "heardSince(", "mergeHeard(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
       expect(src, fn).toContain(fn);
     }
   });
