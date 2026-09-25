@@ -25,7 +25,7 @@ import { outfitCards } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
-import { SILENT_STOP_MS, cleanTranscript, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
+import { SEND_PAUSE_MS, SILENT_STOP_MS, cleanTranscript, heardSince, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
@@ -195,6 +195,16 @@ export default function WellnessApp() {
   const sendRef = useRef<(text?: string) => void>(() => {});
   /** 답을 기다리는 중인가 — 인식 콜백이 읽는다(그동안엔 듣기만 하고 보내지 않는다). */
   const waitingRef = useRef(false);
+  /**
+   * 말이 멈추면 한 번에 보내기(2026-09-25 한 단어씩 끊김) — 이번 인식 세션에서 이미 보낸 결과 수 ·
+   * 아직 안 보낸 들은 말 · 멈춤 타이머. 인식기를 다시 start 하면 결과 목록이 0부터 새로 시작한다.
+   */
+  const sentUpToRef = useRef(0);
+  const upToRef = useRef(0);
+  const heardRef = useRef("");
+  /** 앞 인식 세션에서 듣고 아직 못 보낸 말 — 브라우저가 세션을 끊고 다시 시작해도 이어 붙인다. */
+  const carryRef = useRef("");
+  const pauseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 마운트: 실제 시각으로 교체 + 10초 시계 + 날씨.
   useEffect(() => {
@@ -307,6 +317,10 @@ export default function WellnessApp() {
   function stopMic(note = "") {
     keepRef.current = false;
     waitingRef.current = false;
+    // 멈춤 대기 중이던 말은 보내지 않는다 — 입력칸에 남아 있어 직접 보낼 수 있다.
+    if (pauseRef.current) { clearTimeout(pauseRef.current); pauseRef.current = null; }
+    heardRef.current = "";
+    carryRef.current = "";
     try { recRef.current?.stop(); } catch { /* 이미 멈춘 인식기 — 무시 */ }
     recRef.current = null;
     patch({ mic: "off", micKeep: false, micNote: note });
@@ -319,7 +333,7 @@ export default function WellnessApp() {
   function startMic() {
     if (recRef.current) {
       // 이미 만들어 둔 인식기 — 브라우저가 조용해서 스스로 끝낸 경우에만 다시 start. 새로 만들지 않는다.
-      try { recRef.current.start(); } catch { /* 이미 듣는 중이면 예외 — 그대로 두면 된다 */ }
+      try { recRef.current.start(); newSession(); } catch { /* 이미 듣는 중이면 예외 — 그대로 두면 된다 */ }
       keepRef.current = true;
       waitingRef.current = false;
       voiceAtRef.current = Date.now();
@@ -337,19 +351,16 @@ export default function WellnessApp() {
 
     rec.onresult = (e: SpeechResultEvent) => {
       voiceAtRef.current = Date.now();
-      let interim = "", fin = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) fin += r[0].transcript; else interim += r[0].transcript;
-      }
-      // 답을 쓰는 동안에는 듣기만 하고 보내지 않는다(마이크는 열어 둔 채). 끊으면 다음 말에 허용 창이 또 뜬다.
-      if (waitingRef.current) return;
-      if (interim) patch({ input: cleanTranscript(interim) });
-      if (fin) {
-        const t = cleanTranscript(fin);
-        patch({ input: "" });
-        if (shouldSend(t)) { waitingRef.current = true; patch({ mic: "waiting" }); sendRef.current(t); }
-      }
+      // ★ 조각이 끝날(isFinal) 때마다 보내지 않는다 — continuous 에서는 단어마다 끝나 한 단어씩 끊겨 갔다(2026-09-25).
+      //   아직 안 보낸 조각을 전부 이어 입력칸에 보여 주고, 말이 SEND_PAUSE_MS 멈추면 한 번에 보낸다.
+      const t = cleanTranscript(`${carryRef.current} ${heardSince(e.results, sentUpToRef.current)}`);
+      heardRef.current = t;
+      upToRef.current = e.results.length;
+      patch({ input: t });
+      // 답을 쓰는 동안에는 보내지 않는다(마이크는 열어 둔 채 — 끊으면 다음 말에 허용 창이 또 뜬다).
+      // ★ 그동안 한 말은 버리지 않고 입력칸에 모아 두었다가 답이 온 뒤 보낸다(2026-09-25 말 중간이 사라지던 것).
+      if (waitingRef.current) { if (pauseRef.current) { clearTimeout(pauseRef.current); pauseRef.current = null; } return; }
+      armSend();
     };
 
     rec.onerror = (e: { error?: string }) => {
@@ -364,11 +375,34 @@ export default function WellnessApp() {
       // (새로 만들지 않는다 = 허용 창이 다시 안 뜬다). 너무 오래 조용했으면 그만 듣는다.
       if (!keepRef.current) { patch({ mic: "off" }); return; }
       if (Date.now() - voiceAtRef.current > SILENT_STOP_MS) { keepRef.current = false; patch({ mic: "off", micKeep: false, micNote: "" }); return; }
-      setTimeout(() => { if (keepRef.current && recRef.current) { try { recRef.current.start(); } catch { /* 이미 돌고 있다 */ } } }, 150);
+      setTimeout(() => { if (keepRef.current && recRef.current) { try { recRef.current.start(); newSession(); } catch { /* 이미 돌고 있다 */ } } }, 150);
     };
 
-    try { rec.start(); keepRef.current = true; patch({ mic: "listening", micKeep: true, micNote: "", micTold: true }); }
+    try { rec.start(); newSession(); keepRef.current = true; patch({ mic: "listening", micKeep: true, micNote: "", micTold: true }); }
     catch { stopMic(""); }
+  }
+
+  /** 인식기를 다시 start 한 직후 — 새 세션은 결과가 0부터라, 못 보낸 말은 carry 로 넘기고 위치를 되돌린다. */
+  function newSession() {
+    carryRef.current = heardRef.current;
+    sentUpToRef.current = 0;
+    upToRef.current = 0;
+  }
+
+  /** 말이 SEND_PAUSE_MS 멈추면 그때까지 들은 것을 한 번에 보낸다. 답을 쓰는 중이면 모아 둔 채 기다린다. */
+  function armSend() {
+    if (pauseRef.current) clearTimeout(pauseRef.current);
+    pauseRef.current = setTimeout(() => {
+      pauseRef.current = null;
+      if (!keepRef.current || waitingRef.current) return;
+      const said = heardRef.current;
+      if (!shouldSend(said)) return;
+      heardRef.current = "";
+      carryRef.current = "";
+      sentUpToRef.current = upToRef.current;
+      patch({ input: "" });
+      waitingRef.current = true; patch({ mic: "waiting" }); sendRef.current(said);
+    }, SEND_PAUSE_MS);
   }
 
   function toggleMic() {
@@ -436,6 +470,8 @@ export default function WellnessApp() {
       waitingRef.current = false;
       voiceAtRef.current = Date.now();
       patch({ mic: "listening" });
+      // 답을 쓰는 동안 이어서 한 말이 있으면 이제 보낸다(멈춤을 한 번 더 기다린다).
+      if (shouldSend(heardRef.current)) armSend();
     }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

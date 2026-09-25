@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SILENT_STOP_MS, cleanTranscript, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
+import { SEND_PAUSE_MS, SILENT_STOP_MS, cleanTranscript, heardSince, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
 
 const ctor = function () {} as unknown as new () => unknown;
 
@@ -62,5 +62,23 @@ describe("SILENT_STOP_MS — 계속 듣고 있지 않게", () => {
   it("아무 말이 없으면 스스로 꺼지는 시간이 정해져 있다(5~30초)", () => {
     expect(SILENT_STOP_MS).toBeGreaterThanOrEqual(5_000);
     expect(SILENT_STOP_MS).toBeLessThanOrEqual(30_000);
+  });
+});
+
+describe("heardSince / SEND_PAUSE_MS — 한 조각마다 보내지 않고 말이 멈춘 뒤 한 번에 (2026-09-25 한 단어씩 끊김)", () => {
+  const res = (...xs: [string, boolean][]) => xs.map(([t, f]) => Object.assign([{ transcript: t }], { isFinal: f }));
+  it("끝난 조각과 아직 말하는 조각을 이어 한 문장으로 만든다", () => {
+    expect(heardSince(res(["오늘", true], [" 하루는", true], [" 좀 힘들었", false]), 0)).toBe("오늘 하루는 좀 힘들었");
+  });
+  it("이미 보낸 조각(from 앞)은 다시 안 넣는다", () => {
+    expect(heardSince(res(["아까 보낸 말", true], ["새 말", true]), 1)).toBe("새 말");
+    expect(heardSince(res(["아까 보낸 말", true]), 1)).toBe("");
+  });
+  it("조각 사이 공백이 없어도 한 칸 띄워 잇는다(조각을 붙여 단어가 뭉개지지 않게)", () => {
+    expect(heardSince(res(["오늘", true], ["하루", true]), 0)).toBe("오늘 하루");
+  });
+  it("멈춤 기준은 1.5초 — 짧으면 또 끊기고 길면 답이 늦다", () => {
+    expect(SEND_PAUSE_MS).toBe(1500);
+    expect(SEND_PAUSE_MS).toBeLessThan(SILENT_STOP_MS);
   });
 });

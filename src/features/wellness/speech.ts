@@ -69,3 +69,24 @@ export function cleanTranscript(transcript: string): string {
 export function shouldResume(opts: { keepOn: boolean; riskShown: boolean }): boolean {
   return opts.keepOn && !opts.riskShown;
 }
+
+/**
+ * 말이 이만큼 멈추면 그때까지 들은 것을 **한 번에** 보낸다.
+ * ★ 2026-09-25 사용자 "말하면 이어지지 않고 한 단어씩 끊겨" — continuous:true 에서는 인식기가 단어 한두 개마다
+ *   조각을 끝냈다고(isFinal) 알린다. 그 순간 보내면 첫 단어만 가고, 답을 기다리는 동안 이어 한 말은 버려졌다.
+ *   🚫 isFinal 순간에 바로 보내는 것으로 되돌리지 말 것(가드).
+ */
+export const SEND_PAUSE_MS = 1500;
+
+/** 인식 결과 한 줄의 최소 모양(브라우저 SpeechRecognitionResult 에서 쓰는 것만). */
+type HeardResult = ArrayLike<{ transcript: string }> & { isFinal: boolean };
+
+/**
+ * 이번 세션 결과 중 from 번째부터(= 아직 안 보낸 것) 끝난 조각·말하는 중인 조각을 이어 한 문장으로.
+ * 조각 사이는 한 칸 띄운다(붙이면 「오늘하루」처럼 뭉개진다) — 겹친 공백은 cleanTranscript 가 줄인다.
+ */
+export function heardSince(results: ArrayLike<HeardResult>, from: number): string {
+  const parts: string[] = [];
+  for (let i = Math.max(0, from); i < results.length; i++) parts.push(results[i][0]?.transcript ?? "");
+  return cleanTranscript(parts.join(" "));
+}
