@@ -25,7 +25,7 @@ import { outfitCards } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
-import { SEND_PAUSE_MS, SILENT_STOP_MS, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
+import { SILENT_STOP_MS, heardSince, mergeHeard, sendDelay, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
@@ -204,6 +204,9 @@ export default function WellnessApp() {
   const heardRef = useRef("");
   /** 앞 인식 세션에서 듣고 아직 못 보낸 말 — 브라우저가 세션을 끊고 다시 시작해도 이어 붙인다. */
   const carryRef = useRef("");
+  /** 입력칸에 보이는 글자(뒷걸음 안 함 · 화면 전용) · 마지막 조각이 확정이었나(빨리 보낼지). */
+  const shownRef = useRef("");
+  const lastFinalRef = useRef(false);
   const pauseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 마운트: 실제 시각으로 교체 + 10초 시계 + 날씨.
@@ -321,6 +324,7 @@ export default function WellnessApp() {
     if (pauseRef.current) { clearTimeout(pauseRef.current); pauseRef.current = null; }
     heardRef.current = "";
     carryRef.current = "";
+    shownRef.current = "";
     try { recRef.current?.stop(); } catch { /* 이미 멈춘 인식기 — 무시 */ }
     recRef.current = null;
     patch({ mic: "off", micKeep: false, micNote: note });
@@ -352,11 +356,14 @@ export default function WellnessApp() {
     rec.onresult = (e: SpeechResultEvent) => {
       voiceAtRef.current = Date.now();
       // ★ 조각이 끝날(isFinal) 때마다 보내지 않는다 — continuous 에서는 단어마다 끝나 한 단어씩 끊겨 갔다(2026-09-25).
-      //   아직 안 보낸 조각을 전부 이어 입력칸에 보여 주고, 말이 SEND_PAUSE_MS 멈추면 한 번에 보낸다.
+      //   아직 안 보낸 조각을 전부 이어 입력칸에 보여 주고, 말이 멈추면(확정이면 0.6초 · 아니면 1.5초 — sendDelay) 한 번에 보낸다.
       const t = mergeHeard([carryRef.current, heardSince(e.results, sentUpToRef.current)]);
       heardRef.current = t;
       upToRef.current = e.results.length;
-      patch({ input: t });
+      lastFinalRef.current = e.results.length > 0 && !!e.results[e.results.length - 1].isFinal;
+      // 화면은 뒷걸음치지 않게(steadyText) — 보내는 말은 위의 t 그대로다.
+      shownRef.current = steadyText(shownRef.current, t);
+      patch({ input: shownRef.current });
       // 답을 쓰는 동안에는 보내지 않는다(마이크는 열어 둔 채 — 끊으면 다음 말에 허용 창이 또 뜬다).
       // ★ 그동안 한 말은 버리지 않고 입력칸에 모아 두었다가 답이 온 뒤 보낸다(2026-09-25 말 중간이 사라지던 것).
       if (waitingRef.current) { if (pauseRef.current) { clearTimeout(pauseRef.current); pauseRef.current = null; } return; }
@@ -389,7 +396,7 @@ export default function WellnessApp() {
     upToRef.current = 0;
   }
 
-  /** 말이 SEND_PAUSE_MS 멈추면 그때까지 들은 것을 한 번에 보낸다. 답을 쓰는 중이면 모아 둔 채 기다린다. */
+  /** 말이 멈추면(sendDelay) 그때까지 들은 것을 한 번에 보낸다. 답을 쓰는 중이면 모아 둔 채 기다린다. */
   function armSend() {
     if (pauseRef.current) clearTimeout(pauseRef.current);
     pauseRef.current = setTimeout(() => {
@@ -399,10 +406,11 @@ export default function WellnessApp() {
       if (!shouldSend(said)) return;
       heardRef.current = "";
       carryRef.current = "";
+      shownRef.current = "";
       sentUpToRef.current = upToRef.current;
       patch({ input: "" });
       waitingRef.current = true; patch({ mic: "waiting" }); sendRef.current(said);
-    }, SEND_PAUSE_MS);
+    }, sendDelay(lastFinalRef.current));
   }
 
   function toggleMic() {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEND_PAUSE_MS, SILENT_STOP_MS, cleanTranscript, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
+import { QUICK_SEND_MS, SEND_PAUSE_MS, sendDelay, steadyText, SILENT_STOP_MS, cleanTranscript, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
 
 const ctor = function () {} as unknown as new () => unknown;
 
@@ -96,5 +96,29 @@ describe("mergeHeard — 안드로이드 크롬은 앞 말까지 누적해 다�
   it("heardSince 도 같은 규칙으로 잇는다", () => {
     const res = ["오늘", "오늘 하루", "오늘 하루 힘들었어"].map((t) => Object.assign([{ transcript: t }], { isFinal: true }));
     expect(heardSince(res, 0)).toBe("오늘 하루 힘들었어");
+  });
+});
+
+describe("sendDelay — 인식기가 문장을 확정했으면 빨리, 아직 말하는 중이면 기다린다(2026-09-25 「보내기까지 너무 느림」)", () => {
+  it("마지막 조각이 확정(isFinal)이면 짧게 · 아니면 SEND_PAUSE_MS", () => {
+    expect(sendDelay(true)).toBe(QUICK_SEND_MS);
+    expect(sendDelay(false)).toBe(SEND_PAUSE_MS);
+    expect(QUICK_SEND_MS).toBeLessThan(SEND_PAUSE_MS);
+    expect(QUICK_SEND_MS).toBe(600);
+  });
+});
+
+describe("steadyText — 입력칸 글자는 뒷걸음치지 않는다(2026-09-25 「말하는 중 글자가 튐」)", () => {
+  it("새 글자가 보이는 글자의 앞부분일 뿐이면(줄어듦) 그대로 둔다", () => {
+    expect(steadyText("오늘 하루 힘들", "오늘 하루")).toBe("오늘 하루 힘들");
+    expect(steadyText("오늘 하루", "오늘하")).toBe("오늘 하루");
+  });
+  it("늘어나거나 고쳐진 글자는 바로 보여 준다", () => {
+    expect(steadyText("오늘 하루", "오늘 하루 힘들었어")).toBe("오늘 하루 힘들었어");
+    expect(steadyText("오늘 하로", "오늘 하루")).toBe("오늘 하루");
+    expect(steadyText("", "오늘")).toBe("오늘");
+  });
+  it("새 글자가 비면(보냈거나 지웠을 때) 비운다", () => {
+    expect(steadyText("오늘 하루", "")).toBe("");
   });
 });

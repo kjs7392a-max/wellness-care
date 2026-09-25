@@ -78,6 +78,31 @@ export function shouldResume(opts: { keepOn: boolean; riskShown: boolean }): boo
  */
 export const SEND_PAUSE_MS = 1500;
 
+/**
+ * 인식기가 마지막 조각을 **확정(isFinal)** 했으면 이만큼만 기다리고 보낸다.
+ * ★ 2026-09-25 사용자 "보내기까지 너무 느림" — 안드로이드 인식기는 확정 전에 이미 스스로 멈춤을 기다린다.
+ *   거기에 1.5초를 또 기다려 2초 넘게 걸렸다. 아직 말하는 중(확정 전)이면 SEND_PAUSE_MS 그대로 — 생각하는 멈춤에 안 끊기게.
+ */
+export const QUICK_SEND_MS = 600;
+
+/** 마지막 조각이 확정이면 짧게, 아니면 SEND_PAUSE_MS. */
+export function sendDelay(lastIsFinal: boolean): number {
+  return lastIsFinal ? QUICK_SEND_MS : SEND_PAUSE_MS;
+}
+
+/**
+ * 입력칸에 보여 줄 글자 — **뒷걸음치지 않는다**.
+ * ★ 2026-09-25 사용자 "말하는 중 글자가 튐" — 안드로이드는 확정 전 글자를 줄였다 늘렸다 하며 준다.
+ *   새 글자가 지금 보이는 글자의 앞부분일 뿐이면(줄어듦) 화면을 그대로 두고, 늘어나거나 고쳐진 글자는 바로 보여 준다.
+ * ⚠ 화면에만 쓴다 — 보내는 말은 인식기가 준 그대로(heardRef)다. 여기 값을 보내면 인식기가 지운 말이 딸려 간다.
+ */
+export function steadyText(shown: string, next: string): string {
+  if (!next) return "";
+  const bs = bare(shown), bn = bare(next);
+  if (bn.length < bs.length && bs.startsWith(bn)) return shown;
+  return next;
+}
+
 /** 인식 결과 한 줄의 최소 모양(브라우저 SpeechRecognitionResult 에서 쓰는 것만). */
 type HeardResult = ArrayLike<{ transcript: string }> & { isFinal: boolean };
 

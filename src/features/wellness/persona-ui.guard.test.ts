@@ -220,7 +220,7 @@ describe("음성 입력 — 마이크는 지원할 때만 · 판정은 speech.ts
     expect(src).toMatch(/onClick=\{toggleMic\}/);
   });
   it("판정은 speech.ts 를 쓴다 — 화면이 다시 적지 않는다", () => {
-    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "heardSince(", "mergeHeard(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
+    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "heardSince(", "mergeHeard(", "sendDelay(", "steadyText(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
       expect(src, fn).toContain(fn);
     }
   });
@@ -271,13 +271,15 @@ describe("음성 입력 — 마이크는 한 번 열면 끝까지(허용 창이 
 // 2026-09-25 사용자 "말하면 이어지지 않고 한단어씩 끊겨" — continuous 에서는 단어마다 isFinal 이 와서 그때마다 보냈다.
 describe("음성 입력 — 조각마다 보내지 않고 말이 멈추면 한 번에(한 단어씩 끊김 방지)", () => {
   const onresult = src.slice(src.indexOf("rec.onresult ="), src.indexOf("rec.onerror ="));
-  it("onresult 안에서 isFinal 로 보내기를 가르지 않는다", () => {
-    expect(onresult).not.toMatch(/isFinal/);
+  it("onresult 안에서 바로 보내지 않는다 — isFinal 은 기다릴 시간(lastFinalRef)을 정하는 데만 쓴다", () => {
+    expect(onresult).not.toMatch(/sendRef\.current\(/);
+    expect((onresult.match(/isFinal/g) ?? []).length).toBe(1);
+    expect(onresult).toMatch(/lastFinalRef\.current = [^;]*isFinal/);
   });
-  it("아직 안 보낸 조각은 heardSince 로 잇고 SEND_PAUSE_MS 멈춘 뒤 보낸다", () => {
+  it("아직 안 보낸 조각은 heardSince 로 잇고 멈춘 뒤(sendDelay) 보낸다", () => {
     expect(onresult).toMatch(/heardSince\(e\.results, sentUpToRef\.current\)/);
     expect(onresult).toMatch(/armSend\(\)/);
-    expect(src).toMatch(/function armSend\(\) \{[\s\S]{0,800}sendRef\.current\(said\)[\s\S]{0,40}SEND_PAUSE_MS\)/);
+    expect(src).toMatch(/function armSend\(\) \{[\s\S]{0,800}sendRef\.current\(said\)[\s\S]{0,40}sendDelay\(lastFinalRef\.current\)\)/);
   });
   it("인식기를 다시 start 할 때마다 newSession — 결과가 0부터라 못 보낸 말은 carry 로 넘긴다", () => {
     expect((src.match(/start\(\); newSession\(\);/g) ?? []).length).toBe(3);
@@ -285,5 +287,14 @@ describe("음성 입력 — 조각마다 보내지 않고 말이 멈추면 한 �
   });
   it("답을 쓰는 동안 한 말은 버리지 않고, 답이 온 뒤 armSend 로 보낸다", () => {
     expect(src).toMatch(/patch\(\{ mic: "listening" \}\);\s*[^\n]*\n\s*if \(shouldSend\(heardRef\.current\)\) armSend\(\);/);
+  });
+});
+
+// 2026-09-25 사용자 "말하는 중 글자가 튐" — 화면은 steadyText, 보내는 말은 인식기 그대로.
+describe("음성 입력 — 입력칸은 뒷걸음치지 않되 보내는 말은 인식기 그대로", () => {
+  it("입력칸은 shownRef(steadyText) · 보내는 말은 heardRef", () => {
+    expect(src).toMatch(/shownRef\.current = steadyText\(shownRef\.current, t\);\s*patch\(\{ input: shownRef\.current \}\);/);
+    expect(src).toMatch(/const said = heardRef\.current;/);
+    expect(src).not.toMatch(/sendRef\.current\(shownRef/);
   });
 });
