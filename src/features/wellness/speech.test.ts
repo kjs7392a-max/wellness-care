@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QUICK_SEND_MS, SEND_PAUSE_MS, sendDelay, steadyText, SILENT_STOP_MS, cleanTranscript, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
+import { QUICK_SEND_MS, dropSentPrefix, sentMemoryAfter, SEND_PAUSE_MS, sendDelay, steadyText, SILENT_STOP_MS, cleanTranscript, heardSince, mergeHeard, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport } from "./speech";
 
 const ctor = function () {} as unknown as new () => unknown;
 
@@ -120,5 +120,32 @@ describe("steadyText — 입력칸 글자는 뒷걸음치지 않는다(2026-09-2
   });
   it("새 글자가 비면(보냈거나 지웠을 때) 비운다", () => {
     expect(steadyText("오늘 하루", "")).toBe("");
+  });
+});
+
+describe("dropSentPrefix — 이미 보낸 말을 안드로이드가 다시 붙여 줘도 두 번 보내지 않는다(2026-09-25 「졸립다」→「졸립다 자야겠다」)", () => {
+  it("사용자 폰 모양: 보낸 「졸립다」 뒤 「졸립다 자야겠다」 → 「자야겠다」만", () => {
+    expect(dropSentPrefix("졸립다 자야겠다", "졸립다")).toBe("자야겠다");
+  });
+  it("공백이 달라도 같은 말로 본다", () => {
+    expect(dropSentPrefix("오늘하루 힘들었어 이제 잘래", "오늘 하루 힘들었어")).toBe("이제 잘래");
+  });
+  it("보낸 말과 똑같이 다시 온 것뿐이면 빈 문자열(보낼 게 없다)", () => {
+    expect(dropSentPrefix("졸립다", "졸립다")).toBe("");
+  });
+  it("보낸 말로 시작하지 않으면 그대로 · 보낸 말이 없어도 그대로", () => {
+    expect(dropSentPrefix("자야겠다", "졸립다")).toBe("자야겠다");
+    expect(dropSentPrefix("졸립다", "")).toBe("졸립다");
+  });
+});
+
+describe("sentMemoryAfter — 방금 보낸 말은 상관없는 새 말이 들어올 때 잊는다(세션이 바뀌어도 기억)", () => {
+  it("보낸 말로 시작하거나(누적) 보낸 말의 앞부분(말하는 중)이면 기억을 유지", () => {
+    expect(sentMemoryAfter("졸립다 자야겠다", "졸립다")).toBe("졸립다");
+    expect(sentMemoryAfter("졸립", "졸립다")).toBe("졸립다");
+  });
+  it("상관없는 새 말이면 잊는다 · 아직 들은 게 없으면 유지", () => {
+    expect(sentMemoryAfter("배고파", "졸립다")).toBe("");
+    expect(sentMemoryAfter("", "졸립다")).toBe("졸립다");
   });
 });

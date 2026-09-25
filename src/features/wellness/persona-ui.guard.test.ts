@@ -220,7 +220,7 @@ describe("음성 입력 — 마이크는 지원할 때만 · 판정은 speech.ts
     expect(src).toMatch(/onClick=\{toggleMic\}/);
   });
   it("판정은 speech.ts 를 쓴다 — 화면이 다시 적지 않는다", () => {
-    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "heardSince(", "mergeHeard(", "sendDelay(", "steadyText(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
+    for (const fn of ["speechSupport(", "recognitionCtor(", "shouldSend(", "heardSince(", "mergeHeard(", "dropSentPrefix(", "sendDelay(", "steadyText(", "shouldResume(", "micHint(", "SILENT_STOP_MS"]) {
       expect(src, fn).toContain(fn);
     }
   });
@@ -283,7 +283,7 @@ describe("음성 입력 — 조각마다 보내지 않고 말이 멈추면 한 �
   });
   it("인식기를 다시 start 할 때마다 newSession — 결과가 0부터라 못 보낸 말은 carry 로 넘긴다", () => {
     expect((src.match(/start\(\); newSession\(\);/g) ?? []).length).toBe(3);
-    expect(src).toMatch(/function newSession\(\) \{\s*carryRef\.current = heardRef\.current;\s*sentUpToRef\.current = 0;/);
+    expect(src).toMatch(/function newSession\(\) \{\s*carryRef\.current = rawRef\.current;\s*sentUpToRef\.current = 0;/);
   });
   it("답을 쓰는 동안 한 말은 버리지 않고, 답이 온 뒤 armSend 로 보낸다", () => {
     expect(src).toMatch(/patch\(\{ mic: "listening" \}\);\s*[^\n]*\n\s*if \(shouldSend\(heardRef\.current\)\) armSend\(\);/);
@@ -296,5 +296,14 @@ describe("음성 입력 — 입력칸은 뒷걸음치지 않되 보내는 말은
     expect(src).toMatch(/shownRef\.current = steadyText\(shownRef\.current, t\);\s*patch\(\{ input: shownRef\.current \}\);/);
     expect(src).toMatch(/const said = heardRef\.current;/);
     expect(src).not.toMatch(/sendRef\.current\(shownRef/);
+  });
+});
+
+// 2026-09-25 사용자 "졸립다 → 졸립다 자야겠다" — 방금 보낸 말을 안드로이드가 다시 붙여 준다.
+describe("음성 입력 — 방금 보낸 말은 떼어 내고 보낸다", () => {
+  it("들은 말은 dropSentPrefix(…, lastSentRef.current) 를 거치고, 보낼 때 lastSentRef 를 기억한다", () => {
+    expect(src).toMatch(/lastSentRef\.current = sentMemoryAfter\(merged, lastSentRef\.current\);\s*rawRef\.current = merged;\s*const t = dropSentPrefix\(merged, lastSentRef\.current\);/);
+    expect(src).not.toMatch(/upToRef\.current = 0;\s*lastSentRef\.current = "";/);
+    expect(src).toMatch(/lastSentRef\.current = rawRef\.current;/);
   });
 });

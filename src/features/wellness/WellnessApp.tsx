@@ -25,7 +25,7 @@ import { outfitCards } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
-import { SILENT_STOP_MS, heardSince, mergeHeard, sendDelay, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
+import { SILENT_STOP_MS, dropSentPrefix, heardSince, mergeHeard, sendDelay, sentMemoryAfter, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
@@ -207,6 +207,10 @@ export default function WellnessApp() {
   /** 입력칸에 보이는 글자(뒷걸음 안 함 · 화면 전용) · 마지막 조각이 확정이었나(빨리 보낼지). */
   const shownRef = useRef("");
   const lastFinalRef = useRef(false);
+  /** 방금 보낸 말(세션이 바뀌어도 유지 · 상관없는 새 말이 오면 잊음) — 안드로이드가 다음 조각에 다시 붙여 줘도 두 번 안 보낸다(dropSentPrefix). */
+  const lastSentRef = useRef("");
+  /** 떼어 내기 전 들은 말 전체 — 안드로이드는 다음 조각에 이것을 통째로 다시 붙여 주므로 carry·lastSent 는 이 값으로 잡는다. */
+  const rawRef = useRef("");
   const pauseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 마운트: 실제 시각으로 교체 + 10초 시계 + 날씨.
@@ -325,6 +329,8 @@ export default function WellnessApp() {
     heardRef.current = "";
     carryRef.current = "";
     shownRef.current = "";
+    lastSentRef.current = "";
+    rawRef.current = "";
     try { recRef.current?.stop(); } catch { /* 이미 멈춘 인식기 — 무시 */ }
     recRef.current = null;
     patch({ mic: "off", micKeep: false, micNote: note });
@@ -357,7 +363,11 @@ export default function WellnessApp() {
       voiceAtRef.current = Date.now();
       // ★ 조각이 끝날(isFinal) 때마다 보내지 않는다 — continuous 에서는 단어마다 끝나 한 단어씩 끊겨 갔다(2026-09-25).
       //   아직 안 보낸 조각을 전부 이어 입력칸에 보여 주고, 말이 멈추면(확정이면 0.6초 · 아니면 1.5초 — sendDelay) 한 번에 보낸다.
-      const t = mergeHeard([carryRef.current, heardSince(e.results, sentUpToRef.current)]);
+      // 방금 보낸 말을 안드로이드가 다시 붙여 주면 떼어 낸다(2026-09-25 「졸립다」→「졸립다 자야겠다」).
+      const merged = mergeHeard([carryRef.current, heardSince(e.results, sentUpToRef.current)]);
+      lastSentRef.current = sentMemoryAfter(merged, lastSentRef.current);
+      rawRef.current = merged;
+      const t = dropSentPrefix(merged, lastSentRef.current);
       heardRef.current = t;
       upToRef.current = e.results.length;
       lastFinalRef.current = e.results.length > 0 && !!e.results[e.results.length - 1].isFinal;
@@ -391,7 +401,7 @@ export default function WellnessApp() {
 
   /** 인식기를 다시 start 한 직후 — 새 세션은 결과가 0부터라, 못 보낸 말은 carry 로 넘기고 위치를 되돌린다. */
   function newSession() {
-    carryRef.current = heardRef.current;
+    carryRef.current = rawRef.current;
     sentUpToRef.current = 0;
     upToRef.current = 0;
   }
@@ -407,6 +417,8 @@ export default function WellnessApp() {
       heardRef.current = "";
       carryRef.current = "";
       shownRef.current = "";
+      lastSentRef.current = rawRef.current;
+      rawRef.current = "";
       sentUpToRef.current = upToRef.current;
       patch({ input: "" });
       waitingRef.current = true; patch({ mic: "waiting" }); sendRef.current(said);

@@ -139,3 +139,29 @@ export function mergeHeard(parts: readonly string[]): string {
   }
   return cleanTranscript(out);
 }
+
+/**
+ * 방금 보낸 말로 시작하면 그 앞부분을 떼어 낸다.
+ * ★ 2026-09-25 사용자 폰: 「졸립다 자야겠다」를 말하다 잠깐 멈추면 「졸립다」가 먼저 가고,
+ *   안드로이드가 다음 조각에 **이미 보낸 「졸립다」까지 붙여** 「졸립다 자야겠다」를 줘서 한 번 더 갔다.
+ *   → 「졸립다」 → (답) → 「자야겠다」. 비교는 공백을 뺀 모양으로 한다.
+ * ⚠ 대가: 보낸 말을 같은 인식 세션에서 일부러 다시 시작하면 그 앞부분이 빠진다 — 세션이 바뀌면(newSession) 잊는다.
+ */
+export function dropSentPrefix(heard: string, lastSent: string): string {
+  const bs = bare(lastSent);
+  if (!bs || !bare(heard).startsWith(bs)) return heard;
+  // 공백을 세지 않고 보낸 말의 글자 수만큼 지난 자리부터 남긴다.
+  let n = 0, i = 0;
+  for (; i < heard.length && n < bs.length; i++) if (!/\s/.test(heard[i])) n++;
+  return cleanTranscript(heard.slice(i));
+}
+
+/**
+ * 방금 보낸 말을 계속 기억할지. 새로 들은 말이 그 말로 시작하거나(안드로이드 누적) 그 말의 앞부분(아직 말하는 중)이면 유지,
+ * 상관없는 새 말이면 잊는다. ★ 인식 세션이 바뀌어도 잊지 않는다 — 안드로이드는 확정마다 세션을 새로 열면서도 앞 말을 붙여 준다.
+ */
+export function sentMemoryAfter(heard: string, lastSent: string): string {
+  const bh = bare(heard), bs = bare(lastSent);
+  if (!bh || !bs) return lastSent;
+  return bh.startsWith(bs) || bs.startsWith(bh) ? lastSent : "";
+}
