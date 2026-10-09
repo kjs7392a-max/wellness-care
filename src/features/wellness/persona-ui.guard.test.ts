@@ -51,6 +51,17 @@ describe("주간 흐름 박스 — 「월간 기록 보기 ›」 + 그 밑 「�
     expect(block).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>디렉팅 바로가기 ›/);
     expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
   });
+
+  it("2026-10-09 한 줄 배치 — 왼쪽 월간 작은 탭 → 세로 구분선 → 오른쪽 바로가기 둘", () => {
+    const i = src.indexOf("월간 기록 보기 ›");
+    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("디렉팅 바로가기 ›", i) + 20);
+    const iMonth = block.indexOf("월간 기록 보기 ›");
+    const iDiv = block.indexOf('data-role="week-flow-divider"');
+    const iCare = block.indexOf("데일리케어 바로가기 ›");
+    expect(iDiv).toBeGreaterThan(iMonth);
+    expect(iCare).toBeGreaterThan(iDiv);
+    expect(block).toMatch(/display:flex; align-items:center/);
+  });
 });
 
 describe("홈 웰컴 문장(30문장 카드) — 인사말과 균형(2026-09-21 사용자 지시 '조금 더 진하고 크게')", () => {
