@@ -9,12 +9,18 @@ import type { DelayAnswers, FollowUpAnswers, SafetyAnswers } from "./safety-scre
  *   · 계정(아이디)별로 갈라 저장한다 — 같은 폰을 다른 사람이 써도 앞사람 답이 넘어가지 않는다.
  *   · 로그아웃해도 지우지 않는다(지우면 다음 로그인에 처음부터 다시 묻는다 = 이 기능의 이유가 사라진다).
  *     지우는 곳은 설정 「전체 데이터 즉시 파기」.
- *   · 「계정 없이 둘러보기」는 저장하지 않는다(화면이 지킨다).
+ *   · 「계정 없이 둘러보기」도 저장한다(2026-10-11 사용자 지시 "계정없이 들어가도 「그동안 몸 상태에 변화가 있나요?」를 물어보게") —
+ *     그 폰의 둘러보기 한 칸(GUEST_ACCOUNT)에. 대화는 여전히 안 남긴다(chat-store).
  *   · 동의서 문구가 바뀌면 CONSENT_VERSION 을 올린다 → 옛 기록은 없는 것으로 보고 처음부터 다시 묻는다.
  * ⚠ 폰을 바꾸거나 브라우저 데이터를 지우면 사라진다 — DB(계정 저장)가 오면 이 기록을 그대로 올린다.
  */
 export const ONBOARD_STORE_KEY = "wellness-care:onboard:v1";
 export const CONSENT_VERSION = 1;
+/** 둘러보기 저장 칸 — 실제 아이디에는 「@」가 들어가므로 겹치지 않는다. */
+export const GUEST_ACCOUNT = "__guest__";
+
+/** 저장 칸 이름 — 둘러보기면 GUEST_ACCOUNT, 아니면 입력한 아이디. */
+export const onboardIdFor = (loginId: string, guest: boolean): string => (guest ? GUEST_ACCOUNT : loginId);
 
 export interface OnboardRecord {
   consentVersion: number;

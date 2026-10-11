@@ -36,7 +36,7 @@ import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SO
  *   ⚠컴포넌트 안에 두면 렌더보다 늦게 초기화돼 TDZ 오류(실측) — 모듈 최상위에 둔다. 채널에 새 영상이 오르면 여기 id 만 더한다.
  */
 import { riskLevel, RISK_REPLY } from "./risk";
-import { ONBOARD_STORE_KEY, parseOnboardStore, recordFor, savedDateLabel, serializeOnboardStore, setRecord, type OnboardRecord } from "./onboard-store";
+import { ONBOARD_STORE_KEY, onboardIdFor, parseOnboardStore, recordFor, savedDateLabel, serializeOnboardStore, setRecord, type OnboardRecord } from "./onboard-store";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
 const IMG = "/wellness/images";
@@ -239,7 +239,7 @@ export default function WellnessApp() {
   const storage = () => (typeof window === "undefined" ? null : window.localStorage);
   const readChatStore = () => { try { return parseChatStore(storage()?.getItem(CHAT_STORE_KEY) ?? null); } catch { return parseChatStore(null); } };
   const writeChatStore = (st: ReturnType<typeof parseChatStore>) => { try { storage()?.setItem(CHAT_STORE_KEY, serializeChatStore(st)); } catch { /* 저장 공간·사생활 모드 — 저장 못 해도 대화는 계속 */ } };
-  // 온보딩 기기 저장(2026-10-11) — 계정별 · 둘러보기는 안 남긴다 · 로그아웃해도 안 지운다(지우면 다시 처음부터 묻는다). 전체 파기만 지운다.
+  // 온보딩 기기 저장(2026-10-11) — 계정별 · 둘러보기는 그 폰의 둘러보기 칸 하나(onboardIdFor) · 로그아웃해도 안 지운다(지우면 다시 처음부터 묻는다). 전체 파기만 지운다.
   const readOnboardStore = () => { try { return parseOnboardStore(storage()?.getItem(ONBOARD_STORE_KEY) ?? null); } catch { return parseOnboardStore(null); } };
   /** 다시 로그인할 때 쓸 지난번 답 — 안전 확인까지 끝난 기록만(판정은 safetyComplete 한 곳). */
   const savedOnboard = (loginId: string): OnboardRecord | null => {
@@ -255,10 +255,10 @@ export default function WellnessApp() {
 
   // 온보딩 기기 저장(2026-10-11) — 온보딩·「달라졌나요?」·안전 확인 다시 답하기가 끝나 앱 안에 들어와 있고, 답이 다 갖춰졌을 때만.
   useEffect(() => {
-    if (!s.authed || s.guest || s.ob !== -1 || s.recheck !== null || !s.role || !s.consent[0]) return;
+    if (!s.authed || s.ob !== -1 || s.recheck !== null || !s.role || !s.consent[0]) return;
     if (!safetyComplete(s.parq, s.parq2, s.delay)) return;
     const savedAt = new Date().toISOString();
-    try { storage()?.setItem(ONBOARD_STORE_KEY, serializeOnboardStore(setRecord(readOnboardStore(), s.loginId, { consent: s.consent, perms: s.perms, role: s.role, parq: s.parq, parq2: s.parq2, delay: s.delay, savedAt }))); } catch { /* 저장 못 해도 이 세션은 쓴다 — 다음 로그인에 다시 묻는다 */ }
+    try { storage()?.setItem(ONBOARD_STORE_KEY, serializeOnboardStore(setRecord(readOnboardStore(), onboardIdFor(s.loginId, s.guest), { consent: s.consent, perms: s.perms, role: s.role, parq: s.parq, parq2: s.parq2, delay: s.delay, savedAt }))); } catch { /* 저장 못 해도 이 세션은 쓴다 — 다음 로그인에 다시 묻는다 */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.authed, s.guest, s.ob, s.recheck, s.role, s.consent, s.perms, s.parq, s.parq2, s.delay]);
 
@@ -655,7 +655,7 @@ export default function WellnessApp() {
     //   없으면 처음부터. 앞사람 답이 화면에 남지 않게 답 칸은 비우고 시작한다.
     const doLogin = () => {
       const guest = s.loginId.trim() === "";
-      const rec = guest ? null : savedOnboard(s.loginId);
+      const rec = savedOnboard(onboardIdFor(s.loginId, guest));
       if (rec) patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, ...fromRecord(rec) });
       else patch({ authed: true, guest, ob: 0, recheck: null, parqOnly: false, consent: [false, false], perms: {}, role: null, parq: {}, parq2: {}, delay: {}, onboardSavedAt: null });
     };
@@ -701,7 +701,7 @@ export default function WellnessApp() {
     };
     // 「달라졌어요」에서 「이전」 = 고치던 것은 버리고 지난번 답으로 되돌려 「달라졌나요?」 장으로.
     const obBack = () => patchFn((st) => {
-      if (st.recheck === "edit") { const rec = savedOnboard(st.loginId); return { ob: -1, parqOnly: false, recheck: "ask", ...(rec ? fromRecord(rec) : {}) }; }
+      if (st.recheck === "edit") { const rec = savedOnboard(onboardIdFor(st.loginId, st.guest)); return { ob: -1, parqOnly: false, recheck: "ask", ...(rec ? fromRecord(rec) : {}) }; }
       return st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 };
     });
 

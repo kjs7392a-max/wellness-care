@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONSENT_VERSION, accountKey, emptyOnboardStore, parseOnboardStore, recordFor, savedDateLabel, serializeOnboardStore, setRecord } from "./onboard-store";
+import { CONSENT_VERSION, GUEST_ACCOUNT, accountKey, onboardIdFor, emptyOnboardStore, parseOnboardStore, recordFor, savedDateLabel, serializeOnboardStore, setRecord } from "./onboard-store";
 
 const rec = {
   consent: [true, false] as [boolean, boolean],
@@ -36,6 +36,14 @@ describe("onboard-store", () => {
     const st = setRecord(emptyOnboardStore(), "", rec);
     expect(Object.keys(st.byAccount)).toHaveLength(0);
     expect(recordFor(st, "")).toBeNull();
+  });
+
+  it("둘러보기는 그 폰의 둘러보기 칸 하나에 저장 · 계정과 섞이지 않는다", () => {
+    expect(onboardIdFor("", true)).toBe(GUEST_ACCOUNT);
+    expect(onboardIdFor("a@sen.go.kr", false)).toBe("a@sen.go.kr");
+    const st = setRecord(emptyOnboardStore(), onboardIdFor("", true), rec);
+    expect(recordFor(st, onboardIdFor("", true))).not.toBeNull();
+    expect(recordFor(st, "a@sen.go.kr")).toBeNull();
   });
 
   it("동의서 판이 바뀌면 옛 기록은 없는 것으로(처음부터 다시 묻는다)", () => {
