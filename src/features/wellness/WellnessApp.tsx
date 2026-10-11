@@ -36,6 +36,7 @@ import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SO
  *   ⚠컴포넌트 안에 두면 렌더보다 늦게 초기화돼 TDZ 오류(실측) — 모듈 최상위에 둔다. 채널에 새 영상이 오르면 여기 id 만 더한다.
  */
 import { riskLevel, RISK_REPLY } from "./risk";
+import { ONBOARD_STORE_KEY, parseOnboardStore, recordFor, savedDateLabel, serializeOnboardStore, setRecord, type OnboardRecord } from "./onboard-store";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
 const IMG = "/wellness/images";
@@ -66,6 +67,13 @@ interface State {
   /** 「지금 바로 시작하기」에서 고른 항목(3개 중 하나). 시트가 열릴 때만 뜻이 있다. */
   pick: StretchItem | null;
   parqOnly: boolean;
+  /**
+   * 다시 로그인했을 때 「그동안 몸 상태가 달라졌나요?」(2026-10-11 사용자 확정 · onboard-store.ts).
+   * "ask" = 그 한 장을 보여주는 중 · "edit" = 「달라졌어요」를 눌러 지난번 답이 채워진 안전 확인 표를 고치는 중 · null = 해당 없음.
+   */
+  recheck: null | "ask" | "edit";
+  /** 지난번 저장 시각(ISO) — 「달라졌나요?」 장에 날짜로 보여준다. */
+  onboardSavedAt: string | null;
   perms: Record<number, boolean>;
   area: string;
   program: (typeof PROGRAMS)[number] | null;
@@ -170,7 +178,7 @@ export default function WellnessApp() {
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     msgSeed: null,
     geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {},
-    parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, perms: {}, area: "all", program: null,
+    parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, perms: {}, area: "all", program: null,
     musicKey: "emptysilver", music: null,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
@@ -231,11 +239,28 @@ export default function WellnessApp() {
   const storage = () => (typeof window === "undefined" ? null : window.localStorage);
   const readChatStore = () => { try { return parseChatStore(storage()?.getItem(CHAT_STORE_KEY) ?? null); } catch { return parseChatStore(null); } };
   const writeChatStore = (st: ReturnType<typeof parseChatStore>) => { try { storage()?.setItem(CHAT_STORE_KEY, serializeChatStore(st)); } catch { /* 저장 공간·사생활 모드 — 저장 못 해도 대화는 계속 */ } };
+  // 온보딩 기기 저장(2026-10-11) — 계정별 · 둘러보기는 안 남긴다 · 로그아웃해도 안 지운다(지우면 다시 처음부터 묻는다). 전체 파기만 지운다.
+  const readOnboardStore = () => { try { return parseOnboardStore(storage()?.getItem(ONBOARD_STORE_KEY) ?? null); } catch { return parseOnboardStore(null); } };
+  /** 다시 로그인할 때 쓸 지난번 답 — 안전 확인까지 끝난 기록만(판정은 safetyComplete 한 곳). */
+  const savedOnboard = (loginId: string): OnboardRecord | null => {
+    const rec = recordFor(readOnboardStore(), loginId);
+    return rec && safetyComplete(rec.parq, rec.parq2, rec.delay) ? rec : null;
+  };
+  const fromRecord = (rec: OnboardRecord) => ({ consent: rec.consent, perms: rec.perms, role: rec.role, parq: rec.parq, parq2: rec.parq2, delay: rec.delay, onboardSavedAt: rec.savedAt });
   useEffect(() => {
     if (!s.authed || s.guest || s.sheet !== "talk") return;
     writeChatStore(setCharacterChat(readChatStore(), s.character, s.chat));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.chat, s.character, s.authed, s.guest, s.sheet]);
+
+  // 온보딩 기기 저장(2026-10-11) — 온보딩·「달라졌나요?」·안전 확인 다시 답하기가 끝나 앱 안에 들어와 있고, 답이 다 갖춰졌을 때만.
+  useEffect(() => {
+    if (!s.authed || s.guest || s.ob !== -1 || s.recheck !== null || !s.role || !s.consent[0]) return;
+    if (!safetyComplete(s.parq, s.parq2, s.delay)) return;
+    const savedAt = new Date().toISOString();
+    try { storage()?.setItem(ONBOARD_STORE_KEY, serializeOnboardStore(setRecord(readOnboardStore(), s.loginId, { consent: s.consent, perms: s.perms, role: s.role, parq: s.parq, parq2: s.parq2, delay: s.delay, savedAt }))); } catch { /* 저장 못 해도 이 세션은 쓴다 — 다음 로그인에 다시 묻는다 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.authed, s.guest, s.ob, s.recheck, s.role, s.consent, s.perms, s.parq, s.parq2, s.delay]);
 
   // 유형 기기 저장(2026-09-22) — 고르거나 테스트로 정해질 때마다. 지우는 쪽(설정·전체 파기)이 removeItem 을 부른다.
   useEffect(() => {
@@ -512,7 +537,7 @@ export default function WellnessApp() {
     const roleKey: Role = st.role || DEFAULT_ROLE;
     const role = ROLES[roleKey];
     const authed = st.authed;
-    const onboarding = authed && st.ob >= 0;
+    const onboarding = authed && (st.ob >= 0 || st.recheck === "ask");
     // 2026-09-16: 안전 확인 단계(0 평소 · 1 낮은 강도 · 2 숨 고르기)는 safetyTier 가 **문항 성격**으로 정한다 — 예 개수를 세지 않는다.
     // 2단 문진(2026-09-16): 1단 「예」한 질환 묶음의 후속까지 답해야 완료. 판정은 safetyTier 한 곳.
     const tier = safetyTier(st.parq, st.parq2);
@@ -626,7 +651,14 @@ export default function WellnessApp() {
 
   function renderLogin() {
     const loginBtnBg = s.loginId && s.loginPw ? "#7a6bc4" : "#cdc3ea";
-    const doLogin = () => patch({ authed: true, ob: 0, guest: s.loginId.trim() === "" });
+    // 2026-10-11: 처음 한 번만 온보딩 — 지난번 답이 있는 계정은 「그동안 몸 상태가 달라졌나요?」 한 장만 묻는다(onboard-store.ts).
+    //   없으면 처음부터. 앞사람 답이 화면에 남지 않게 답 칸은 비우고 시작한다.
+    const doLogin = () => {
+      const guest = s.loginId.trim() === "";
+      const rec = guest ? null : savedOnboard(s.loginId);
+      if (rec) patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, ...fromRecord(rec) });
+      else patch({ authed: true, guest, ob: 0, recheck: null, parqOnly: false, consent: [false, false], perms: {}, role: null, parq: {}, parq2: {}, delay: {}, onboardSavedAt: null });
+    };
     return (
       <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
         <div style={sx("flex:1; display:flex; flex-direction:column; justify-content:center; gap:26px; padding:0 26px")}>
@@ -657,15 +689,21 @@ export default function WellnessApp() {
   }
 
   function renderOnboarding() {
+    if (s.recheck === "ask") return renderRecheck();
     const steps = s.parqOnly ? [{ bg: "#7a6bc4" }] : OB.map((_, i) => ({ bg: i <= s.ob ? "#7a6bc4" : "#dbe8ec" }));
-    const obBtn = s.parqOnly ? "저장하고 돌아가기" : step.btn;
+    const obBtn = s.parqOnly ? (s.recheck === "edit" ? "저장하고 시작하기" : "저장하고 돌아가기") : step.btn;
     const obBtnBg = canNext ? "#7a6bc4" : "#cdc3ea";
-    const obBackLabel = s.parqOnly ? "취소" : s.ob === OB_AT.promise ? "나중에 볼게요" : "이전";
+    const obBackLabel = s.recheck === "edit" ? "이전" : s.parqOnly ? "취소" : s.ob === OB_AT.promise ? "나중에 볼게요" : "이전";
     const obNext = () => {
       if (!canNext) return;
-      patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
+      // 「달라졌어요」에서 고친 답은 저장하고 곧장 앱으로(설정 시트가 아니라).
+      patchFn((st) => st.recheck === "edit" ? { ob: -1, parqOnly: false, recheck: null, sheet: null } : st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
     };
-    const obBack = () => patchFn((st) => st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 });
+    // 「달라졌어요」에서 「이전」 = 고치던 것은 버리고 지난번 답으로 되돌려 「달라졌나요?」 장으로.
+    const obBack = () => patchFn((st) => {
+      if (st.recheck === "edit") { const rec = savedOnboard(st.loginId); return { ob: -1, parqOnly: false, recheck: "ask", ...(rec ? fromRecord(rec) : {}) }; }
+      return st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 };
+    });
 
     return (
       <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
@@ -818,6 +856,30 @@ export default function WellnessApp() {
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 24px 28px; background:linear-gradient(180deg,rgba(246,250,251,0) 0%,#f6fafb 22%)")}>
           <div onClick={obNext} style={{ ...sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.24); transition:background 0.2s"), background: obBtnBg }}>{obBtn}</div>
           <div onClick={obBack} style={sx("cursor:pointer; text-align:center; font-size:13px; font-weight:600; color:#8ba8b3; padding:2px")}>{obBackLabel}</div>
+        </div>
+      </div>
+    );
+  }
+
+  /** 다시 로그인했을 때의 한 장 — 「그동안 몸 상태가 달라졌나요?」(2026-10-11 사용자 확정). 달라졌으면 지난번 답이 채워진 표, 아니면 바로 앱. */
+  function renderRecheck() {
+    const when = s.onboardSavedAt ? savedDateLabel(s.onboardSavedAt) : null;
+    const delayWas = delayActive(s.delay);
+    return (
+      <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
+        <div style={sx("flex:1; overflow-y:auto; padding:40px 24px 0; display:flex; flex-direction:column; gap:20px")}>
+          <div style={sx("display:flex; flex-direction:column; gap:9px")}>
+            <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>안전 확인</div>
+            <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>그동안 몸 상태가 달라진 게 있나요?</div>
+            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{when ? `${when}에 답하신 내용으로 제안하고 있어요. ` : "지난번 답하신 내용으로 제안하고 있어요. "}새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 생겼다면 「달라졌어요」를 눌러 주세요. 지난번 답을 그대로 띄워 드릴게요 — 바뀐 부분만 고치시면 돼요.</div>
+          </div>
+          {delayWas && (
+            <div style={sx("padding:14px 15px; border-radius:15px; background:#fff7ed; border:1.5px solid #f3c98b; font-size:13px; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>지난번엔 「오늘 몸 상태」에 「예」가 있어서 쉬어 가는 쪽으로 제안하고 있어요. 이제 괜찮아지셨다면 「달라졌어요」에서 고쳐 주세요.</div>
+          )}
+        </div>
+        <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 24px 28px")}>
+          <div onClick={() => patch({ recheck: null })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; background:#7a6bc4; box-shadow:0 8px 20px rgba(91,181,207,0.24)")}>달라진 게 없어요</div>
+          <div onClick={() => patch({ recheck: "edit", ob: OB_AT.parq, parqOnly: true })} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:16px; background:#fff; border:1.5px solid #c4b8ec; font-size:15px; font-weight:700; color:#4a3f80")}>달라졌어요</div>
         </div>
       </div>
     );
@@ -1940,13 +2002,13 @@ export default function WellnessApp() {
         <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); storage()?.removeItem(ONBOARD_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
           <div onClick={() => { writeChatStore(clearAllChats()); patchFn((st) => ({ chat: [{ role: "bot", text: characterOf(st.character).intro, at: stampAt(0, st.now) }], riskShown: false, beat: 0 })); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>이 기기 대화 전부 지우기</div>
         </div>
 
         <div style={sx("display:flex; gap:10px; padding:4px 0 8px")}>
           <div onClick={() => patch({ ob: 0 })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
-          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, tab: "home", sheet: null }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
       </div>
