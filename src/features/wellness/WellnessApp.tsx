@@ -75,7 +75,7 @@ interface State {
   /** 지난번 저장 시각(ISO) — 「변화가 없나요?」 장에 날짜로 보여준다. null = 처음 들어온 사람. */
   onboardSavedAt: string | null;
   /**
-   * 처음 들어온 사람이 「변화 없어요」를 눌렀다 → 이번 온보딩에서 몸 상태 질문표 장을 건너뛴다(2026-10-11 사용자 지시 · 시연용 로직).
+   * 온보딩 「그동안 몸 상태에 변화가 없나요?」 장에서 「변화 없어요」를 눌렀다 → 몸 상태 질문표 장을 건너뛴다(2026-10-11 사용자 지시 · 시연용 로직).
    * ⚠ 표를 건너뛰면 안전 확인이 비어 있어 평소 강도로 제안한다 · 설정 「안전 확인」이 「미완료」로 남고 기기에 저장되지 않아 다음에도 처음처럼 묻는다.
    */
   skipParq: boolean;
@@ -661,9 +661,9 @@ export default function WellnessApp() {
     const doLogin = () => {
       const guest = s.loginId.trim() === "";
       const rec = savedOnboard(onboardIdFor(s.loginId, guest));
-      // 2026-10-11 사용자 지시: 처음 들어올 때도 「그동안 몸 상태에 변화가 없나요?」를 먼저 묻는다.
+      // 처음 들어온 사람은 온보딩 처음부터 — 「그동안 몸 상태에 변화가 없나요?」는 몸 상태 질문표 바로 앞 장(data.ts OB "change", 2026-10-11 사용자 지시).
       if (rec) patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, skipParq: false, ...fromRecord(rec) });
-      else patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, skipParq: false, consent: [false, false], perms: {}, role: null, parq: {}, parq2: {}, delay: {}, onboardSavedAt: null });
+      else patch({ authed: true, guest, ob: 0, recheck: null, parqOnly: false, skipParq: false, consent: [false, false], perms: {}, role: null, parq: {}, parq2: {}, delay: {}, onboardSavedAt: null });
     };
     return (
       <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
@@ -796,6 +796,13 @@ export default function WellnessApp() {
             </div>
           )}
 
+          {step.id === "change" && (
+            <div style={sx("display:flex; flex-direction:column; gap:10px")}>
+              <div onClick={() => patch({ ob: OB_AT.role, skipParq: true })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; background:#7a6bc4; box-shadow:0 8px 20px rgba(91,181,207,0.24)")}>변화 없어요</div>
+              <div onClick={() => patch({ ob: OB_AT.parq, skipParq: false })} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:16px; background:#fff; border:1.5px solid #c4b8ec; font-size:15px; font-weight:700; color:#4a3f80")}>변화 있어요</div>
+            </div>
+          )}
+
           {step.id === "parq" && (
             <div style={sx("display:flex; flex-direction:column; gap:9px")}>
               {SAFETY_QUESTIONS.map(({ text }, i) => {
@@ -861,7 +868,7 @@ export default function WellnessApp() {
         </div>
 
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 24px 28px; background:linear-gradient(180deg,rgba(246,250,251,0) 0%,#f6fafb 22%)")}>
-          <div onClick={obNext} style={{ ...sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.24); transition:background 0.2s"), background: obBtnBg }}>{obBtn}</div>
+          {step.id !== "change" && <div onClick={obNext} style={{ ...sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; box-shadow:0 8px 20px rgba(91,181,207,0.24); transition:background 0.2s"), background: obBtnBg }}>{obBtn}</div>}
           <div onClick={obBack} style={sx("cursor:pointer; text-align:center; font-size:13px; font-weight:600; color:#8ba8b3; padding:2px")}>{obBackLabel}</div>
         </div>
       </div>
@@ -869,12 +876,10 @@ export default function WellnessApp() {
   }
 
   /**
-   * 들어올 때마다 먼저 보는 한 장 — 「그동안 몸 상태에 변화가 없나요?」(2026-10-11 사용자 지시 · 처음 들어올 때도).
-   *   지난번 답이 있으면: 변화 없어요 → 바로 앱 / 변화 있어요 → 지난번 답이 채워진 표.
-   *   처음이면: 변화 없어요 → 몸 상태 질문표를 뺀 온보딩 / 변화 있어요 → 표까지 다 있는 온보딩.
+   * 지난번 답이 있는 사람이 다시 들어왔을 때의 한 장 — 「그동안 몸 상태에 변화가 없나요?」(2026-10-11).
+   *   변화 없어요 → 바로 앱 / 변화 있어요 → 지난번 답이 채워진 표. 처음 들어온 사람은 온보딩 안의 같은 장(OB "change")을 본다.
    */
   function renderRecheck() {
-    const first = s.onboardSavedAt === null;
     const when = s.onboardSavedAt ? savedDateLabel(s.onboardSavedAt) : null;
     const delayWas = delayActive(s.delay);
     return (
@@ -883,15 +888,15 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:9px")}>
             <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>안전 확인</div>
             <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>그동안 몸 상태에 변화가 없나요?</div>
-            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{first ? "새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 있다면 「변화 있어요」를 눌러 주세요. 몸 상태 질문표를 함께 볼게요." : `${when ? `${when}에 답하신 내용으로 제안하고 있어요. ` : "지난번 답하신 내용으로 제안하고 있어요. "}새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 생겼다면 「변화 있어요」를 눌러 주세요. 지난번 답을 그대로 띄워 드릴게요 — 바뀐 부분만 고치시면 돼요.`}</div>
+            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{when ? `${when}에 답하신 내용으로 제안하고 있어요. ` : "지난번 답하신 내용으로 제안하고 있어요. "}새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 생겼다면 「변화 있어요」를 눌러 주세요. 지난번 답을 그대로 띄워 드릴게요 — 바뀐 부분만 고치시면 돼요.</div>
           </div>
           {delayWas && (
             <div style={sx("padding:14px 15px; border-radius:15px; background:#fff7ed; border:1.5px solid #f3c98b; font-size:13px; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>지난번엔 「오늘 몸 상태」에 「예」가 있어서 쉬어 가는 쪽으로 제안하고 있어요. 이제 괜찮아지셨다면 「변화 있어요」에서 고쳐 주세요.</div>
           )}
         </div>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 24px 28px")}>
-          <div onClick={() => patch(first ? { recheck: null, ob: 0, skipParq: true } : { recheck: null })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; background:#7a6bc4; box-shadow:0 8px 20px rgba(91,181,207,0.24)")}>변화 없어요</div>
-          <div onClick={() => patch(first ? { recheck: null, ob: 0, skipParq: false } : { recheck: "edit", ob: OB_AT.parq, parqOnly: true })} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:16px; background:#fff; border:1.5px solid #c4b8ec; font-size:15px; font-weight:700; color:#4a3f80")}>변화 있어요</div>
+          <div onClick={() => patch({ recheck: null })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; background:#7a6bc4; box-shadow:0 8px 20px rgba(91,181,207,0.24)")}>변화 없어요</div>
+          <div onClick={() => patch({ recheck: "edit", ob: OB_AT.parq, parqOnly: true })} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:16px; background:#fff; border:1.5px solid #c4b8ec; font-size:15px; font-weight:700; color:#4a3f80")}>변화 있어요</div>
         </div>
       </div>
     );
