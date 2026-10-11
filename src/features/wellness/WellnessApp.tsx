@@ -937,7 +937,7 @@ export default function WellnessApp() {
           // → 2026-10-09 사용자 지시: 한 줄로 — 왼쪽 「월간 기록 보기」 작은 탭 | 세로 구분선 | 오른쪽 바로가기 둘(폰 폭에 나란히 셋은 글자가 안 들어가 바로가기 둘은 위아래로 쌓는다).
           <div style={sx("display:flex; align-items:center; gap:10px; margin-top:4px")}>
             <div onClick={() => patch({ sheet: "month" })} style={sx("flex:none; cursor:pointer; text-align:center; padding:8px 11px; border-radius:999px; font-size:12.5px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#7a6bc4; color:#fff; box-shadow:0 3px 9px rgba(122,107,196,0.28)")}>월간 기록 보기 ›</div>
-            <div data-role="week-flow-divider" style={sx("flex:none; align-self:stretch; width:1px; background:#d6d0ea")} />
+            <div data-role="week-flow-divider" style={sx("flex:none; align-self:stretch; width:2px; border-radius:1px; background:#9a8dd0")} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:7px")}>
               <div onClick={() => patch({ tab: "care" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:13px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#d9f0ea; color:#2b7a6f; border:1.5px solid #bfe3d9; box-shadow:0 3px 10px rgba(58,163,154,0.14)")}>데일리케어 바로가기 ›</div>
               <div onClick={() => patch({ tab: "healing" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:13px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#e6e0f8; color:#5f5397; border:1.5px solid #cfc4ef; box-shadow:0 3px 10px rgba(122,107,196,0.14)")}>디렉팅 바로가기 ›</div>
