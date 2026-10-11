@@ -72,8 +72,13 @@ interface State {
    * "ask" = 그 한 장을 보여주는 중 · "edit" = 「달라졌어요」를 눌러 지난번 답이 채워진 안전 확인 표를 고치는 중 · null = 해당 없음.
    */
   recheck: null | "ask" | "edit";
-  /** 지난번 저장 시각(ISO) — 「달라졌나요?」 장에 날짜로 보여준다. */
+  /** 지난번 저장 시각(ISO) — 「변화가 없나요?」 장에 날짜로 보여준다. null = 처음 들어온 사람. */
   onboardSavedAt: string | null;
+  /**
+   * 처음 들어온 사람이 「변화 없어요」를 눌렀다 → 이번 온보딩에서 몸 상태 질문표 장을 건너뛴다(2026-10-11 사용자 지시 · 시연용 로직).
+   * ⚠ 표를 건너뛰면 안전 확인이 비어 있어 평소 강도로 제안한다 · 설정 「안전 확인」이 「미완료」로 남고 기기에 저장되지 않아 다음에도 처음처럼 묻는다.
+   */
+  skipParq: boolean;
   perms: Record<number, boolean>;
   area: string;
   program: (typeof PROGRAMS)[number] | null;
@@ -178,7 +183,7 @@ export default function WellnessApp() {
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     msgSeed: null,
     geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {},
-    parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, perms: {}, area: "all", program: null,
+    parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "emptysilver", music: null,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
@@ -656,8 +661,9 @@ export default function WellnessApp() {
     const doLogin = () => {
       const guest = s.loginId.trim() === "";
       const rec = savedOnboard(onboardIdFor(s.loginId, guest));
-      if (rec) patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, ...fromRecord(rec) });
-      else patch({ authed: true, guest, ob: 0, recheck: null, parqOnly: false, consent: [false, false], perms: {}, role: null, parq: {}, parq2: {}, delay: {}, onboardSavedAt: null });
+      // 2026-10-11 사용자 지시: 처음 들어올 때도 「그동안 몸 상태에 변화가 없나요?」를 먼저 묻는다.
+      if (rec) patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, skipParq: false, ...fromRecord(rec) });
+      else patch({ authed: true, guest, ob: -1, recheck: "ask", parqOnly: false, skipParq: false, consent: [false, false], perms: {}, role: null, parq: {}, parq2: {}, delay: {}, onboardSavedAt: null });
     };
     return (
       <div style={sx("flex:1; display:flex; flex-direction:column; min-height:0")}>
@@ -690,19 +696,20 @@ export default function WellnessApp() {
 
   function renderOnboarding() {
     if (s.recheck === "ask") return renderRecheck();
-    const steps = s.parqOnly ? [{ bg: "#7a6bc4" }] : OB.map((_, i) => ({ bg: i <= s.ob ? "#7a6bc4" : "#dbe8ec" }));
+    const steps = s.parqOnly ? [{ bg: "#7a6bc4" }] : OB.map((_, i) => ({ i, bg: i <= s.ob ? "#7a6bc4" : "#dbe8ec" })).filter((it) => !(s.skipParq && it.i === OB_AT.parq));
     const obBtn = s.parqOnly ? (s.recheck === "edit" ? "저장하고 시작하기" : "저장하고 돌아가기") : step.btn;
     const obBtnBg = canNext ? "#7a6bc4" : "#cdc3ea";
     const obBackLabel = s.recheck === "edit" ? "이전" : s.parqOnly ? "취소" : s.ob === OB_AT.promise ? "나중에 볼게요" : "이전";
     const obNext = () => {
       if (!canNext) return;
       // 「달라졌어요」에서 고친 답은 저장하고 곧장 앱으로(설정 시트가 아니라).
-      patchFn((st) => st.recheck === "edit" ? { ob: -1, parqOnly: false, recheck: null, sheet: null } : st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.ob + 1 });
+      // 처음 들어와 「변화 없어요」를 고른 사람은 동의 다음에 몸 상태 질문표를 건너뛰고 직군으로(skipParq).
+      patchFn((st) => st.recheck === "edit" ? { ob: -1, parqOnly: false, recheck: null, sheet: null } : st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob >= OB_LAST ? -1 : st.skipParq && st.ob + 1 === OB_AT.parq ? OB_AT.parq + 1 : st.ob + 1 });
     };
     // 「달라졌어요」에서 「이전」 = 고치던 것은 버리고 지난번 답으로 되돌려 「달라졌나요?」 장으로.
     const obBack = () => patchFn((st) => {
       if (st.recheck === "edit") { const rec = savedOnboard(onboardIdFor(st.loginId, st.guest)); return { ob: -1, parqOnly: false, recheck: "ask", ...(rec ? fromRecord(rec) : {}) }; }
-      return st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob <= 0 ? -1 : st.ob - 1 };
+      return st.parqOnly ? { ob: -1, parqOnly: false, sheet: "settings" } : { ob: st.ob <= 0 ? -1 : st.skipParq && st.ob - 1 === OB_AT.parq ? OB_AT.parq - 1 : st.ob - 1 };
     });
 
     return (
@@ -861,8 +868,13 @@ export default function WellnessApp() {
     );
   }
 
-  /** 다시 로그인했을 때의 한 장 — 「그동안 몸 상태가 달라졌나요?」(2026-10-11 사용자 확정). 달라졌으면 지난번 답이 채워진 표, 아니면 바로 앱. */
+  /**
+   * 들어올 때마다 먼저 보는 한 장 — 「그동안 몸 상태에 변화가 없나요?」(2026-10-11 사용자 지시 · 처음 들어올 때도).
+   *   지난번 답이 있으면: 변화 없어요 → 바로 앱 / 변화 있어요 → 지난번 답이 채워진 표.
+   *   처음이면: 변화 없어요 → 몸 상태 질문표를 뺀 온보딩 / 변화 있어요 → 표까지 다 있는 온보딩.
+   */
   function renderRecheck() {
+    const first = s.onboardSavedAt === null;
     const when = s.onboardSavedAt ? savedDateLabel(s.onboardSavedAt) : null;
     const delayWas = delayActive(s.delay);
     return (
@@ -870,16 +882,16 @@ export default function WellnessApp() {
         <div style={sx("flex:1; overflow-y:auto; padding:40px 24px 0; display:flex; flex-direction:column; gap:20px")}>
           <div style={sx("display:flex; flex-direction:column; gap:9px")}>
             <div style={sx("font-size:12px; font-weight:700; color:#8ba8b3; letter-spacing:0.04em")}>안전 확인</div>
-            <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>그동안 몸 상태가 달라진 게 있나요?</div>
-            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{when ? `${when}에 답하신 내용으로 제안하고 있어요. ` : "지난번 답하신 내용으로 제안하고 있어요. "}새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 생겼다면 「달라졌어요」를 눌러 주세요. 지난번 답을 그대로 띄워 드릴게요 — 바뀐 부분만 고치시면 돼요.</div>
+            <div style={sx("font-size:24px; font-weight:700; color:#2d5c6e; letter-spacing:-0.025em; line-height:1.35; text-wrap:pretty")}>그동안 몸 상태에 변화가 없나요?</div>
+            <div style={sx("font-size:14px; color:#6b8c9a; line-height:1.65; text-wrap:pretty")}>{first ? "새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 있다면 「변화 있어요」를 눌러 주세요. 몸 상태 질문표를 함께 볼게요." : `${when ? `${when}에 답하신 내용으로 제안하고 있어요. ` : "지난번 답하신 내용으로 제안하고 있어요. "}새 진단·입원·수술·약 변경이 있었거나, 임신 중이거나, 열·감기처럼 아픈 곳이 생겼다면 「변화 있어요」를 눌러 주세요. 지난번 답을 그대로 띄워 드릴게요 — 바뀐 부분만 고치시면 돼요.`}</div>
           </div>
           {delayWas && (
-            <div style={sx("padding:14px 15px; border-radius:15px; background:#fff7ed; border:1.5px solid #f3c98b; font-size:13px; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>지난번엔 「오늘 몸 상태」에 「예」가 있어서 쉬어 가는 쪽으로 제안하고 있어요. 이제 괜찮아지셨다면 「달라졌어요」에서 고쳐 주세요.</div>
+            <div style={sx("padding:14px 15px; border-radius:15px; background:#fff7ed; border:1.5px solid #f3c98b; font-size:13px; color:#7a4a00; line-height:1.6; text-wrap:pretty")}>지난번엔 「오늘 몸 상태」에 「예」가 있어서 쉬어 가는 쪽으로 제안하고 있어요. 이제 괜찮아지셨다면 「변화 있어요」에서 고쳐 주세요.</div>
           )}
         </div>
         <div style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 24px 28px")}>
-          <div onClick={() => patch({ recheck: null })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; background:#7a6bc4; box-shadow:0 8px 20px rgba(91,181,207,0.24)")}>달라진 게 없어요</div>
-          <div onClick={() => patch({ recheck: "edit", ob: OB_AT.parq, parqOnly: true })} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:16px; background:#fff; border:1.5px solid #c4b8ec; font-size:15px; font-weight:700; color:#4a3f80")}>달라졌어요</div>
+          <div onClick={() => patch(first ? { recheck: null, ob: 0, skipParq: true } : { recheck: null })} style={sx("cursor:pointer; text-align:center; padding:17px; border-radius:16px; color:#fff; font-size:15px; font-weight:700; background:#7a6bc4; box-shadow:0 8px 20px rgba(91,181,207,0.24)")}>변화 없어요</div>
+          <div onClick={() => patch(first ? { recheck: null, ob: 0, skipParq: false } : { recheck: "edit", ob: OB_AT.parq, parqOnly: true })} style={sx("cursor:pointer; text-align:center; padding:16px; border-radius:16px; background:#fff; border:1.5px solid #c4b8ec; font-size:15px; font-weight:700; color:#4a3f80")}>변화 있어요</div>
         </div>
       </div>
     );
@@ -2007,8 +2019,8 @@ export default function WellnessApp() {
         </div>
 
         <div style={sx("display:flex; gap:10px; padding:4px 0 8px")}>
-          <div onClick={() => patch({ ob: 0 })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
-          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, tab: "home", sheet: null }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
+          <div onClick={() => patch({ ob: 0, skipParq: false })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, skipParq: false, tab: "home", sheet: null }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
       </div>
