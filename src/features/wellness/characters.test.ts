@@ -169,3 +169,24 @@ describe("SYSTEM_CORE — 질문 규칙 · 짧은 맞장구 규칙", () => {
     expect(SYSTEM_CORE).toContain("처음으로 되돌아가지 않습니다");
   });
 });
+
+// 2026-10-15 사용자 지적 — 「…하셨겠어요, 좀 더 말해 주세요」를 되풀이하며 묻던 말을 또 묻고 다른 화제로 못 넘어간다.
+// 🚫 「꺼낸 화제에만 반응」을 무조건 규칙으로 되돌리지 말 것 · 맞장구를 언제나 「한 걸음 더」로 받지 말 것.
+describe("SYSTEM_CORE — 화제 마무리(같은 말 되풀이 금지)", () => {
+  it("충분히 들은 화제는 다시 비추지 않고 · 더 말해 달라는 말은 한 화제에 한 번 · 마무리 후 옮겨도 된다", () => {
+    expect(SYSTEM_CORE).toContain("화제 마무리");
+    expect(SYSTEM_CORE).toContain("다시 비춰 주지 않습니다");
+    expect(SYSTEM_CORE).toContain("한 화제에서 한 번만");
+    expect(SYSTEM_CORE).toContain("이미 들은 내용을 다시 묻지 않습니다");
+    expect(SYSTEM_CORE).toContain("가볍게 다른 이야기로 옮겨도 됩니다");
+    expect(SYSTEM_CORE).not.toContain("상대가 꺼낸 화제에만 반응합니다");
+  });
+  it("짧은 맞장구는 다 들은 뒤라면 '충분히 말했다'는 신호", () => {
+    expect(SYSTEM_CORE).toContain("'충분히 말했다'는 신호");
+    expect(SYSTEM_CORE).not.toContain("- 그럴 때는 앞 이야기를 한 걸음 더 이어서 말해 줍니다.");
+  });
+  it("예시에 화제 마무리 쌍과 피할 답(반복 반영·재질문)이 있다", () => {
+    expect(SYSTEM_EXAMPLES).toContain("## 화제 마무리");
+    expect(SYSTEM_EXAMPLES).toMatch(/피할 답\(같은 화제를 또 비추고 또 묻는다\)/);
+  });
+});
