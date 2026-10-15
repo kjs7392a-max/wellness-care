@@ -264,10 +264,10 @@ describe("케어 탭 마음 박스 — 대화·마음카드는 세로 줄 둘(�
 });
 
 // 2026-09-22 폰에서 두 섹션이 겹쳤다 — flex:1 은 세로가 모자라면 박스를 내용보다 작게 줄인다(넘친 내용이 아래로 흘러나온다).
-describe("마음 건강 시트 — 두 섹션은 줄어들지 않는다(flex:1 0 auto)", () => {
-  it("min-height:230px 를 가진 두 섹션이 모두 flex:1 0 auto 다", () => {
+describe("마음 건강 시트 — 섹션은 줄어들지 않는다(flex:1 0 auto)", () => {
+  it("min-height:230px 섹션이 flex:1 0 auto 다(2026-10-16 마음카드 분리로 한 섹션)", () => {
     const hits = src.match(/flex:1 0 auto; min-height:230px/g) ?? [];
-    expect(hits.length).toBe(2);
+    expect(hits.length).toBe(1);
     expect(src).not.toMatch(/flex:1; min-height:230px/);
   });
 });
@@ -340,5 +340,21 @@ describe("머리줄 뒤로가기 ‹ — 크게", () => {
       expect(b).toContain("-webkit-text-stroke");
       expect(b).not.toMatch(/color:#7a6bc4|color:#e0876c/);
     }
+  });
+});
+
+// 2026-10-16 사용자 지시 — 「오늘, 어떤 하루였나요?」 화면에 마음카드가 같이 나오던 것을 따로.
+describe("마음 건강 시트 — 대화 상대 고르기만(마음카드 분리)", () => {
+  const fnBody = (name: string) => { const a = src.indexOf(`function ${name}()`); return src.slice(a, src.indexOf("\n  function ", a + 10)); };
+  it("renderMind 에 마음카드 섹션·그림 고르기 이동이 없다", () => {
+    const body = fnBody("renderMind");
+    expect(body).toContain("오늘, 어떤 하루였나요?");
+    expect(body).not.toMatch(/>오늘의 마음카드</);
+    expect(body).not.toContain('sheet: "picture"');
+  });
+  it("마음카드 화면의 ‹ 는 케어 탭으로(빈 대화 화면으로 가지 않는다)", () => {
+    const body = fnBody("renderPicture");
+    expect(body).not.toContain('patch({ sheet: "mind" })');
+    expect(body).toContain('patch({ sheet: null })');
   });
 });
