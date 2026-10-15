@@ -62,6 +62,14 @@ describe("주간 흐름 박스 — 「월간 기록 보기 ›」 + 그 밑 「�
     expect(iCare).toBeGreaterThan(iDiv);
     expect(block).toMatch(/display:flex; align-items:center/);
   });
+  it("2026-10-15 단추 셋은 이번 주 흐름 박스 밖 따로 한 박스(home-shortcuts)", () => {
+    expect(src).toContain("{renderWeekFlow()}");
+    const iFlow = src.indexOf("{renderWeekFlow()}");
+    const iBox = src.indexOf('data-role="home-shortcuts"');
+    const iMonth = src.indexOf("월간 기록 보기 ›");
+    expect(iBox).toBeGreaterThan(iFlow);
+    expect(iMonth).toBeGreaterThan(iBox);
+  });
 });
 
 describe("홈 웰컴 문장(30문장 카드) — 인사말과 균형(2026-09-21 사용자 지시 '조금 더 진하고 크게')", () => {
