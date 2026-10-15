@@ -68,13 +68,20 @@ describe("characterOf / systemPromptFor", () => {
 });
 
 describe("SYSTEM_EXAMPLES — 좋은 답 예시", () => {
-  it("선생님/답 쌍 10개, 임상 용어·이모지 없음, 질문으로 끝나지 않는 답도 있다", () => {
+  // 2026-09-22 사용자 "계속 그 질문을 또 쓰고 물어본다" — 실측 결과 라이브 답 20개 중 18개(90%)가 질문으로 끝났다.
+  // 원인은 규칙이 아니라 **예시**였다(10개 중 8개가 질문으로 끝나 모델이 그것을 정답으로 배웠다).
+  // 🚫 예시를 다시 질문 위주로 되돌리지 말 것 — 아래가 그 방어선이다.
+  it("선생님/답 쌍이 14개 이상, 임상 용어·이모지 없음, 질문으로 끝나지 않는 답이 절반 이상", () => {
     const body = SYSTEM_EXAMPLES.split("## 좋은 답")[1] ?? "";
-    const answers = SYSTEM_EXAMPLES.split("\n").filter((l) => l.startsWith("답: "));
-    expect(answers).toHaveLength(10);
+    const answers = SYSTEM_EXAMPLES.split("\n").filter((l) => l.startsWith("답"));
+    expect(answers.length).toBeGreaterThanOrEqual(14);
     for (const w of ["우울증", "진단", "심리검사", "치료", "스트레스 지수", "인지 재구성", "반영"]) expect(body, w).not.toContain(w);
     expect(/\p{Extended_Pictographic}/u.test(SYSTEM_EXAMPLES)).toBe(false);
-    expect(answers.some((l) => !l.trim().endsWith("?"))).toBe(true);
+    const plain = answers.filter((l) => !l.trim().endsWith("?"));
+    expect(plain.length).toBeGreaterThanOrEqual(Math.ceil(answers.length / 2));
+    // 짧은 맞장구를 받아 주는 예시가 있어야 한다(없으면 모델이 처음 질문으로 되돌아간다)
+    expect(SYSTEM_EXAMPLES).toContain("선생님: 네 맞아요.");
+    expect(SYSTEM_EXAMPLES).toContain("선생님: 그러니까요.");
   });
 });
 
@@ -144,5 +151,21 @@ describe("SYSTEM_EXAMPLES — 새 예시 3쌍(좋은 일·당황·불안)", () =
   it("당황 예시와 불안 예시가 각 하나 이상 있다", () => {
     expect(pairs.some((p) => /(당황|실수|잘못 보냈|헷갈)/.test(p.q))).toBe(true);
     expect(pairs.some((p) => /(불안|걱정|잠이 안|떨려)/.test(p.q))).toBe(true);
+  });
+});
+
+// 2026-09-22 — 「질문 규칙」이 프롬프트에 실제로 들어 있는지(문구가 빠지면 다시 매 턴 캐묻는다).
+describe("SYSTEM_CORE — 질문 규칙 · 짧은 맞장구 규칙", () => {
+  it("연속 질문 금지 · 두 번에 한 번 이하 · 이미 말한 이유를 다시 캐묻지 않음", () => {
+    expect(SYSTEM_CORE).toContain("질문 규칙");
+    expect(SYSTEM_CORE).toContain("질문을 두 번 연달아 하지 않습니다");
+    expect(SYSTEM_CORE).toContain("두 번에 한 번 이하");
+    expect(SYSTEM_CORE).toContain("이미 이유를 말했으면");
+    expect(SYSTEM_CORE).not.toContain("먼저 듣고 되물어 줍니다");
+  });
+  it("짧은 맞장구는 앞 이야기의 이어짐으로 받는다", () => {
+    expect(SYSTEM_CORE).toContain("짧은 맞장구");
+    expect(SYSTEM_CORE).toContain("새 화제가 아닙니다");
+    expect(SYSTEM_CORE).toContain("처음으로 되돌아가지 않습니다");
   });
 });
