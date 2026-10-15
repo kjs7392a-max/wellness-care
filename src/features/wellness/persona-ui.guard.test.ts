@@ -45,19 +45,19 @@ describe("주간 흐름 박스 — 「월간 기록 보기 ›」 + 그 밑 「�
   it("월간은 sheet month · 바로가기 둘은 tab care / tab healing · 옛 「케어 가기」·「케어&힐링 가기」는 없다", () => {
     const i = src.indexOf("월간 기록 보기 ›");
     expect(i).toBeGreaterThan(0);
-    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("디렉팅 바로가기 ›", i) + 20);
+    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("라이프가이드 바로가기 ›", i) + 20);
     expect(block).toMatch(/sheet: "month"/);
-    expect(block).toMatch(/patch\(\{ tab: "care" \}\)\} style=[^>]*>데일리케어 바로가기 ›/);
-    expect(block).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>디렉팅 바로가기 ›/);
+    expect(block).toMatch(/patch\(\{ tab: "care" \}\)\} style=[^>]*>데일리헬스케어 바로가기 ›/);
+    expect(block).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>라이프가이드 바로가기 ›/);
     expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
   });
 
   it("2026-10-09 한 줄 배치 — 왼쪽 월간 작은 탭 → 세로 구분선 → 오른쪽 바로가기 둘", () => {
     const i = src.indexOf("월간 기록 보기 ›");
-    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("디렉팅 바로가기 ›", i) + 20);
+    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("라이프가이드 바로가기 ›", i) + 20);
     const iMonth = block.indexOf("월간 기록 보기 ›");
     const iDiv = block.indexOf('data-role="week-flow-divider"');
-    const iCare = block.indexOf("데일리케어 바로가기 ›");
+    const iCare = block.indexOf("데일리헬스케어 바로가기 ›");
     expect(iDiv).toBeGreaterThan(iMonth);
     expect(iCare).toBeGreaterThan(iDiv);
     expect(block).toMatch(/display:flex; align-items:center/);
@@ -93,12 +93,12 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     const b = src.indexOf("\n  function ", a + 10);
     return src.slice(a, b < 0 ? undefined : b);
   };
-  it("탭은 home · care · healing · my 넷이고 라벨은 홈·데일리 케어·디렉팅·my(2026-09-22 케어→데일리 케어)", () => {
+  it("탭은 home · care · healing · my 넷이고 라벨은 홈·데일리헬스케어·라이프가이드·my(2026-09-22 케어→데일리 케어 → 2026-10-15 데일리헬스케어·라이프가이드)", () => {
     expect(src).toMatch(/tab: "home" \| "care" \| "healing" \| "my"/);
     const tabs = fn("renderTabs");
-    expect(tabs).toMatch(/tab\("care", "데일리 케어"/);
-    expect(tabs).toMatch(/tab\("healing", "디렉팅"/);
-    expect(tabs).not.toMatch(/"daily"|케어&힐링/);
+    expect(tabs).toMatch(/tab\("care", "데일리헬스케어"/);
+    expect(tabs).toMatch(/tab\("healing", "라이프가이드"/);
+    expect(tabs).not.toMatch(/"daily"|케어&힐링|"데일리 케어"|"디렉팅"/);
   });
   // 2026-09-21 사용자 2차 지시: "그래프는 오늘 하루도 고생 많으셨어요 페이지(홈)에, 제안과 운동 4가지는 케어 페이지에".
   it("홈 = 오늘의 기록 + 주간 흐름 그래프 — 날씨·운동 제안은 없다(케어로 갔다)", () => {

@@ -1012,6 +1012,7 @@ export default function WellnessApp() {
             "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
         {renderWeekFlow()}
         {/* 바로가기 박스 — 2026-10-15 사용자 지시: 「월간 기록 보기」·「데일리케어 바로가기」·「디렉팅 바로가기」를 이번 주 흐름 박스에서 떼어 따로 한 박스로.
+            같은 날 사용자 지시로 이름을 아래 탭과 함께 「데일리헬스케어」·「라이프가이드」로 바꿨다(바로가기 글자가 길어져 12.5px).
             안의 한 줄 배치(왼쪽 월간 | 구분선 | 오른쪽 바로가기 둘)는 그대로. 🚫 다시 주간 흐름 박스 안(footer)으로 넣지 말 것. */}
         <div data-role="home-shortcuts" style={sx("padding:13px 16px; border-radius:18px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 6px 16px rgba(80,88,140,0.14)")}>
           {/* 2026-09-19 「월간 기록 보기」 반 + 「케어&힐링 가기」 반 → 2026-09-21 사용자 지시로 케어 가기 삭제 · 「월간 기록 보기」 하나가 한 줄
@@ -1021,8 +1022,8 @@ export default function WellnessApp() {
             <div onClick={() => patch({ sheet: "month" })} style={sx("flex:none; cursor:pointer; text-align:center; padding:8px 11px; border-radius:999px; font-size:12.5px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#7a6bc4; color:#fff; box-shadow:0 3px 9px rgba(122,107,196,0.28)")}>월간 기록 보기 ›</div>
             <div data-role="week-flow-divider" style={sx("flex:none; align-self:stretch; width:2px; border-radius:1px; background:#9a8dd0")} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:7px")}>
-              <div onClick={() => patch({ tab: "care" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:13px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#d9f0ea; color:#2b7a6f; border:1.5px solid #bfe3d9; box-shadow:0 3px 10px rgba(58,163,154,0.14)")}>데일리케어 바로가기 ›</div>
-              <div onClick={() => patch({ tab: "healing" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:13px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#e6e0f8; color:#5f5397; border:1.5px solid #cfc4ef; box-shadow:0 3px 10px rgba(122,107,196,0.14)")}>디렉팅 바로가기 ›</div>
+              <div onClick={() => patch({ tab: "care" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:12.5px; font-weight:800; letter-spacing:-0.02em; white-space:nowrap; background:#d9f0ea; color:#2b7a6f; border:1.5px solid #bfe3d9; box-shadow:0 3px 10px rgba(58,163,154,0.14)")}>데일리헬스케어 바로가기 ›</div>
+              <div onClick={() => patch({ tab: "healing" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:12.5px; font-weight:800; letter-spacing:-0.02em; white-space:nowrap; background:#e6e0f8; color:#5f5397; border:1.5px solid #cfc4ef; box-shadow:0 3px 10px rgba(122,107,196,0.14)")}>라이프가이드 바로가기 ›</div>
             </div>
           </div>
         </div>
@@ -2035,7 +2036,7 @@ export default function WellnessApp() {
     );
   }
 
-  /** 아래 탭 — 홈 · 데일리 케어 · 디렉팅 · my(라벨 「데일리 케어」= 2026-09-22 사용자 지시). 설정은 상단 톱니로 빠졌다(2026-09-13 사용자 지시). */
+  /** 아래 탭 — 홈 · 데일리헬스케어 · 라이프가이드 · my(라벨 2026-09-22 「데일리 케어」·「디렉팅」 → 2026-10-15 사용자 지시로 「데일리헬스케어」·「라이프가이드」). 설정은 상단 톱니로 빠졌다(2026-09-13 사용자 지시). */
   function renderTabs() {
     const ink = (t: State["tab"]) => (s.tab === t ? "#7a6bc4" : "#b5c8d0");
     const tab = (t: State["tab"], label: string, icon: (c: string) => React.ReactNode) => {
@@ -2043,19 +2044,19 @@ export default function WellnessApp() {
       return (
         <div onClick={() => patch({ tab: t })} style={sx("flex:1; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px")}>
           {icon(c)}
-          <div style={{ ...sx("font-size:11px; font-weight:600"), color: c }}>{label}</div>
+          <div style={{ ...sx("font-size:11px; font-weight:600; white-space:nowrap; letter-spacing:-0.02em"), color: c }}>{label}</div>
         </div>
       );
     };
     return (
       <div style={sx("position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; padding:10px 16px 26px; background:rgba(255,255,255,0.96); border-top:1px solid #eaf2f5; backdrop-filter:blur(12px)")}>
         {tab("home", "홈", (c) => <div style={{ ...sx("width:20px; height:20px; border-radius:6px; border:2px solid"), borderColor: c }} />)}
-        {tab("care", "데일리 케어", (c) => (
+        {tab("care", "데일리헬스케어", (c) => (
           <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
             <path d="M12 20s-7-4.4-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.6 12 20 12 20z" />
           </svg>
         ))}
-        {tab("healing", "디렉팅", (c) => (
+        {tab("healing", "라이프가이드", (c) => (
           <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
             <circle cx="12" cy="12" r="8.5" />
             <path d="M15.2 8.8l-2 5.4-5.4 2 2-5.4z" />
