@@ -335,6 +335,10 @@ describe("머리줄 뒤로가기 ‹ — 크게", () => {
     for (const b of backs) {
       expect(b).toContain("font-size:34px");
       expect(b).toContain("width:40px; height:40px");
+      // 같은 날 후속 "좀 진하게" — 굵게(800 + 글자 테두리) · 색 한 단계 진하게
+      expect(b).toContain("font-weight:800");
+      expect(b).toContain("-webkit-text-stroke");
+      expect(b).not.toMatch(/color:#7a6bc4|color:#e0876c/);
     }
   });
 });
