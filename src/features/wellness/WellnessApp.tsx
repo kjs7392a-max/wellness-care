@@ -1233,7 +1233,7 @@ export default function WellnessApp() {
     return (
       <div data-directing-sheet={row.id} style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{row.emoji} {row.label}</div>
             <div style={sx("font-size:11px; color:#8ba8b3")}>{row.hint}</div>
@@ -1554,7 +1554,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>내 유형 고르기</div>
             <div style={sx("font-size:11px; color:#8ba8b3")}>아는 유형을 누르면 바로 저장돼요 · 모르면 테스트로</div>
@@ -1594,7 +1594,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 성향 테스트</div>
             <div style={sx("font-size:11px; color:#8ba8b3")}>정답은 없어요 · 평소의 나에 가까운 쪽으로</div>
@@ -1639,7 +1639,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={close} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={close} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>나의 마음 성향</div>
             <div style={sx("font-size:11px; color:#8ba8b3")}>{s.personaPage === 1 ? "성향과 위로" : "문장과 책"} · {s.personaPage}/2</div>
@@ -1929,7 +1929,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>월간 기록</div>
             <div style={sx("font-size:11px; color:#8ba8b3")}>달을 넘겨 볼 수 있어요 · my 탭과 같은 화면</div>
@@ -1950,7 +1950,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f4f8fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; padding:48px 16px 12px; display:flex; align-items:center; gap:11px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx("flex:1; min-width:0; font-size:15px; font-weight:700; color:#2d5c6e")}>설정</div>
         </div>
       <div style={sx("flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:14px 20px 28px")}>
@@ -2082,7 +2082,7 @@ export default function WellnessApp() {
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
           <div style={sx("padding:48px 16px 10px; display:flex; align-items:center; gap:11px")}>
-            <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; flex:none; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+            <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
             <div style={sx(`width:38px; height:38px; border-radius:13px; flex:none; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 건강</div>
@@ -2246,7 +2246,7 @@ export default function WellnessApp() {
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#fff8f4 0%,#f6f2fc 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #f3e8e4")}>
           <div style={sx("padding:48px 16px 12px; display:flex; align-items:center; gap:11px")}>
-            <div onClick={closeSheet} style={sx("cursor:pointer; flex:none; font-size:20px; color:#e0876c; padding:0 4px 0 0")}>‹</div>
+            <div onClick={closeSheet} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#e0876c")}>‹</div>
             <div style={sx(`width:38px; height:38px; border-radius:12px; flex:none; overflow:hidden; background:url(${IMG}/icon-physical.png) center/cover`)} />
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:15px; font-weight:700; color:#8a4a3c")}>신체 건강</div>
@@ -2308,7 +2308,7 @@ export default function WellnessApp() {
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#f6f2fc 0%,#f0f7fb 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; display:flex; align-items:center; gap:11px; padding:48px 16px 14px; background:#fff; border-bottom:1px solid #d9d2ec")}>
-          <div onClick={closeSheet} style={sx("cursor:pointer; flex:none; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+          <div onClick={closeSheet} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
           <div style={sx(`width:38px; height:38px; border-radius:13px; flex:none; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 건강</div>
@@ -2431,7 +2431,7 @@ export default function WellnessApp() {
       <div style={sx("position:absolute; inset:0; background:linear-gradient(175deg,#f6f2fc 0%,#f0f7fb 100%); display:flex; flex-direction:column; animation:wFade 0.2s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #d9d2ec")}>
           <div style={sx("padding:48px 16px 10px; display:flex; align-items:center; gap:11px")}>
-            <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; font-size:20px; color:#7a6bc4; padding:0 4px 0 0")}>‹</div>
+            <div onClick={() => patch({ sheet: "mind" })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; color:#7a6bc4")}>‹</div>
             {avatar(38)}
             <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
               <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 건강</div>

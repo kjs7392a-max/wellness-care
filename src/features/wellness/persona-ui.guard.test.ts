@@ -326,3 +326,15 @@ describe("음성 입력 — 방금 보낸 말은 떼어 내고 보낸다", () =>
     expect(src).toMatch(/lastSentRef\.current = rawRef\.current;/);
   });
 });
+
+// 2026-10-15 사용자 지시 "뒤로가기 토글을 좀더 크게" — 머리줄 ‹ 는 글자 34px · 누르는 자리 40×40. 20px 로 되돌리지 말 것.
+describe("머리줄 뒤로가기 ‹ — 크게", () => {
+  it("단독 ‹ 단추는 모두 34px · 40×40 이고 옛 20px ‹ 는 없다", () => {
+    const backs = src.match(/style=\{sx\("[^"]*"\)\}>‹<\/div>/g) ?? [];
+    expect(backs.length).toBeGreaterThanOrEqual(10);
+    for (const b of backs) {
+      expect(b).toContain("font-size:34px");
+      expect(b).toContain("width:40px; height:40px");
+    }
+  });
+});
