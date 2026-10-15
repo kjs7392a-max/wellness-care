@@ -358,3 +358,13 @@ describe("마음 건강 시트 — 대화 상대 고르기만(마음카드 분�
     expect(body).toContain('patch({ sheet: null })');
   });
 });
+
+// 2026-10-16 사용자 지시 — 마음카드 화면 상단 칩 줄(대화 | 마음카드) 삭제.
+describe("마음카드 화면 — 상단 칩 줄 없음", () => {
+  it("renderPicture 머리에 대화로 가는 칩이 없다", () => {
+    const a = src.indexOf("function renderPicture()");
+    const body = src.slice(a, src.indexOf("\n  function ", a + 10));
+    expect(body).not.toContain('patch({ sheet: "talk" })');
+    expect(body).not.toContain('display:flex; gap:6px; padding:0 16px 12px');
+  });
+});

@@ -2089,10 +2089,7 @@ export default function WellnessApp() {
               <div style={sx("font-size:11px; color:#8ba8b3")}>기록은 선생님만 봅니다</div>
             </div>
           </div>
-          <div style={sx("display:flex; gap:6px; padding:0 16px 12px")}>
-            <div onClick={() => patch({ sheet: "talk" })} style={sx("cursor:pointer; flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#fff; color:#8ba8b3; border:1.5px solid #c9d6dc")}>오늘, 어떤 하루였나요?</div>
-            <div style={sx("flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:13.5px; font-weight:700; background:#f2edfa; color:#7a6bc4; border:1.5px solid #7a6bc4")}>오늘의 마음카드</div>
-          </div>
+          {/* 2026-10-16 사용자 지시: 상단 칩 줄(대화 | 마음카드) 삭제. 🚫 되살리지 말 것(가드). */}
         </div>
 
         <div style={sx("flex:1; overflow-y:auto; padding:14px 18px 24px; display:flex; flex-direction:column; gap:12px")}>
