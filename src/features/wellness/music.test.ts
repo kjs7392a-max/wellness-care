@@ -32,6 +32,15 @@ describe("50~60대 클래식 = 정통 클래식 위주 · 가곡 자리만 세�
   });
 });
 
+describe("50~60대 재즈·팝송 = 80~90년대 위주(2026-10-19 사용자 지시 「너무 옛날거 아냐?」)", () => {
+  it("스윙 시대·70년대 디스코 가수가 없다", () => {
+    for (const g of ["jazz", "pop"]) for (const m of ["calm", "emotional", "lively", "focus"]) {
+      const titles = MUSIC_PICKS[`${g}/senior/${m}`].map(([, t]) => t).join(" ");
+      expect(titles).not.toMatch(/Glenn Miller|Benny Goodman|Frank Sinatra|Dean Martin|Doris Day|Bobby Darin|Duke Ellington|Count Basie|Julie London|Billie Holiday|Village People|Boney M|Carpenters|Simon & Garfunkel|Bee Gees|ABBA/);
+    }
+  });
+});
+
 describe("나이대·성향 → 묶음", () => {
   it("나이대 6칸 → 3묶음 · 모르면 null", () => {
     expect(AGE_BANDS.map(musicAgeOf)).toEqual(["young", "young", "mid", "mid", "senior", "senior"]);
