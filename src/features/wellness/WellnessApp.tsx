@@ -28,7 +28,7 @@ import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseCha
 import { SILENT_STOP_MS, dropSentPrefix, heardSince, mergeHeard, sendDelay, sentMemoryAfter, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_GENRES, MUSIC_MOOD_LABEL, defaultGroupFor, embedSrc, pickCollection, type MusicGenre } from "./music";
 import { MUSIC_COLLECTIONS } from "./music-collections";
-import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
+import { BOOKS_AS_OF, PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
  * 데일리 힐링 추천 음악 — 유튜브 채널 emptysilver(@emptysilver · UCyvNK9b_Rs7djuIQ4a7i5aw)의 긴 플레이리스트 영상만 우리 순서로.
@@ -1241,7 +1241,7 @@ export default function WellnessApp() {
           <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>📚</div>
           <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
             <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 도서 · {t.name}</div>
-            <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>{done.type} 성향에 잘 맞는 두 권</div>
+            <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>{BOOKS_AS_OF}에서 {done.type} 성향에 맞춘 두 권</div>
           </div>
         </div>
         {t.books.map((b) => (

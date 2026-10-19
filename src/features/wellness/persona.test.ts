@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, slotClosing, type PersonaAnswers, type PersonaAxis } from "./persona";
+import { BOOKS_AS_OF, PERSONA_CODES, PERSONA_ITEMS, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, slotClosing, type PersonaAnswers, type PersonaAxis } from "./persona";
 
 // 2026-09-17 사용자 확정: 근거 있는 문항 — IPIP 50문항(공개 도메인)에서 정서안정성을 뺀 40문항.
 //   네 축 대응 = McCrae & Costa(1989): 외향성→E/I · 개방성→N/S · 우호성→F/T · 성실성→J/P.
@@ -85,6 +85,14 @@ describe("PERSONA_TYPES — 16유형 원고", () => {
       expect(t.directing.length).toBeGreaterThan(5);
     }
     expect(new Set(CODES.map((c) => PERSONA_TYPES[c].name)).size).toBe(16);
+  });
+  // 2026-10-20 사용자: "추천도서는 요즘 베스트셀러에서 골라줘 아무리해도 노인과바다가 뭐야".
+  it("추천 도서 = 요즘 베스트셀러 · 옛 고전 목록으로 돌아가지 않는다 · 32권 겹치지 않음", () => {
+    const all = CODES.flatMap((c) => PERSONA_TYPES[c].books);
+    expect(all).toHaveLength(32);
+    expect(new Set(all).size).toBe(32);
+    expect(all.join(" ")).not.toMatch(/노인과 바다|데미안|어린 왕자|월든|모모|빨강 머리 앤|연금술사|스토너|코스모스|이기적 유전자|사피엔스|죽은 시인의 사회/);
+    expect(BOOKS_AS_OF).toMatch(/^\d{4}년 \d{1,2}월 .*베스트셀러$/);
   });
   // 사용자 확정 2026-09-17 「재미의 선」 — 기전·예측·처방·권위 문구 금지. 이름도 MBTI(등록상표)를 안 쓴다.
   it("원고 전체에 금지어가 없다", () => {
