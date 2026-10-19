@@ -23,6 +23,15 @@ describe("선곡표 — 48목록 · 목록마다 8곡 · 유튜브 id 모양", (
   });
 });
 
+describe("50~60대 클래식 = 정통 클래식 위주 · 가곡 자리만 세미클래식·피아노곡(2026-10-19 사용자 지시)", () => {
+  it("가곡(그리운 금강산·가고파·보리밭·목련화·비목·선구자)이 없다", () => {
+    for (const m of ["calm", "emotional", "lively", "focus"]) {
+      const titles = MUSIC_PICKS[`classical/senior/${m}`].map(([, t]) => t).join(" ");
+      expect(titles).not.toMatch(/금강산|가고파|보리밭|목련화|비목|선구자/);
+    }
+  });
+});
+
 describe("나이대·성향 → 묶음", () => {
   it("나이대 6칸 → 3묶음 · 모르면 null", () => {
     expect(AGE_BANDS.map(musicAgeOf)).toEqual(["young", "young", "mid", "mid", "senior", "senior"]);
