@@ -26,7 +26,7 @@ import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
 import { SILENT_STOP_MS, dropSentPrefix, heardSince, mergeHeard, sendDelay, sentMemoryAfter, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
-import { MUSIC_CHANNELS, embedSrc, type MusicChannel, type Playlist } from "./music";
+import { MUSIC_AGE_LABEL, MUSIC_GENRES, MUSIC_MOOD_LABEL, embedSrc, musicPickFor, rotateFrom, type MusicGenre } from "./music";
 import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
@@ -115,9 +115,9 @@ interface State {
   chat: StoredMsg[];
   /** 「계정 없이 둘러보기」 — 저장하지 않는다(공용 기기 보호). 로그인 화면에서 정해진다. */
   guest: boolean;
-  /** 추천 음악 — 고른 채널 · 서버(`/api/wellness/music`)가 준 플레이리스트(오기 전엔 각 채널 고정 목록). 2026-09-19. */
-  musicKey: MusicChannel["key"];
-  music: Record<string, Playlist> | null;
+  /** 추천 음악 — 고른 장르(칩 넷) · 목록에서 누른 곡 번호(그 곡부터 재생). 곡 자체는 나이대·성향으로 music.ts 가 고른다(2026-10-19). */
+  musicKey: MusicGenre;
+  musicStart: number;
   beat: number;
   typing: boolean;
   input: string;
@@ -184,7 +184,7 @@ export default function WellnessApp() {
     msgSeed: null,
     geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {},
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
-    musicKey: "emptysilver", music: null,
+    musicKey: "kpop", musicStart: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
     sam: EMPTY_SAM, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
@@ -235,7 +235,6 @@ export default function WellnessApp() {
     patch({ micOk: speechSupport(window as unknown as Parameters<typeof speechSupport>[0]) });
     const clock = setInterval(() => patch({ now: new Date() }), 10000);
     loadWeather();
-    loadMusic();
     return () => { clearInterval(clock); if (timerRef.current) clearInterval(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -278,16 +277,6 @@ export default function WellnessApp() {
     const el = chatRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [s.chat, s.typing, s.sheet]);
-
-  /** 추천 음악 플레이리스트 — 실패하면 music 은 null 그대로(화면이 각 채널 고정 목록으로 그린다). */
-  async function loadMusic() {
-    try {
-      const r = await fetch("/api/wellness/music");
-      if (!r.ok) return;
-      const j = (await r.json()) as { channels?: Record<string, Playlist> };
-      if (j.channels) patch({ music: j.channels });
-    } catch { /* 폴백 */ }
-  }
 
   async function loadWeather() {
     try {
@@ -1156,7 +1145,7 @@ export default function WellnessApp() {
   function directingRows(): { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] {
     return [
       { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
-      { id: "music", label: "오늘의 추천음악&추천도서", emoji: "🎧", hint: "채널 셋 플레이리스트 · 내 성향에 맞는 책 두 권" },
+      { id: "music", label: "오늘의 추천음악&추천도서", emoji: "🎧", hint: "가요·클래식·재즈·팝송 — 내 나이대·성향에 맞춘 곡 · 책 두 권" },
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
       { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "오늘 날씨 · 네 가지 장면" },
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
@@ -1434,36 +1423,41 @@ export default function WellnessApp() {
   }
 
   /**
-   * 추천 음악 — 채널 칩 셋(emptysilver · 클래식 · 가요) + 플레이어 하나. 목록은 서버가 하루 한 번 최신으로(music.ts) · 오기 전엔 고정 목록.
-   * 자리 = 성향 결과 2/2 「문장과 책」의 추천 도서 바로 아래(2026-09-19 사용자 지시 "다음 페이지 추천 도서 아래" — 데일리 힐링에선 뺐다).
+   * 추천 음악 — 장르 칩 넷(가요·클래식·재즈·팝송) + 플레이어 + 곡 목록. 곡은 나이대(내 프로필) × 성향(마음 성향 유형)으로 고른다(music.ts · 2026-10-19 사용자 지시).
+   * 목록의 곡을 누르면 그 곡부터 재생 목록이 돈다(자동재생은 없다 — ▶ 를 눌러야 소리가 난다).
+   * 자리 = 성향 결과 2/2 「문장과 책」의 추천 도서 바로 아래 + 라이프가이드 「오늘의 추천음악&추천도서」.
    */
   function renderMusicCard() {
-          const ch = MUSIC_CHANNELS.find((c) => c.key === s.musicKey) ?? MUSIC_CHANNELS[0];
-          const pl = s.music?.[ch.key];
-          const ids = pl && pl.ids.length ? pl.ids : ch.fallbackIds;
+          const genre = MUSIC_GENRES.find((g) => g.key === s.musicKey) ?? MUSIC_GENRES[0];
+          const pick = musicPickFor(genre.key, s.dirProfile?.ageBand, s.personaDone?.type);
+          const start = Math.min(s.musicStart, pick.ids.length - 1);
+          const ids = rotateFrom(pick.ids, start);
+          const who = pick.personal
+            ? `${MUSIC_AGE_LABEL[pick.age]} · ${MUSIC_MOOD_LABEL[pick.mood]}에 맞춘 ${genre.label} ${pick.ids.length}곡`
+            : `${genre.label} 기본 추천 ${pick.ids.length}곡 — ${s.personaDone ? "나이대를" : s.dirProfile ? "마음 성향을" : "나이대·마음 성향을"} 알려 주시면 맞춤 곡으로 바뀌어요`;
           return (
             <div style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
               <div style={sx("display:flex; align-items:center; gap:10px")}>
                 <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>🎧</div>
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {ch.label}</div>
-                  <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{ch.note} — 최신 {ids.length}편</div>
+                  <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 음악 · {genre.label}</div>
+                  <div data-role="music-who" style={sx("font-size:12px; color:#6b8c9a; line-height:1.5; text-wrap:pretty")}>{who}</div>
                 </div>
               </div>
               <div style={sx("display:flex; gap:6px")}>
-                {MUSIC_CHANNELS.map((c) => {
-                  const on = c.key === ch.key;
+                {MUSIC_GENRES.map((g) => {
+                  const on = g.key === genre.key;
                   return (
-                    <div key={c.key} onClick={() => patch({ musicKey: c.key })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:9px 4px; border-radius:11px; font-size:12.5px; font-weight:700; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#7a6bc4", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
-                      {c.key === "emptysilver" ? "emptysilver" : c.key === "classical" ? "클래식" : "가요"}
+                    <div key={g.key} onClick={() => patch({ musicKey: g.key, musicStart: 0 })} style={{ ...sx("cursor:pointer; flex:1; text-align:center; padding:9px 4px; border-radius:11px; font-size:13px; font-weight:700; border:1.5px solid"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#7a6bc4", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
+                      {g.label}
                     </div>
                   );
                 })}
               </div>
               <div style={sx("position:relative; width:100%; padding-top:56.25%; border-radius:14px; overflow:hidden; background:#0f0f0f")}>
                 <iframe
-                  key={ch.key}
-                  title={`추천 음악 · ${ch.label}`}
+                  key={`${genre.key}-${ids[0]}`}
+                  title={`추천 음악 · ${genre.label}`}
                   src={embedSrc(ids)}
                   style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
                   allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -1471,7 +1465,18 @@ export default function WellnessApp() {
                   loading="lazy"
                 />
               </div>
-              <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브에서 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다 · 목록은 하루 한 번 채널 최신 영상으로 바뀝니다</div>
+              <div data-role="music-list" style={sx("display:flex; flex-direction:column; gap:2px")}>
+                {pick.titles.map((t, i) => {
+                  const on = i === start;
+                  return (
+                    <div key={pick.ids[i]} onClick={() => patch({ musicStart: i })} style={{ ...sx("cursor:pointer; display:flex; align-items:center; gap:9px; padding:8px 8px; border-radius:10px; font-size:13.5px; line-height:1.4"), background: on ? "#f2edfa" : "transparent", color: on ? "#4a3f80" : "#2d5c6e", fontWeight: on ? 800 : 600 }}>
+                      <span style={sx("flex:none; width:18px; text-align:right; font-size:12px; color:#8ba8b3; font-weight:700")}>{on ? "▶" : i + 1}</span>
+                      <span style={sx("flex:1; min-width:0")}>{t}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5")}>유튜브 공식 채널 영상으로 재생됩니다 · 소리는 ▶ 를 누른 뒤에만 납니다 · 곡을 누르면 그 곡부터 이어집니다</div>
             </div>
           );
   }
