@@ -1,41 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_AGE, DEFAULT_MOOD, MUSIC_GENRES, embedSrc, musicAgeOf, musicMoodOf, musicPickFor, rotateFrom } from "./music";
-import { MUSIC_PICKS } from "./music-picks";
+import { DEFAULT_GROUP_BY_AGE, DEFAULT_GROUP_BY_MOOD, MUSIC_GENRES, defaultGroupFor, embedSrc, musicMoodOf, pickCollection } from "./music";
+import { MUSIC_COLLECTIONS } from "./music-collections";
 import { AGE_BANDS } from "./directing/profile";
 import { PERSONA_CODES } from "./persona";
 
-// 2026-10-19 사용자: 장르 칩 넷(가요·클래식·재즈·팝송)은 언제나 같고, 곡은 앱이 나이대·성향으로 고른다.
+// 2026-10-20 사용자: "그냥 노래선곡하지 말고 여러곡이 나오는 … 7080 모음 · 90년대 모음 이런 식으로 분류해줘 재즈도 가요도 팝송도".
 
-describe("선곡표 — 48목록 · 목록마다 8곡 · 유튜브 id 모양", () => {
-  it("장르 4 × 나이대 3 × 성향 4 가 빠짐없이 있다", () => {
+const label = (g: (typeof MUSIC_GENRES)[number]["key"], i: number) => MUSIC_COLLECTIONS[g][i].label;
+
+describe("모음표 — 장르 넷 · 묶음마다 모음 2개 이상 · 유튜브 id 모양", () => {
+  it("장르 넷 모두 묶음이 있고, 묶음 라벨은 장르 안에서 겹치지 않는다", () => {
     expect(MUSIC_GENRES.map((g) => g.label)).toEqual(["가요", "클래식", "재즈", "팝송"]);
-    for (const g of MUSIC_GENRES) for (const a of ["young", "mid", "senior"]) for (const m of ["calm", "emotional", "lively", "focus"]) {
-      const list = MUSIC_PICKS[`${g.key}/${a}/${m}`];
-      expect(list, `${g.key}/${a}/${m}`).toBeDefined();
-      expect(list).toHaveLength(8);
-      for (const [id, title] of list) {
-        expect(id).toMatch(/^[A-Za-z0-9_-]{11}$/);
-        expect(title.length).toBeGreaterThan(0);
+    for (const g of MUSIC_GENRES) {
+      const groups = MUSIC_COLLECTIONS[g.key];
+      expect(groups.length, g.key).toBeGreaterThanOrEqual(4);
+      expect(new Set(groups.map((x) => x.label)).size).toBe(groups.length);
+      for (const grp of groups) {
+        expect(grp.items.length, `${g.key}/${grp.label}`).toBeGreaterThanOrEqual(2);
+        expect(new Set(grp.items.map((x) => x.id)).size).toBe(grp.items.length);
+        for (const it of grp.items) {
+          expect(it.id).toMatch(it.kind === "video" ? /^[A-Za-z0-9_-]{11}$/ : /^PL[A-Za-z0-9_-]{16,32}$/);
+          expect(it.title.length).toBeGreaterThan(0);
+          expect(it.source.length).toBeGreaterThan(0);
+        }
       }
-      expect(new Set(list.map(([id]) => id)).size).toBe(8); // 한 목록 안에 같은 영상 두 번 없음
     }
-    expect(Object.keys(MUSIC_PICKS)).toHaveLength(48);
   });
-});
-
-describe("50~60대 클래식 = 정통 클래식 위주 · 가곡 자리만 세미클래식·피아노곡(2026-10-19 사용자 지시)", () => {
-  it("가곡(그리운 금강산·가고파·보리밭·목련화·비목·선구자)이 없다", () => {
-    for (const m of ["calm", "emotional", "lively", "focus"]) {
-      const titles = MUSIC_PICKS[`classical/senior/${m}`].map(([, t]) => t).join(" ");
-      expect(titles).not.toMatch(/금강산|가고파|보리밭|목련화|비목|선구자/);
+  it("가요·팝송은 시대 묶음(7080·80년대·90년대·2000년대·2010년대 …)", () => {
+    expect(MUSIC_COLLECTIONS.kpop.map((g) => g.label)).toEqual(["7080", "80년대", "90년대", "2000년대", "2010년대", "2020년대"]);
+    expect(MUSIC_COLLECTIONS.pop.map((g) => g.label)).toEqual(["70년대", "80년대", "90년대", "2000년대", "2010년대", "최신"]);
+  });
+  it("모음 제목에 「모음·명곡·베스트·히트곡·TOP」 류가 아니라 곡 하나 이름만 있는 칸은 없다(한 곡 선곡으로 돌아가지 않게)", () => {
+    for (const g of MUSIC_GENRES) for (const grp of MUSIC_COLLECTIONS[g.key]) for (const it of grp.items) {
+      expect(it.title, it.title).not.toMatch(/^[^-]+ - [^-]+$/); // 「가수 - 곡」 꼴 = 옛 선곡표
     }
   });
 });
 
-describe("나이대·성향 → 묶음", () => {
-  it("나이대 6칸 → 3묶음 · 모르면 null", () => {
-    expect(AGE_BANDS.map(musicAgeOf)).toEqual(["young", "young", "mid", "mid", "senior", "senior"]);
-    expect(musicAgeOf(null)).toBeNull();
+describe("처음 펼치는 묶음 — 가요·팝송 = 나이대 · 재즈·클래식 = 성향", () => {
+  it("기본 묶음 라벨이 모음표에 실제로 있다(글자 하나 틀리면 맨 앞 묶음으로 조용히 떨어진다)", () => {
+    for (const g of ["kpop", "pop"] as const) for (const v of Object.values(DEFAULT_GROUP_BY_AGE[g])) expect(MUSIC_COLLECTIONS[g].map((x) => x.label), `${g}:${v}`).toContain(v);
+    for (const g of ["jazz", "classical"] as const) for (const v of Object.values(DEFAULT_GROUP_BY_MOOD[g])) expect(MUSIC_COLLECTIONS[g].map((x) => x.label), `${g}:${v}`).toContain(v);
+  });
+  it("60대 가요 = 7080 · 20대 가요 = 2010년대 · 60대 팝송 = 70년대 · 나이대 몰라도 묶음은 나온다", () => {
+    expect(label("kpop", defaultGroupFor("kpop", "60대", null).index)).toBe("7080");
+    expect(label("kpop", defaultGroupFor("kpop", "20대", "ENFP").index)).toBe("2010년대");
+    expect(label("pop", defaultGroupFor("pop", "60대", null).index)).toBe("70년대");
+    expect(defaultGroupFor("kpop", "60대", null).basis).toEqual({ kind: "age", band: "60대" });
+    expect(defaultGroupFor("kpop", null, "ENFP")).toMatchObject({ basis: null }); // 가요는 성향을 안 본다
+    expect(label("kpop", defaultGroupFor("kpop", null, null).index)).toBe("90년대");
+    expect(new Set(AGE_BANDS.map((b) => defaultGroupFor("kpop", b, null).index)).size).toBe(6);
+  });
+  it("재즈·클래식은 성향으로 · 나이대는 안 본다", () => {
+    expect(label("jazz", defaultGroupFor("jazz", "60대", "ISTJ").index)).toBe("피아노");
+    expect(label("classical", defaultGroupFor("classical", null, "ENTJ").index)).toBe("집중");
+    expect(defaultGroupFor("jazz", "60대", null)).toMatchObject({ basis: null });
+    expect(label("jazz", defaultGroupFor("jazz", null, null).index)).toBe("명곡");
   });
   it("16유형 → E/I × F/T 넷 · 이상한 값은 null", () => {
     expect(musicMoodOf("ISTJ")).toBe("calm");
@@ -43,39 +63,21 @@ describe("나이대·성향 → 묶음", () => {
     expect(musicMoodOf("ENFP")).toBe("lively");
     expect(musicMoodOf("ENTJ")).toBe("focus");
     expect(new Set(PERSONA_CODES.map(musicMoodOf)).size).toBe(4);
-    expect(PERSONA_CODES.every((c) => musicMoodOf(c) !== null)).toBe(true);
-    expect(musicMoodOf("")).toBeNull();
     expect(musicMoodOf("XXXX")).toBeNull();
     expect(musicMoodOf(null)).toBeNull();
   });
 });
 
-describe("musicPickFor — 같은 장르라도 사람에 따라 곡이 다르다", () => {
-  it("50대 ENFP 가요 = senior/lively 목록", () => {
-    const p = musicPickFor("kpop", "50대", "ENFP");
-    expect(p.ids).toEqual(MUSIC_PICKS["kpop/senior/lively"].map(([id]) => id));
-    expect(p.titles[0]).toBe(MUSIC_PICKS["kpop/senior/lively"][0][1]);
-    expect(p).toMatchObject({ age: "senior", mood: "lively", personal: true });
-    expect(musicPickFor("kpop", "20대", "ISTJ").ids).not.toEqual(p.ids);
+describe("pickCollection · embedSrc", () => {
+  it("범위 밖 번호는 0 으로(옛 상태값이 와도 화면이 비지 않는다)", () => {
+    expect(pickCollection("kpop", 99, 99)).toMatchObject({ groupIndex: 0, itemIndex: 0 });
+    expect(pickCollection("kpop", 2, 1).item).toBe(MUSIC_COLLECTIONS.kpop[2].items[1]);
+    expect(pickCollection("jazz", -1, 0).groupIndex).toBe(0);
   });
-  it("모르는 칸만 기본값 · 둘 중 하나라도 모르면 personal=false", () => {
-    expect(musicPickFor("jazz", null, null)).toMatchObject({ age: DEFAULT_AGE, mood: DEFAULT_MOOD, personal: false });
-    expect(musicPickFor("jazz", "60대", null)).toMatchObject({ age: "senior", mood: DEFAULT_MOOD, personal: false });
-    expect(musicPickFor("jazz", null, "INFJ")).toMatchObject({ age: DEFAULT_AGE, mood: "emotional", personal: false });
-    expect(musicPickFor("jazz", null, null).ids).toHaveLength(8);
-  });
-});
-
-describe("rotateFrom · embedSrc", () => {
-  it("고른 곡부터 · 순서 유지 · 범위 밖은 그대로", () => {
-    expect(rotateFrom(["a", "b", "c", "d"], 2)).toEqual(["c", "d", "a", "b"]);
-    expect(rotateFrom(["a", "b"], 0)).toEqual(["a", "b"]);
-    expect(rotateFrom(["a", "b"], 9)).toEqual(["a", "b"]);
-  });
-  it("임베드 주소 = nocookie · 첫 곡 + 나머지 playlist · 자동재생 없음", () => {
-    const u = embedSrc(["aaaaaaaaaaa", "bbbbbbbbbbb", "ccccccccccc"]);
-    expect(u).toBe("https://www.youtube-nocookie.com/embed/aaaaaaaaaaa?playlist=bbbbbbbbbbb,ccccccccccc&rel=0");
+  it("영상 = embed/id · 재생목록 = videoseries · nocookie · 자동재생 없음", () => {
+    expect(embedSrc({ kind: "video", id: "aaaaaaaaaaa", title: "t", source: "s" })).toBe("https://www.youtube-nocookie.com/embed/aaaaaaaaaaa?rel=0");
+    const u = embedSrc({ kind: "list", id: "PLabcdefghijklmnopqr", title: "t", source: "s" });
+    expect(u).toBe("https://www.youtube-nocookie.com/embed/videoseries?list=PLabcdefghijklmnopqr&rel=0");
     expect(u).not.toMatch(/autoplay=1/);
-    expect(embedSrc(["aaaaaaaaaaa"])).toBe("https://www.youtube-nocookie.com/embed/aaaaaaaaaaa?rel=0");
   });
 });

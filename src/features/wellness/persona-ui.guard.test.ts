@@ -186,19 +186,21 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
   });
 });
 
-describe("추천 음악 — 장르 칩 넷 · 곡은 나이대×성향(2026-10-19)", () => {
-  it("칩은 MUSIC_GENRES · 곡은 musicPickFor(장르, 프로필 나이대, 성향 유형) · 옛 채널 라우트는 없다", () => {
-    expect(src).not.toMatch(/MUSIC_EMBED|MUSIC_CHANNELS|\/api\/wellness\/music/);
+describe("추천 음악 — 장르 칩 넷 → 시대·분위기 묶음 → 여러 곡 모음(2026-10-20)", () => {
+  it("칩은 MUSIC_GENRES · 묶음은 MUSIC_COLLECTIONS · 첫 묶음은 defaultGroupFor(장르, 프로필 나이대, 성향 유형) · 옛 선곡표·채널 라우트는 없다", () => {
+    expect(src).not.toMatch(/MUSIC_EMBED|MUSIC_CHANNELS|\/api\/wellness\/music|MUSIC_PICKS|musicPickFor|rotateFrom/);
     expect(src).toMatch(/MUSIC_GENRES\.map\(/);
-    expect(src).toMatch(/musicPickFor\(genre\.key, s\.dirProfile\?\.ageBand, s\.personaDone\?\.type\)/);
-    expect(src).toMatch(/embedSrc\(ids\)/);
+    expect(src).toMatch(/defaultGroupFor\(genre\.key, s\.dirProfile\?\.ageBand, s\.personaDone\?\.type\)/);
+    expect(src).toMatch(/embedSrc\(cur\.item\)/);
     expect(src).not.toMatch(/autoplay=1/);
   });
-  it("곡 목록을 보여 주고 누르면 그 곡부터(musicStart) · 맞춤 여부를 한 줄로 말한다", () => {
+  it("묶음 칩(music-groups) · 모음 목록(music-list) · 누르면 그 묶음·모음으로 · 맞춤 여부를 한 줄로 말한다", () => {
+    expect(src).toContain('data-role="music-groups"');
+    expect(src).toMatch(/patch\(\{ musicGroup: i, musicItem: 0 \}\)/);
     expect(src).toContain('data-role="music-list"');
-    expect(src).toMatch(/patch\(\{ musicStart: i \}\)/);
+    expect(src).toMatch(/patch\(\{ musicGroup: cur\.groupIndex, musicItem: i \}\)/);
     expect(src).toContain('data-role="music-who"');
-    expect(src).toMatch(/알려 주시면 맞춤 곡으로 바뀌어요/);
+    expect(src).toMatch(/알려 주시면 맞는 묶음부터 열려요/);
   });
   it("자리 = 성향 결과 2/2 의 추천 도서 카드 바로 아래(2026-09-19 사용자 지시) — 데일리 힐링 카드 목록에는 없다", () => {
     const books = src.indexOf(">추천 도서</div>");
