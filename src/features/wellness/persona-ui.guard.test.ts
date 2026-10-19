@@ -41,34 +41,29 @@ describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링�
   });
 });
 
-describe("주간 흐름 박스 — 「월간 기록 보기 ›」 + 그 밑 「데일리케어 바로가기」·「디렉팅 바로가기」(2026-09-22 사용자 지시)", () => {
-  it("월간은 sheet month · 바로가기 둘은 tab care / tab healing · 옛 「케어 가기」·「케어&힐링 가기」는 없다", () => {
-    const i = src.indexOf("월간 기록 보기 ›");
-    expect(i).toBeGreaterThan(0);
-    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("라이프가이드 바로가기 ›", i) + 20);
-    expect(block).toMatch(/sheet: "month"/);
-    expect(block).toMatch(/patch\(\{ tab: "care" \}\)\} style=[^>]*>데일리헬스케어 바로가기 ›/);
-    expect(block).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>라이프가이드 바로가기 ›/);
-    expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
+describe("홈 — 「월간 기록 보기」는 이번 주 흐름 머리줄 오른쪽 · 바로가기 둘은 따로 박스에 위아래(2026-10-19 사용자 지시)", () => {
+  it("월간은 renderWeekFlow 안 머리줄에서 「이번 주 흐름」 다음(오른쪽) · sheet month", () => {
+    const f = src.slice(src.indexOf("function renderWeekFlow("), src.indexOf("function renderWeekFlow(") + 4000);
+    const iTitle = f.indexOf(">이번 주 흐름<");
+    const iMonth = f.indexOf("월간 기록 보기 ›");
+    expect(iTitle).toBeGreaterThan(0);
+    expect(iMonth).toBeGreaterThan(iTitle);
+    expect(f.slice(0, iMonth)).toMatch(/justify-content:space-between/);
+    expect(f.slice(iTitle, iMonth + 20)).toMatch(/sheet: "month"/);
+    expect(src.split("월간 기록 보기 ›").length - 1).toBe(1); // 홈에 한 곳만
   });
-
-  it("2026-10-09 한 줄 배치 — 왼쪽 월간 작은 탭 → 세로 구분선 → 오른쪽 바로가기 둘", () => {
-    const i = src.indexOf("월간 기록 보기 ›");
-    const block = src.slice(src.lastIndexOf("renderWeekFlow(", i), src.indexOf("라이프가이드 바로가기 ›", i) + 20);
-    const iMonth = block.indexOf("월간 기록 보기 ›");
-    const iDiv = block.indexOf('data-role="week-flow-divider"');
-    const iCare = block.indexOf("데일리헬스케어 바로가기 ›");
-    expect(iDiv).toBeGreaterThan(iMonth);
-    expect(iCare).toBeGreaterThan(iDiv);
-    expect(block).toMatch(/display:flex; align-items:center/);
-  });
-  it("2026-10-15 단추 셋은 이번 주 흐름 박스 밖 따로 한 박스(home-shortcuts)", () => {
-    expect(src).toContain("{renderWeekFlow()}");
+  it("바로가기 박스 = 흐름 박스 뒤 · 세로(flex-direction:column) · 데일리헬스케어 위 · 라이프가이드 아래 · 구분선 없음", () => {
     const iFlow = src.indexOf("{renderWeekFlow()}");
     const iBox = src.indexOf('data-role="home-shortcuts"');
-    const iMonth = src.indexOf("월간 기록 보기 ›");
     expect(iBox).toBeGreaterThan(iFlow);
-    expect(iMonth).toBeGreaterThan(iBox);
+    const box = src.slice(iBox, src.indexOf("라이프가이드 바로가기 ›", iBox) + 20);
+    expect(box).toMatch(/home-shortcuts" style=\{sx\("display:flex; flex-direction:column/);
+    expect(box).toMatch(/patch\(\{ tab: "care" \}\)\} style=[^>]*>데일리헬스케어 바로가기 ›/);
+    expect(box).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>라이프가이드 바로가기 ›/);
+    expect(box.indexOf("데일리헬스케어")).toBeLessThan(box.indexOf("라이프가이드"));
+    expect(box).not.toContain("월간 기록 보기");
+    expect(src).not.toContain("week-flow-divider");
+    expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
   });
 });
 

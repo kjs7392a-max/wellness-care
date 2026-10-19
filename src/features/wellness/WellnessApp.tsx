@@ -1011,21 +1011,12 @@ export default function WellnessApp() {
             없애고, **이번 주 흐름 막대 + 범례**와 「월간 기록 보기」 버튼만 남긴다(처음엔 막대를 월간 화면으로 옮겼다가 사용자 정정 —
             "주간 흐름 슬라이드바와 범례는 보이게"). 🚫 홈에 단계 글자를 되살리지 말 것. */}
         {renderWeekFlow()}
-        {/* 바로가기 박스 — 2026-10-15 사용자 지시: 「월간 기록 보기」·「데일리케어 바로가기」·「디렉팅 바로가기」를 이번 주 흐름 박스에서 떼어 따로 한 박스로.
-            같은 날 사용자 지시로 이름을 아래 탭과 함께 「데일리헬스케어」·「라이프가이드」로 바꿨다(바로가기 글자가 길어져 12.5px).
-            안의 한 줄 배치(왼쪽 월간 | 구분선 | 오른쪽 바로가기 둘)는 그대로. 🚫 다시 주간 흐름 박스 안(footer)으로 넣지 말 것. */}
-        <div data-role="home-shortcuts" style={sx("padding:13px 16px; border-radius:18px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 6px 16px rgba(80,88,140,0.14)")}>
-          {/* 2026-09-19 「월간 기록 보기」 반 + 「케어&힐링 가기」 반 → 2026-09-21 사용자 지시로 케어 가기 삭제 · 「월간 기록 보기」 하나가 한 줄
-             → 2026-09-22 사용자 지시: 그 밑에 「데일리케어 바로가기」·「디렉팅 바로가기」 두 단추(탭 이동) · 색 = 파스텔 두 축(케어 민트 / 디렉팅 라벤더 · 사용자 "너무 튀지 않은 파스텔로").
-             → 2026-10-09 사용자 지시: 한 줄로 — 왼쪽 「월간 기록 보기」 작은 탭 | 세로 구분선 | 오른쪽 바로가기 둘(폰 폭에 나란히 셋은 글자가 안 들어가 바로가기 둘은 위아래로 쌓는다). */}
-          <div style={sx("display:flex; align-items:center; gap:10px")}>
-            <div onClick={() => patch({ sheet: "month" })} style={sx("flex:none; cursor:pointer; text-align:center; padding:8px 11px; border-radius:999px; font-size:12.5px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#7a6bc4; color:#fff; box-shadow:0 3px 9px rgba(122,107,196,0.28)")}>월간 기록 보기 ›</div>
-            <div data-role="week-flow-divider" style={sx("flex:none; align-self:stretch; width:2px; border-radius:1px; background:#9a8dd0")} />
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:7px")}>
-              <div onClick={() => patch({ tab: "care" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:12.5px; font-weight:800; letter-spacing:-0.02em; white-space:nowrap; background:#d9f0ea; color:#2b7a6f; border:1.5px solid #bfe3d9; box-shadow:0 3px 10px rgba(58,163,154,0.14)")}>데일리헬스케어 바로가기 ›</div>
-              <div onClick={() => patch({ tab: "healing" })} style={sx("cursor:pointer; text-align:center; padding:10px 8px; border-radius:12px; font-size:12.5px; font-weight:800; letter-spacing:-0.02em; white-space:nowrap; background:#e6e0f8; color:#5f5397; border:1.5px solid #cfc4ef; box-shadow:0 3px 10px rgba(122,107,196,0.14)")}>라이프가이드 바로가기 ›</div>
-            </div>
-          </div>
+        {/* 바로가기 박스 — 2026-10-15 사용자 지시: 단추를 이번 주 흐름 박스에서 떼어 따로 한 박스로(이름 「데일리헬스케어」·「라이프가이드」).
+            2026-10-19 사용자 지시: 「월간 기록 보기」는 이번 주 흐름 박스 머리줄 오른쪽으로 옮기고, 이 박스엔 바로가기 둘만 위아래로(전폭).
+            🚫 월간 단추를 이 박스로 되돌리지 말 것 · 바로가기 둘을 가로로 나란히 두지 말 것. */}
+        <div data-role="home-shortcuts" style={sx("display:flex; flex-direction:column; gap:8px; padding:13px 16px; border-radius:18px; background:#fff; border:1.5px solid #c7c0e8; box-shadow:0 6px 16px rgba(80,88,140,0.14)")}>
+          <div onClick={() => patch({ tab: "care" })} style={sx("cursor:pointer; text-align:center; padding:11px 8px; border-radius:12px; font-size:13.5px; font-weight:800; letter-spacing:-0.02em; white-space:nowrap; background:#d9f0ea; color:#2b7a6f; border:1.5px solid #bfe3d9; box-shadow:0 3px 10px rgba(58,163,154,0.14)")}>데일리헬스케어 바로가기 ›</div>
+          <div onClick={() => patch({ tab: "healing" })} style={sx("cursor:pointer; text-align:center; padding:11px 8px; border-radius:12px; font-size:13.5px; font-weight:800; letter-spacing:-0.02em; white-space:nowrap; background:#e6e0f8; color:#5f5397; border:1.5px solid #cfc4ef; box-shadow:0 3px 10px rgba(122,107,196,0.14)")}>라이프가이드 바로가기 ›</div>
         </div>
 
 
@@ -2359,7 +2350,7 @@ export default function WellnessApp() {
   }
 
   /** 주간 흐름 막대 + 범례 — 2026-09-17 사용자 지시로 「주간 기록 보기」 시트를 없애고 홈 박스에 둔다.
-   *  2026-10-15 사용자 지시로 「월간 기록 보기」·바로가기 단추는 이 박스 밖 따로 한 박스(home-shortcuts)로 뺐다. */
+   *  2026-10-15 사용자 지시로 단추들을 이 박스 밖(home-shortcuts)으로 뺐다가, 2026-10-19 사용자 지시로 「월간 기록 보기」만 이 박스 머리줄 오른쪽으로 돌아왔다. */
   function renderWeekFlow(footer?: React.ReactNode) {
     const flow = v.cond.weekFlow;
     const oc = v.cond.dayOverall ? LEVEL_COLOR[v.cond.dayOverall] : { bg: "#eef3f5", fg: "#6b8c9a" };
@@ -2371,7 +2362,11 @@ export default function WellnessApp() {
     })();
     return (
       <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
-            <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; "), color: oc.fg }}>이번 주 흐름</div>
+            {/* 2026-10-19 사용자 지시: 머리줄 = 왼쪽 「이번 주 흐름」 | 오른쪽 「월간 기록 보기」 작은 탭 */}
+            <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:10px")}>
+              <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; "), color: oc.fg }}>이번 주 흐름</div>
+              <div data-role="week-flow-month" onClick={() => patch({ sheet: "month" })} style={sx("flex:none; cursor:pointer; text-align:center; padding:6px 11px; border-radius:999px; font-size:12px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#7a6bc4; color:#fff; box-shadow:0 3px 9px rgba(122,107,196,0.28)")}>월간 기록 보기 ›</div>
+            </div>
             {/* 요일마다 가로 바 — 채움 길이 = 단계(5칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}
             <div style={sx("display:flex; flex-direction:column; gap:7px")}>
               {flow.map((h, i) => {
