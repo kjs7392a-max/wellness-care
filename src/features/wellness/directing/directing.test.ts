@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AGE_BANDS, ageOfBand, parseProfile, serializeProfile } from "./profile";
-import { SCENES, ageDecade, outfitCard, outfitCards } from "./outfit";
+import { OUTFIT_QUESTIONS, SCENES, ageDecade, outfitCard, outfitCards, pickOutfit } from "./outfit";
 import { sentenceInputFromSam, sentencesFor } from "./sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./walk";
 import { EMPTY_SAM } from "../sam";
@@ -17,6 +17,38 @@ describe("profile — 성별·나이대 저장값", () => {
   });
   it("나이대 대표 나이는 그 대의 가운데이고 원본 wp 로 되돌리면 같은 대가 나온다", () => {
     for (const b of AGE_BANDS) expect(ageDecade(ageOfBand(b))).toBe(b);
+  });
+});
+
+describe("outfit — 컨디션 퀵 체크(2026-10-20 사용자: 메이크업처럼 컨디션을 고르게)", () => {
+  const input = { temperature: 22, weatherCode: "Clear" as const, gender: "female" as const, ageBand: "30대" as const, mbti: "ENFP" };
+  it("질문 셋 = 몸 컨디션·기분·일정 · 일정 칩은 네 장면과 같다", () => {
+    expect(OUTFIT_QUESTIONS.map((q) => q.key)).toEqual(["condition", "mood", "scene"]);
+    expect(OUTFIT_QUESTIONS[2].options.map((o) => o.id)).toEqual([...SCENES]);
+  });
+  it("셋 다 골라야 결과 · 고른 일정의 카드 한 장 · 옷 규칙은 원본 그대로", () => {
+    expect(pickOutfit(input, {})).toBeNull();
+    expect(pickOutfit(input, { condition: "normal", mood: "calm" })).toBeNull();
+    expect(pickOutfit(input, { condition: "normal", mood: "calm", scene: "nope" })).toBeNull();
+    const p = pickOutfit(input, { condition: "normal", mood: "calm", scene: "date" })!;
+    expect(p.card).toEqual(outfitCard("date", input));
+    expect(p.shoesChanged).toBe(false);
+  });
+  it("피곤한 날엔 힐·구두를 편한 신발로 바꾼다 · 원래 편한 신발은 그대로", () => {
+    const tiredDate = pickOutfit(input, { condition: "tired", mood: "calm", scene: "date" })!;
+    expect(outfitCard("date", input).shoes.name).toBe("힐");
+    expect(tiredDate.card.shoes.name).not.toBe("힐");
+    expect(tiredDate.shoesChanged).toBe(true);
+    const male = { ...input, gender: "male" as const };
+    expect(pickOutfit(male, { condition: "tired", mood: "calm", scene: "work" })!.card.shoes.name).not.toBe("옥스퍼드 슈즈");
+    const casual = pickOutfit(input, { condition: "tired", mood: "calm", scene: "casual" })!;
+    expect(casual.card.shoes).toEqual(outfitCard("casual", input).shoes);
+    expect(casual.shoesChanged).toBe(false);
+  });
+  it("컨디션·기분마다 조언이 다르다", () => {
+    const tips = (k: "condition" | "mood", ids: string[]) => new Set(ids.map((id) => pickOutfit(input, { condition: "normal", mood: "calm", scene: "work", [k]: id })![k === "condition" ? "conditionTip" : "moodTip"]));
+    expect(tips("condition", ["tired", "normal", "fresh"]).size).toBe(3);
+    expect(tips("mood", ["calm", "bright", "confident"]).size).toBe(3);
   });
 });
 

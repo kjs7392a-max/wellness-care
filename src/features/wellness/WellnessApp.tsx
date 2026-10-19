@@ -21,7 +21,7 @@ import { greetingForHour } from "./greeting";
 import { pickHomeMessage } from "./homeMessage";
 import { AGE_BANDS, GENDER_LABEL, PROFILE_STORE_KEY, parseProfile, serializeProfile, type AgeBand, type DirectingProfile, type Gender } from "./directing/profile";
 import { MAKEUP_QUESTIONS, pickMakeup, weatherAnalysis, type MakeupAnswers } from "./directing/makeup";
-import { outfitCards } from "./directing/outfit";
+import { OUTFIT_QUESTIONS, pickOutfit, type OutfitAnswers } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
@@ -134,6 +134,8 @@ interface State {
   dirDraft: { gender: Gender | null; ageBand: AgeBand | null };
   /** 메이크업 4문항 답(질감·톤·고민·목적). 넷 다 있어야 결과. */
   makeupAns: Partial<MakeupAnswers>;
+  /** 오늘의 코디 3초 퀵 체크 답(몸 컨디션·기분·일정 · 2026-10-20) */
+  outfitAns: Partial<OutfitAnswers>;
   recTab: "body" | "mind";
   /** 나의 기록에서 보고 있는 달(기본 = 이번 달). 화살표로 첫 기록 달까지. */
   recMonth: YearMonth;
@@ -184,7 +186,7 @@ export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     msgSeed: null,
-    geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {},
+    geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, outfitAns: {},
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
@@ -1149,7 +1151,7 @@ export default function WellnessApp() {
       { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
       { id: "music", label: "오늘의 추천음악&추천도서", emoji: "🎧", hint: "가요·팝송 시대별 모음(7080·90년대…) · 재즈·클래식 분위기별 모음 · 책 두 권" },
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
-      { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "오늘 날씨 · 네 가지 장면" },
+      { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "3초 퀵 체크로 오늘 컨디션·날씨에 맞게" },
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
       { id: "walk", label: "오늘의 산책", emoji: "🌿", hint: "가볍게 걷기 좋은 코스 셋" },
     ];
@@ -1336,49 +1338,79 @@ export default function WellnessApp() {
     );
   }
 
-  /** 오늘의 코디 — 네 장면 카드(아우터·팬츠·슈즈·스타일 분석·네이버 블로그). 규칙은 directing/outfit.ts. */
+  /**
+   * 오늘의 코디 — 메이크업처럼 3초 퀵 체크(몸 컨디션·기분·일정)를 고르면 그 일정의 카드 한 장(2026-10-20 사용자 지시
+   *   "오늘의코디도 메이크업처럼 컨디션을 고를수 있게"). 옷 규칙은 directing/outfit.ts 원본 그대로 · 컨디션은 신발 한 칸과 조언 두 줄로 반영(pickOutfit).
+   */
   function renderOutfitTab(profile: DirectingProfile) {
     const mbti = s.personaDone?.type ?? "";
     const temperature = s.live ? s.live.temp : 20;
     const weatherCode = s.live?.key === "rain" ? "Rain" : "Clear";
-    const cards = outfitCards({ temperature, weatherCode, gender: profile.gender, ageBand: profile.ageBand, mbti });
+    const ans = s.outfitAns;
+    const pick = pickOutfit({ temperature, weatherCode, gender: profile.gender, ageBand: profile.ageBand, mbti }, ans);
     const tone: Record<string, { bg: string; ink: string; border: string }> = {
       work: { bg: "linear-gradient(135deg,#eaf1ff 0%,#eef0fb 100%)", ink: "#2f4d8a", border: "#c9d6f2" },
       casual: { bg: "linear-gradient(135deg,#e8f7ef 0%,#eaf6f0 100%)", ink: "#245c48", border: "#bfe2cf" },
       date: { bg: "linear-gradient(135deg,#ffe9ef 0%,#fdeef3 100%)", ink: "#8a3a55", border: "#f2c7d4" },
       gathering: { bg: "linear-gradient(135deg,#fff4dd 0%,#fff7e6 100%)", ink: "#7a5a12", border: "#f0dfae" },
     };
+    const c = pick?.card;
+    const tn = c ? tone[c.scene] : null;
     return (
       <div style={sx("display:flex; flex-direction:column; gap:14px")}>
-        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:10px 13px; border-radius:13px; background:#f2edfa; border:1px solid #cfc5ea")}><b style={sx("color:#4a3f80")}>{mbti}</b> 성향과 오늘 날씨를 분석한 맞춤 추천이에요 · {GENDER_LABEL[profile.gender]} · {profile.ageBand} · {temperature}°C</div>
-        {cards.map((c) => {
-          const tn = tone[c.scene];
-          return (
-            <div key={c.scene} data-outfit-scene={c.scene} style={{ ...sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:22px; border:1.5px solid; box-shadow:0 8px 20px rgba(45,92,110,0.08)"), background: tn.bg, borderColor: tn.border }}>
-              <div style={{ ...sx("font-size:12px; font-weight:800; letter-spacing:0.02em"), color: tn.ink }}>{c.timeLabel}</div>
-              <div style={sx("font-size:16px; font-weight:800; color:#2d3748")}>{c.headline}</div>
-              <div style={sx("font-size:13px; color:#3a4a72; line-height:1.65; text-wrap:pretty")}>{c.description}</div>
-              {[["🧥 아우터", c.outer], ["👖 팬츠", c.pants], ["👟 슈즈", c.shoes]].map(([label, it]) => {
-                const item = it as { name: string; description: string };
-                return (
-                  <div key={label as string} style={sx("display:flex; flex-direction:column; gap:4px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8); border:1px solid rgba(0,0,0,0.05)")}>
-                    <div style={sx("display:flex; align-items:center; gap:8px")}>
-                      <div style={{ ...sx("flex:none; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:800; background:#fff; border:1px solid"), color: tn.ink, borderColor: tn.border }}>{label as string}</div>
-                      <div style={sx("flex:1; min-width:0; font-size:14px; font-weight:800; color:#2d3748")}>{item.name}</div>
+        <div data-outfit-check style={sx("display:flex; flex-direction:column; gap:12px; padding:20px 18px; border-radius:22px; background:linear-gradient(120deg,#eef0fb 0%,#f2edfa 100%); border:1px solid #cfc5ea; box-shadow:0 10px 24px rgba(80,88,140,0.16)")}>
+          <div style={sx("font-size:16px; font-weight:700; color:#4a3f80")}>오늘의 코디</div>
+          <div style={sx("font-size:13px; color:#5f5397; line-height:1.6")}>오늘 몸과 마음은 어떤가요? (3초 퀵 체크)</div>
+          <div style={sx("font-size:12px; color:#5f5397; line-height:1.6; text-wrap:pretty")}>💡 {s.live ? `지금 날씨(기온 ${s.live.temp}°C)` : "오늘 날씨"}{mbti ? `와 ${mbti} 성향` : ""}, 고른 컨디션을 함께 반영해요 · {GENDER_LABEL[profile.gender]} · {profile.ageBand}</div>
+          {OUTFIT_QUESTIONS.map((q) => (
+            <div key={q.key} style={sx("display:flex; flex-direction:column; gap:7px")}>
+              <div style={sx("font-size:12.5px; font-weight:800; color:#4a3f80")}>{q.title}</div>
+              <div style={{ ...sx("display:grid; gap:7px"), gridTemplateColumns: `repeat(${q.options.length === 3 ? 3 : 2},1fr)` }}>
+                {q.options.map((o) => {
+                  const on = ans[q.key] === o.id;
+                  return (
+                    <div key={o.id} onClick={() => patch({ outfitAns: { ...ans, [q.key]: o.id } })} style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 6px; border-radius:13px; border:1.5px solid; text-align:center; word-break:keep-all"), background: on ? "#7a6bc4" : "#fff", color: on ? "#fff" : "#4a3f80", borderColor: on ? "#7a6bc4" : "#cfc5ea" }}>
+                      <div style={sx("font-size:20px; line-height:1")}>{o.emoji}</div>
+                      <div style={sx("font-size:12.5px; font-weight:800; line-height:1.35")}>{o.label}</div>
+                      {o.sub && <div style={{ ...sx("font-size:10.5px; font-weight:600; line-height:1.3"), opacity: 0.85 }}>{o.sub}</div>}
                     </div>
-                    <div style={sx("font-size:12.5px; color:#4d5578; line-height:1.55; white-space:pre-line; text-wrap:pretty")}>{item.description}</div>
-                  </div>
-                );
-              })}
-              <div style={sx("display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8)")}>
-                <div style={{ ...sx("font-size:12px; font-weight:800"), color: tn.ink }}>💡 스타일 분석</div>
-                <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>{c.styleAnalysis}</div>
+                  );
+                })}
               </div>
-              <a href={`https://search.naver.com/search.naver?query=${encodeURIComponent(c.naverSearchQuery)}`} target="_blank" rel="noopener noreferrer" style={{ ...sx("display:block; text-align:center; padding:12px; border-radius:13px; font-size:13px; font-weight:800; color:#fff; text-decoration:none"), background: tn.ink }}>네이버 블로그에서 더 보기 ›</a>
-              <div style={sx("text-align:center; font-size:11px; color:#8ba8b3")}>검색어: {c.naverSearchQuery}</div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+        {pick && c && tn && (
+          <div data-outfit-result data-outfit-scene={c.scene} style={{ ...sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:22px; border:1.5px solid; box-shadow:0 8px 20px rgba(45,92,110,0.08)"), background: tn.bg, borderColor: tn.border }}>
+            <div style={{ ...sx("font-size:12px; font-weight:800; letter-spacing:0.02em"), color: tn.ink }}>{c.timeLabel}</div>
+            <div style={sx("font-size:16px; font-weight:800; color:#2d3748")}>{c.headline}</div>
+            <div style={sx("font-size:13px; color:#3a4a72; line-height:1.65; text-wrap:pretty")}>{c.description}</div>
+            {[["🧥 아우터", c.outer], ["👖 팬츠", c.pants], ["👟 슈즈", c.shoes]].map(([label, it]) => {
+              const item = it as { name: string; description: string };
+              return (
+                <div key={label as string} style={sx("display:flex; flex-direction:column; gap:4px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8); border:1px solid rgba(0,0,0,0.05)")}>
+                  <div style={sx("display:flex; align-items:center; gap:8px")}>
+                    <div style={{ ...sx("flex:none; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:800; background:#fff; border:1px solid"), color: tn.ink, borderColor: tn.border }}>{label as string}</div>
+                    <div style={sx("flex:1; min-width:0; font-size:14px; font-weight:800; color:#2d3748")}>{item.name}</div>
+                  </div>
+                  <div style={sx("font-size:12.5px; color:#4d5578; line-height:1.55; white-space:pre-line; text-wrap:pretty")}>{item.description}</div>
+                </div>
+              );
+            })}
+            <div data-outfit-condition style={sx("display:flex; flex-direction:column; gap:6px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8)")}>
+              <div style={{ ...sx("font-size:12px; font-weight:800"), color: tn.ink }}>🧭 오늘 컨디션에 맞춘 팁</div>
+              <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>{pick.conditionTip}</div>
+              <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>🎨 {pick.moodTip}</div>
+            </div>
+            <div style={sx("display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:13px; background:rgba(255,255,255,0.8)")}>
+              <div style={{ ...sx("font-size:12px; font-weight:800"), color: tn.ink }}>💡 스타일 분석</div>
+              <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>{c.styleAnalysis}</div>
+            </div>
+            <a href={`https://search.naver.com/search.naver?query=${encodeURIComponent(c.naverSearchQuery)}`} target="_blank" rel="noopener noreferrer" style={{ ...sx("display:block; text-align:center; padding:12px; border-radius:13px; font-size:13px; font-weight:800; color:#fff; text-decoration:none"), background: tn.ink }}>네이버 블로그에서 더 보기 ›</a>
+            <div style={sx("text-align:center; font-size:11px; color:#8ba8b3")}>검색어: {c.naverSearchQuery}</div>
+            <div onClick={() => patch({ outfitAns: {} })} style={{ ...sx("cursor:pointer; text-align:center; padding:11px; border-radius:13px; background:#fff; border:1.5px solid; font-size:13px; font-weight:800"), color: tn.ink, borderColor: tn.border }}>다시 고르기</div>
+          </div>
+        )}
       </div>
     );
   }

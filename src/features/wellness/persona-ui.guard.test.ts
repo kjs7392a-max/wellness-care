@@ -176,7 +176,12 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(fn("renderSettings")).toMatch(/removeItem\(PERSONA_STORE_KEY\)[\s\S]{0,400}wiped: true/);
     // 규칙은 화면에서 다시 적지 않는다 — 순수 모듈 호출만
     expect(src).toMatch(/pickMakeup\(profile\.gender, ans as MakeupAnswers\)/);
-    expect(src).toMatch(/outfitCards\(\{ temperature, weatherCode, gender: profile\.gender, ageBand: profile\.ageBand, mbti \}\)/);
+    expect(src).toMatch(/pickOutfit\(\{ temperature, weatherCode, gender: profile\.gender, ageBand: profile\.ageBand, mbti \}, ans\)/);
+    // 2026-10-20 사용자: 코디도 메이크업처럼 컨디션을 고른다 — 퀵 체크 칩(OUTFIT_QUESTIONS) · 답은 outfitAns · 다시 고르기
+    expect(fn("renderOutfitTab")).toMatch(/OUTFIT_QUESTIONS\.map\(/);
+    expect(fn("renderOutfitTab")).toMatch(/patch\(\{ outfitAns: \{ \.\.\.ans, \[q\.key\]: o\.id \} \}\)/);
+    expect(fn("renderOutfitTab")).toMatch(/patch\(\{ outfitAns: \{\} \}\)/);
+    expect(fn("renderOutfitTab")).toContain("data-outfit-condition");
     expect(src).toMatch(/sentencesFor\(input\)/);
     expect(src).toMatch(/WALK_COURSES\.map\(/);
     expect(healing).not.toMatch(/신체 건강 케어|마음 건강 케어/);

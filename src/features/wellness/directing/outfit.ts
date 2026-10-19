@@ -162,3 +162,64 @@ export function outfitCard(scene: Scene, input: OutfitInput): OutfitCard {
 
 /** 원본 iN — 네 장면 전부. */
 export const outfitCards = (input: OutfitInput): OutfitCard[] => SCENES.map((s) => outfitCard(s, input));
+
+/* ───────── 컨디션 퀵 체크(2026-10-20 사용자 지시 "오늘의코디도 메이크업처럼 컨디션을 고를수 있게") ─────────
+ * 메이크업처럼 칩 세 줄(컨디션·기분·일정)을 다 고르면 그 일정의 카드 한 장만 보여 준다.
+ * 위 원본 규칙(pieces·sceneCopy …)은 손대지 않고, 고른 답으로 신발 한 칸과 조언 두 줄만 덧씌운다.
+ */
+export interface OutfitOption { id: string; emoji: string; label: string; sub?: string }
+export interface OutfitQuestion { key: "condition" | "mood" | "scene"; title: string; options: OutfitOption[] }
+export interface OutfitAnswers { condition: string; mood: string; scene: string }
+
+export const OUTFIT_QUESTIONS: readonly OutfitQuestion[] = [
+  { key: "condition", title: "오늘 몸 컨디션", options: [
+    { id: "tired", emoji: "😴", label: "피곤하고 무거움" },
+    { id: "normal", emoji: "🙂", label: "그럭저럭 보통" },
+    { id: "fresh", emoji: "✨", label: "가볍고 상쾌함" },
+  ] },
+  { key: "mood", title: "오늘 기분", options: [
+    { id: "calm", emoji: "🌿", label: "차분하게", sub: "(조용히 지내고 싶어요)" },
+    { id: "bright", emoji: "🌈", label: "산뜻하게", sub: "(기분 전환이 필요해요)" },
+    { id: "confident", emoji: "💪", label: "당당하게", sub: "(힘을 주고 싶어요)" },
+  ] },
+  { key: "scene", title: "오늘 일정", options: [
+    { id: "work", emoji: "☕", label: "출근은 기분좋게" },
+    { id: "casual", emoji: "🧘", label: "여유있는 외출" },
+    { id: "date", emoji: "📸", label: "행복한 데이트" },
+    { id: "gathering", emoji: "👥", label: "오랜만의 모임" },
+  ] },
+];
+
+/** 피곤한 날 바꿔 신을 편한 신발(굽·딱딱한 바닥 → 쿠션). 원래 편한 신발이면 그대로. */
+const COMFY_SHOES: Readonly<Record<string, Item>> = {
+  "옥스퍼드 슈즈": { name: "쿠션 로퍼", description: "몸이 무거운 날엔 딱딱한 구두 대신 바닥이 푹신한 로퍼로 바꿔 보세요.\n단정함은 그대로, 발은 훨씬 편해요." },
+  "더비 슈즈": { name: "가죽 스니커즈", description: "피곤한 날엔 더비 슈즈 대신 깔끔한 가죽 스니커즈로.\n멋은 지키고 오래 걸어도 덜 지쳐요." },
+  "힐": { name: "블록힐 · 플랫", description: "몸이 무거운 날엔 높은 힐 대신 낮은 블록힐이나 플랫으로.\n분위기는 살리고 발 부담은 줄여요." },
+  "로퍼": { name: "쿠션 로퍼", description: "피곤한 날엔 바닥에 쿠션이 있는 로퍼로 골라 보세요.\n하루 종일 서 있어도 덜 지쳐요." },
+};
+
+const CONDITION_TIP: Readonly<Record<string, string>> = {
+  tired: "몸이 무거운 날이에요. 허리·어깨를 조이지 않는 넉넉한 핏과 부드러운 소재(니트·저지)를 고르면 하루가 덜 지쳐요.",
+  normal: "평소 컨디션이에요. 오늘 날씨에 맞춘 기본 조합 그대로 입으면 충분해요.",
+  fresh: "몸이 가벼운 날이에요. 아껴 둔 아이템 하나를 꺼내 핏이 살아 있는 실루엣으로 입어 보세요.",
+};
+const MOOD_TIP: Readonly<Record<string, string>> = {
+  calm: "차분한 날엔 네이비·베이지·그레이 같은 톤다운 색으로 맞추고, 무늬는 한 가지만.",
+  bright: "기분 전환이 필요한 날엔 화이트·파스텔 한 가지를 상의나 가방에 넣어 보세요. 얼굴 가까이 밝은 색이 오면 표정도 밝아 보여요.",
+  confident: "힘을 주고 싶은 날엔 블랙·차콜을 바탕에 두고 포인트 색(버건디·코발트) 하나만 더해 보세요.",
+};
+
+export interface OutfitPick { card: OutfitCard; conditionTip: string; moodTip: string; shoesChanged: boolean }
+
+/** 답 셋 → 그 일정 카드 한 장 + 컨디션·기분 조언. 피곤하면 불편한 신발을 편한 것으로 바꾼다. 답이 비면 null. */
+export function pickOutfit(input: OutfitInput, ans: Partial<OutfitAnswers>): OutfitPick | null {
+  if (!ans.condition || !ans.mood || !ans.scene || !(SCENES as readonly string[]).includes(ans.scene)) return null;
+  const base = outfitCard(ans.scene as Scene, input);
+  const swap = ans.condition === "tired" ? COMFY_SHOES[base.shoes.name] : undefined;
+  return {
+    card: swap ? { ...base, shoes: swap } : base,
+    conditionTip: CONDITION_TIP[ans.condition] ?? CONDITION_TIP.normal,
+    moodTip: MOOD_TIP[ans.mood] ?? MOOD_TIP.calm,
+    shoesChanged: !!swap,
+  };
+}
