@@ -1,6 +1,7 @@
 import type { Level } from "./condition";
-import { BLOT_UNSURE, blotClause, blotText } from "./blot";
-import { colorClause, colorText } from "./color";
+import { blotText } from "./blot";
+import { colorText } from "./color";
+import { needAdvice, needLine, readPicks, socialLine } from "./needs";
 
 /**
  * 「오늘의 마음카드」 — 그림으로 답하는 자가보고 5줄 + 종합 디렉팅.
@@ -202,9 +203,7 @@ const ADVICE_SHORT: Record<Quadrant, readonly string[]> = {
   HN: ["숨 고르기 1분으로 긴장부터 풀어 보세요.", "어깨와 턱에 힘이 들어갔는지 한 번 확인해 보세요.", "4초 들이쉬고 8초 내쉬는 호흡을 세 번만 해 보세요."],
   LN: ["자리에서 1분 기지개, 그거면 오늘은 충분해요.", "따뜻한 물 한 잔을 천천히 마셔 보세요.", "아주 작은 일 하나만 해내도 오늘은 충분해요."],
 };
-/** 요약 2 의 앞말 · 잇는 말 — 돌려 쓴다. */
-const MID_LEAD: readonly ((x: string) => string)[] = [(x) => `${x}을 보면`, (x) => `고른 ${x}에서는`, (x) => `${x}에 눈이 간 걸 보면`, (x) => `${x}에서 느껴지는 건`];
-const MID_JOIN: readonly string[] = ["또", "그리고", "한편으로는"];
+
 
 /** 디렉팅 입력 — 기분·긴장은 필수, 나머지 셋은 있으면 이유 문장에만 쓴다(지금은 묻지 않는다). */
 type SamAnswerDone = { valence: SamScore; arousal: SamScore } & Partial<Record<"dominance" | "sleep" | "satisfaction", SamScore | null>>;
@@ -225,12 +224,11 @@ export function directing(ans: SamAnswerDone, body: Level | null, slot: number, 
   const advice = closing(q, body, slot) + (ans.dominance != null && ans.dominance <= 2
     ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
     : "");
-  // 요약: 상태(기분×긴장 25가지) · (그림·색 있으면) 한 줄 · 제안(후보 셋). 앞말·잇는 말·제안은 seed(날짜)와 답으로 돌려 쓴다 — 같은 답도 날마다 달라진다.
-  const hasBlot = (blots ?? []).some((b) => b !== null && b !== BLOT_UNSURE);
-  const clauses = [...(blots ?? []).map((b) => (b === BLOT_UNSURE ? null : blotClause(b, q))), colorClause(color, q)].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
+  // 요약(2026-10-24 「선택 조합을 계산해 신빙성 있게」): 상태(기분×긴장 25가지 · 검증 척도) + 그림·색이 가리키는 방향을 **계산**해 현재 긴장과 견준 줄
+  //   + (뚜렷하면) 사람/혼자 줄 + 방향에 맞춘 제안. 계산 규칙·근거 = needs.ts. 같은 답이라도 날(seed)마다 문장 변형이 돌아간다.
+  const read = readPicks(ans.arousal, blots, color);
   const h = Math.abs(Math.floor(seed) + ans.valence * 7 + ans.arousal * 3 + ((color ?? 0) + 1) * 5 + ((blots?.[0] ?? 0) + 2) * 11);
-  const what = hasBlot ? (colorClause(color, q) ? "그림과 색" : "그림") : "색";
-  const mid = clauses.length ? `${MID_LEAD[Math.floor(h / 3) % MID_LEAD.length](what)} ${clauses.join(` ${MID_JOIN[Math.floor(h / 12) % MID_JOIN.length]} `)}` : null;
-  const short = [`${MOOD_SHORT[ans.valence]} ${BODY_SHORT[ans.arousal]}`, mid, ADVICE_SHORT[q][h % ADVICE_SHORT[q].length]].filter(Boolean).join(" ");
+  const pool = needAdvice(read) ?? ADVICE_SHORT[q];
+  const short = [`${MOOD_SHORT[ans.valence]} ${BODY_SHORT[ans.arousal]}`, needLine(read, ans.arousal, Math.floor(h / 3)), socialLine(read), pool[h % pool.length]].filter(Boolean).join(" ");
   return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" "), short };
 }

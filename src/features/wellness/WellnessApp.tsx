@@ -2288,7 +2288,7 @@ export default function WellnessApp() {
                 <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.short}</div>
                 {/* 유형×시간대 한 줄(마음온도 「디렉팅」에서 골라 온 자리) — 유형이 있을 때만. 판정엔 안 들어가고 말투만(persona.ts 머리 주석). */}
                 {s.personaDone && <div style={sx("font-size:13.5px; font-weight:600; line-height:1.7; color:#5f5397; text-wrap:pretty; padding:10px 12px; border-radius:12px; background:#f2edfa; border:1px solid #cfc5ea")}>{PERSONA_TYPES[s.personaDone.type].name} · {personaDirecting(s.personaDone.type, s.now.getHours())}</div>}
-                <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩은 재미로 보는 마음 거울이에요. 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
+                <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩·색은 재미 요소라 뜻을 풀이하지 않고, 고른 것이 끌리는 방향(차분↔활기, 혼자↔사람)만 계산해 지금 긴장과 견줘요(기분 관리 이론, Zillmann 1988). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
                 <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>

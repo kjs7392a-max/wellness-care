@@ -106,14 +106,14 @@ describe("요약(short) — 6줄 안쪽 · 천편일률 방지", () => {
     expect(days.size).toBeGreaterThanOrEqual(4);
     expect(sh(2, 5, [2], 4, 20000).short).toBe(sh(2, 5, [2], 4, 20000).short);
   });
-  it("답 조합이 많을수록 요약이 다양하다(수천 가지) · 어느 조합도 160자 이하", () => {
+  it("답 조합이 다르면 요약이 달라진다(수백 가지 이상 · 방향이 같은 조합은 같은 줄) · 어느 조합도 160자 이하", () => {
     const set = new Set<string>();
     for (let v = 1; v <= 5; v++) for (let a = 1; a <= 5; a++) for (let c = 0; c < 6; c++) for (let b = 0; b < 5; b++) for (let d = 0; d < 3; d++) {
       const t = sh(v as SamScore, a as SamScore, [b], c, 20000 + d).short;
       expect(t.length, `${v}/${a}/${b}/${c}/${d}`).toBeLessThanOrEqual(160);
       set.add(t);
     }
-    expect(set.size).toBeGreaterThan(1500);
+    expect(set.size).toBeGreaterThan(500);
   });
   it("그림·색을 건너뛰면 그 줄이 빠지고 그림만/색만이면 말이 맞는다", () => {
     expect(sh(4, 2, [-1], -1).short).not.toMatch(/그림|색/);
