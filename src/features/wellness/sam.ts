@@ -85,7 +85,8 @@ const L = (key: AxisKey, n: SamScore) => ALL_AXES.find((x) => x.key === key)!.la
 
 /** 첫 문단 — 고른 은유를 받아서 시작 + 사분면 상태 말 */
 function opening(q: Quadrant, v: SamScore, a: SamScore): string {
-  const lead = `오늘 하늘은 ${L("valence", v)}, 안의 물은 ${L("arousal", a)} — `;
+  // 2026-10-24 사용자 지시: 「오늘 하늘은 …, 안의 물은 … —」 수식어를 빼고 순수하게 피드백만 준다.
+  const lead = "";
   switch (q) {
     case "HP": return lead + (v === 5 || a === 5
       ? "기분이 좋고 에너지도 많이 올라와 있어요. 오늘은 힘이 나는 날이에요."
@@ -213,6 +214,6 @@ export function directing(ans: SamAnswerDone, body: Level | null, slot: number, 
   // 요약: 상태 · (그림·색 있으면) 한 줄 · 제안. 그림·색 덩어리는 사분면에 맞춘 문장을 「또」로 잇는다.
   const picks = [...(blots ?? []).map((b) => (b === BLOT_UNSURE ? null : blotClause(b, q))), colorClause(color, q)].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
   const mid = picks.length ? `${(blots ?? []).some((b) => b !== null && b !== BLOT_UNSURE) ? (colorClause(color, q) ? "그림과 색을 보면" : "그림을 보면") : "끌린 색을 보면"} ${picks.join(" 또 ")}` : null;
-  const short = [`하늘은 ${L("valence", ans.valence)}, 물은 ${L("arousal", ans.arousal)} — ${STATE_SHORT[q]}`, mid, ADVICE_SHORT[q]].filter(Boolean).join(" ");
+  const short = [STATE_SHORT[q], mid, ADVICE_SHORT[q]].filter(Boolean).join(" ");
   return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" "), short };
 }

@@ -37,11 +37,12 @@ describe("SAM → 사분면", () => {
 });
 
 describe("directing", () => {
-  it("첫 문장이 고른 은유(하늘·물)를 받아서 시작하고, 사분면 전략이 붙고, 임상 용어가 없다", () => {
+  it("고른 은유 이름(하늘·물) 수식어 없이 상태 말로 시작하고, 사분면 전략이 붙고, 임상 용어가 없다", () => {
     const d = directing(full(2, 5), 4, 2);
     expect(d.quadrant).toBe("HN");
     expect(d.weight).toBe("heavy");
-    expect(d.text.startsWith("오늘 하늘은 흐림, 안의 물은 폭포 — ")).toBe(true);
+    expect(d.text).not.toMatch(/오늘 하늘은|안의 물은/); // 2026-10-24 수식어 삭제
+    expect(d.text.startsWith("겉보다 안이 더 요동친 날이에요.")).toBe(true);
     expect(d.text).toContain("숨 고르기");
     expect(d.text).not.toMatch(/\d점|등급|우울증|진단|각성/);
   });
@@ -86,7 +87,8 @@ describe("directing", () => {
 describe("요약(short) — 6~7줄 안쪽", () => {
   it("상태·그림색·제안 한 줄씩 · 전체 글보다 훨씬 짧고 전체 글은 그대로", () => {
     const d = directing({ valence: 2, arousal: 5 }, 3, 1, [2], 4);
-    expect(d.short).toContain("하늘은 흐림, 물은 폭포");
+    expect(d.short).not.toMatch(/하늘은|물은/);
+    expect(d.short.startsWith("기분이 힘들고 몸도 긴장한 날이에요.")).toBe(true);
     expect(d.short).toContain("그림과 색을 보면");
     expect(d.short).toContain("숨 고르기 1분");
     expect(d.short.length).toBeLessThanOrEqual(150);
