@@ -84,23 +84,41 @@ describe("directing", () => {
   });
 });
 
-describe("요약(short) — 6~7줄 안쪽", () => {
-  it("상태·그림색·제안 한 줄씩 · 전체 글보다 훨씬 짧고 전체 글은 그대로", () => {
-    const d = directing({ valence: 2, arousal: 5 }, 3, 1, [2], 4);
-    expect(d.short).not.toMatch(/하늘은|물은/);
-    expect(d.short.startsWith("기분이 힘들고 몸도 긴장한 날이에요.")).toBe(true);
-    expect(d.short).toContain("그림과 색을 보면");
-    expect(d.short).toContain("숨 고르기 1분");
-    expect(d.short.length).toBeLessThanOrEqual(150);
+describe("요약(short) — 6줄 안쪽 · 천편일률 방지", () => {
+  const sh = (v: SamScore, a: SamScore, bl: (number | null)[] = [2], c: number | null = 4, seed = 0) => directing({ valence: v, arousal: a }, 3, 1, bl, c, seed);
+  it("상태·그림색·제안 한 덩어리 · 수식어 없음 · 길이 제한 · 전체 글은 그대로", () => {
+    const d = sh(2, 5);
+    expect(d.short).not.toMatch(/하늘은|물은|\n|undefined|null/);
+    expect(d.short.startsWith("마음이 조금 가라앉고 몸에 힘이 가득 올라와 있어요.")).toBe(true);
+    expect(d.short).toMatch(/그림과 색/);
+    expect(d.short.length).toBeLessThanOrEqual(160);
     expect(d.short.length).toBeLessThan(d.text.length * 0.5);
-    expect(d.short).not.toMatch(/\n|undefined|null/);
     expect(d.text).toContain("이럴 땐 생각으로 정리하려 할수록");
   });
-  it("그림·색을 건너뛰면 그 줄이 빠진다 · 네 사분면 모두 160자 이하", () => {
-    const skip = directing({ valence: 4, arousal: 2 }, 3, 1, [-1], -1).short;
-    expect(skip).not.toContain("보면");
-    for (const [v, a] of [[5, 5], [4, 2], [2, 5], [1, 1]] as [SamScore, SamScore][]) {
-      for (const c of [0, 1, 2, 3, 4, 5]) expect(directing({ valence: v, arousal: a }, 3, 1, [c % 5], c).short.length).toBeLessThanOrEqual(160);
+  it("기분×긴장 25가지가 서로 다른 첫 문장으로 시작한다", () => {
+    const starts = new Set<string>();
+    for (let v = 1; v <= 5; v++) for (let a = 1; a <= 5; a++) starts.add(sh(v as SamScore, a as SamScore, [null], null).short.split("요.")[0]);
+    expect(starts.size).toBe(25);
+  });
+  it("같은 답도 날(seed)이 바뀌면 문장이 달라진다 · 같은 날은 같다", () => {
+    const days = new Set<string>();
+    for (let d = 0; d < 12; d++) days.add(sh(2, 5, [2], 4, 20000 + d).short);
+    expect(days.size).toBeGreaterThanOrEqual(4);
+    expect(sh(2, 5, [2], 4, 20000).short).toBe(sh(2, 5, [2], 4, 20000).short);
+  });
+  it("답 조합이 많을수록 요약이 다양하다(수천 가지) · 어느 조합도 160자 이하", () => {
+    const set = new Set<string>();
+    for (let v = 1; v <= 5; v++) for (let a = 1; a <= 5; a++) for (let c = 0; c < 6; c++) for (let b = 0; b < 5; b++) for (let d = 0; d < 3; d++) {
+      const t = sh(v as SamScore, a as SamScore, [b], c, 20000 + d).short;
+      expect(t.length, `${v}/${a}/${b}/${c}/${d}`).toBeLessThanOrEqual(160);
+      set.add(t);
     }
+    expect(set.size).toBeGreaterThan(1500);
+  });
+  it("그림·색을 건너뛰면 그 줄이 빠지고 그림만/색만이면 말이 맞는다", () => {
+    expect(sh(4, 2, [-1], -1).short).not.toMatch(/그림|색/);
+    expect(sh(4, 2, [1], -1).short).toMatch(/그림/);
+    expect(sh(4, 2, [1], -1).short).not.toMatch(/그림과 색/);
+    expect(sh(4, 2, [-1], 3).short).toMatch(/색/);
   });
 });

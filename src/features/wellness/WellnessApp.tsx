@@ -2160,7 +2160,7 @@ export default function WellnessApp() {
     const blotIdx = s.blots.findIndex((b) => b === null); // 아직 답 안 한 첫 얼룩(−1 = 둘 다 답함)
     const done = stateDone && blotIdx === -1 && s.color !== null;
     const stepNo = answered + s.blots.filter((b) => b !== null).length + (s.color !== null ? 1 : 0); // 진행 점
-    const dir = done ? directing(s.sam as { valence: SamScore; arousal: SamScore }, v.cond.dayBody, v.slot, s.blots, s.color) : null;
+    const dir = done ? directing(s.sam as { valence: SamScore; arousal: SamScore }, v.cond.dayBody, v.slot, s.blots, s.color, Math.floor(s.now.getTime() / 86400000)) : null;
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>

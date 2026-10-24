@@ -177,20 +177,34 @@ export interface Directing {
   short: string;
 }
 
-/** 요약 1 — 상태 한 줄(하늘·물 이름 + 사분면 한마디). */
-const STATE_SHORT: Record<Quadrant, string> = {
-  HP: "기분도 에너지도 올라온 날이에요.",
-  LP: "기분 좋고 몸도 편안한 날이에요.",
-  HN: "기분이 힘들고 몸도 긴장한 날이에요.",
-  LN: "기분이 힘들고 힘도 빠진 날이에요.",
+/**
+ * 요약 1 — 상태 한 줄. 기분 5단계 × 긴장 5단계를 그대로 말해 **25가지**로 갈린다(2026-10-24 「천편일률」 지적 · 예전엔 사분면 4가지뿐).
+ * 기분 말 + 긴장 말을 붙인다. 점수·등급 없이 느낌 말로만.
+ */
+const MOOD_SHORT: Record<SamScore, string> = {
+  1: "마음이 많이 무겁고",
+  2: "마음이 조금 가라앉고",
+  3: "마음은 무난하고",
+  4: "마음이 가벼운 편이고",
+  5: "마음이 한껏 들떠 있고",
 };
-/** 요약 3 — 제안 한 줄(사분면별 하나 · 시간대·몸 컨디션 세부는 전체 글에 있다). */
-const ADVICE_SHORT: Record<Quadrant, string> = {
-  HP: "짧게 걷거나 몸을 풀며 힘을 천천히 쓰세요.",
-  LP: "좋은 흐름이에요. 하던 대로 이어가세요.",
-  HN: "숨 고르기 1분으로 긴장부터 풀어 보세요.",
-  LN: "자리에서 1분 기지개, 그거면 오늘은 충분해요.",
+const BODY_SHORT: Record<SamScore, string> = {
+  1: "몸은 아주 고요해요.",
+  2: "몸은 느슨하게 풀려 있어요.",
+  3: "몸은 보통의 상태예요.",
+  4: "몸에 힘이 조금 올라와 있어요.",
+  5: "몸에 힘이 가득 올라와 있어요.",
 };
+/** 요약 3 — 제안 한 줄. 사분면별 후보 셋 중 날짜·답으로 하나(같은 답이라도 날마다 달라진다). 시간대·몸 컨디션 세부는 전체 글에만 있다. */
+const ADVICE_SHORT: Record<Quadrant, readonly string[]> = {
+  HP: ["짧게 걷거나 몸을 풀며 힘을 천천히 쓰세요.", "이 힘은 쓸 곳이 있을 때 오래 가요. 가벼운 산책 어때요?", "하고 싶던 일 하나를 꺼내 보기 좋은 날이에요."],
+  LP: ["좋은 흐름이에요. 하던 대로 이어가세요.", "지금 상태를 한 줄 적어 두면 힘든 날의 기준이 돼요.", "오늘의 여유를 조금 더 누려도 좋아요."],
+  HN: ["숨 고르기 1분으로 긴장부터 풀어 보세요.", "어깨와 턱에 힘이 들어갔는지 한 번 확인해 보세요.", "4초 들이쉬고 8초 내쉬는 호흡을 세 번만 해 보세요."],
+  LN: ["자리에서 1분 기지개, 그거면 오늘은 충분해요.", "따뜻한 물 한 잔을 천천히 마셔 보세요.", "아주 작은 일 하나만 해내도 오늘은 충분해요."],
+};
+/** 요약 2 의 앞말 · 잇는 말 — 돌려 쓴다. */
+const MID_LEAD: readonly ((x: string) => string)[] = [(x) => `${x}을 보면`, (x) => `고른 ${x}에서는`, (x) => `${x}에 눈이 간 걸 보면`, (x) => `${x}에서 느껴지는 건`];
+const MID_JOIN: readonly string[] = ["또", "그리고", "한편으로는"];
 
 /** 디렉팅 입력 — 기분·긴장은 필수, 나머지 셋은 있으면 이유 문장에만 쓴다(지금은 묻지 않는다). */
 type SamAnswerDone = { valence: SamScore; arousal: SamScore } & Partial<Record<"dominance" | "sleep" | "satisfaction", SamScore | null>>;
@@ -204,16 +218,19 @@ type SamAnswerDone = { valence: SamScore; arousal: SamScore } & Partial<Record<"
  *   ② 그걸 문단 셋으로 줄였더니 *"문단 셋으로 나누지 말고 하나로 해"* — **문단을 나누지 않는다.**
  * 🚫 문단을 다시 나누지 말 것 — `sam.test.ts` 가 빈 줄(문단 구분)이 하나도 없음을 못박는다.
  */
-export function directing(ans: SamAnswerDone, body: Level | null, slot: number, blots?: readonly (number | null)[], color?: number | null): Directing {
+export function directing(ans: SamAnswerDone, body: Level | null, slot: number, blots?: readonly (number | null)[], color?: number | null, seed = 0): Directing {
   const q = quadrantOf(ans.valence, ans.arousal);
   // 얼룩 답(있으면)은 이미 아는 사분면에 접목해 상태 말 바로 뒤에 한 문장으로 — 문단은 여전히 하나.
   const state = [opening(q, ans.valence, ans.arousal), WHY[q], ...reasonClauses(ans, body), blotText(blots, q), colorText(color, q)].filter(Boolean).join(" ");
   const advice = closing(q, body, slot) + (ans.dominance != null && ans.dominance <= 2
     ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
     : "");
-  // 요약: 상태 · (그림·색 있으면) 한 줄 · 제안. 그림·색 덩어리는 사분면에 맞춘 문장을 「또」로 잇는다.
-  const picks = [...(blots ?? []).map((b) => (b === BLOT_UNSURE ? null : blotClause(b, q))), colorClause(color, q)].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
-  const mid = picks.length ? `${(blots ?? []).some((b) => b !== null && b !== BLOT_UNSURE) ? (colorClause(color, q) ? "그림과 색을 보면" : "그림을 보면") : "끌린 색을 보면"} ${picks.join(" 또 ")}` : null;
-  const short = [STATE_SHORT[q], mid, ADVICE_SHORT[q]].filter(Boolean).join(" ");
+  // 요약: 상태(기분×긴장 25가지) · (그림·색 있으면) 한 줄 · 제안(후보 셋). 앞말·잇는 말·제안은 seed(날짜)와 답으로 돌려 쓴다 — 같은 답도 날마다 달라진다.
+  const hasBlot = (blots ?? []).some((b) => b !== null && b !== BLOT_UNSURE);
+  const clauses = [...(blots ?? []).map((b) => (b === BLOT_UNSURE ? null : blotClause(b, q))), colorClause(color, q)].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
+  const h = Math.abs(Math.floor(seed) + ans.valence * 7 + ans.arousal * 3 + ((color ?? 0) + 1) * 5 + ((blots?.[0] ?? 0) + 2) * 11);
+  const what = hasBlot ? (colorClause(color, q) ? "그림과 색" : "그림") : "색";
+  const mid = clauses.length ? `${MID_LEAD[Math.floor(h / 3) % MID_LEAD.length](what)} ${clauses.join(` ${MID_JOIN[Math.floor(h / 12) % MID_JOIN.length]} `)}` : null;
+  const short = [`${MOOD_SHORT[ans.valence]} ${BODY_SHORT[ans.arousal]}`, mid, ADVICE_SHORT[q][h % ADVICE_SHORT[q].length]].filter(Boolean).join(" ");
   return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" "), short };
 }
