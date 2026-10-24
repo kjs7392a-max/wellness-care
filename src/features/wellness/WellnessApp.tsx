@@ -1153,7 +1153,7 @@ export default function WellnessApp() {
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
       { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "3초 퀵 체크로 오늘 컨디션·날씨에 맞게" },
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
-      { id: "walk", label: "오늘의 산책", emoji: "🌿", hint: "가볍게 걷기 좋은 코스 셋" },
+      { id: "walk", label: "오늘의 산책", emoji: "🌿", hint: "내 주변에서 가볍게 걷기 좋은 코스" },
     ];
   }
 
@@ -1430,13 +1430,13 @@ export default function WellnessApp() {
     );
   }
 
-  /** 오늘의 산책 — 코스 3 + 지도. directing/walk.ts. */
+  /** 오늘의 산책 — 내 주변 코스 1 + 지도. directing/walk.ts. */
   function renderWalkTab() {
     const map = walkMapUrl(s.geo?.real ? s.geo.lat : null, s.geo?.real ? s.geo.lon : null);
     return (
       <div style={sx("display:flex; flex-direction:column; gap:12px")}>
         <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; padding:0 2px")}>오늘의 산책</div>
-        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>추천하는 산책 코스예요. 맑은 공기를 마시며 걸어보세요 🌿</div>
+        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>오늘은 내 주변 산책 코스를 추천해요. 맑은 공기를 마시며 걸어보세요 🌿</div>
         {WALK_COURSES.map((c) => (
           <div key={c.id} data-walk-course style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:18px; background:linear-gradient(135deg,#eaf7f0 0%,#e6f4ee 100%); border:1.5px solid #bfe2cf")}>
             <div style={sx("display:flex; align-items:center; gap:8px")}>
@@ -1448,10 +1448,9 @@ export default function WellnessApp() {
             <div style={sx("display:flex; flex-wrap:wrap; gap:6px")}>
               {c.features.map((f) => <div key={f} style={sx("font-size:11.5px; font-weight:700; color:#245c48; padding:4px 9px; border-radius:999px; background:#fff; border:1px solid #d7ebe2")}>{f}</div>)}
             </div>
-            <a href={`https://www.google.com/maps/search/${encodeURIComponent(c.searchQuery)}`} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:10px; border-radius:12px; background:#2d7a5f; color:#fff; font-size:13px; font-weight:800; text-decoration:none")}>지도에서 {c.searchQuery} 찾기 ›</a>
+            <a href={map} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:10px; border-radius:12px; background:#2d7a5f; color:#fff; font-size:13px; font-weight:800; text-decoration:none")}>내 주변 산책로 지도 열기 ›</a>
           </div>
         ))}
-        <a href={map} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800; text-decoration:none")}>내 주변 산책로 지도 열기 ›</a>
       </div>
     );
   }

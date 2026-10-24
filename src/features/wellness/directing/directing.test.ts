@@ -112,10 +112,10 @@ describe("sentences — 원본 x2 + 마음카드 입력", () => {
   });
 });
 
-describe("walk — 원본 코스 3 · 지도 링크", () => {
-  it("코스 3개 이름·난이도 그대로 · 링크는 좌표 유무로", () => {
-    expect(WALK_COURSES.map((c) => c.name)).toEqual(["근처 공원 산책로", "근처 산책로/둘레길", "하천변/강변 산책로"]);
-    expect(WALK_COURSES.map((c) => difficultyMark(c.difficulty))).toEqual(["🟢", "🟢", "🔵"]);
+describe("walk — 통합 코스 1 · 지도 링크", () => {
+  it("코스 1개로 통합 · 링크는 좌표 유무로", () => {
+    expect(WALK_COURSES.map((c) => c.name)).toEqual(["내 주변 산책 코스"]);
+    expect(WALK_COURSES.map((c) => difficultyMark(c.difficulty))).toEqual(["🟢"]);
     expect(walkMapUrl(null, null)).toBe("https://www.google.com/maps/search/산책로+공원+둘레길");
     expect(walkMapUrl(37.5, 127.0)).toBe("https://www.google.com/maps/search/산책로+공원+둘레길/@37.5,127,14z");
   });
