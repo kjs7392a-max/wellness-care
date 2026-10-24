@@ -61,6 +61,12 @@ const LINE: Record<number, Record<Quadrant, string>> = {
 
 const LEAD = "끌리는 색을 보면";
 
+/** 색 하나 + 이미 아는 사분면 → 리드 없는 덩어리(요약 한 줄용). 건너뛰기·없음 = null. */
+export function colorClause(choice: number | null | undefined, q: Quadrant): string | null {
+  if (choice === null || choice === undefined || choice === COLOR_SKIP) return null;
+  return LINE[choice]?.[q] ?? null;
+}
+
 /** 색 하나 + 이미 아는 사분면 → 피드백에 붙일 글 하나. 건너뛰기·없음 = null. */
 export function colorText(choice: number | null | undefined, q: Quadrant): string | null {
   if (choice === null || choice === undefined || choice === COLOR_SKIP) return null;

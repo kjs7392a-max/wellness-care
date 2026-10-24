@@ -1,6 +1,6 @@
 import type { Level } from "./condition";
-import { blotText } from "./blot";
-import { colorText } from "./color";
+import { BLOT_UNSURE, blotClause, blotText } from "./blot";
+import { colorClause, colorText } from "./color";
 
 /**
  * 「오늘의 마음카드」 — 그림으로 답하는 자가보고 5줄 + 종합 디렉팅.
@@ -170,8 +170,26 @@ const REASSURE: Record<Quadrant, string> = {
 export interface Directing {
   quadrant: Quadrant;
   weight: "heavy" | "light" | "neutral";
+  /** 전체 글(한 문단) — 「더 보기」로 펼친다. */
   text: string;
+  /** 6~7줄 안쪽 요약(2026-10-24 사용자 지시 「피드백이 너무 길어」) — 기본으로 보인다. 상태 한 줄 · 그림·색 한 줄 · 제안 한 줄. */
+  short: string;
 }
+
+/** 요약 1 — 상태 한 줄(하늘·물 이름 + 사분면 한마디). */
+const STATE_SHORT: Record<Quadrant, string> = {
+  HP: "기분도 에너지도 올라온 날이에요.",
+  LP: "기분 좋고 몸도 편안한 날이에요.",
+  HN: "기분이 힘들고 몸도 긴장한 날이에요.",
+  LN: "기분이 힘들고 힘도 빠진 날이에요.",
+};
+/** 요약 3 — 제안 한 줄(사분면별 하나 · 시간대·몸 컨디션 세부는 전체 글에 있다). */
+const ADVICE_SHORT: Record<Quadrant, string> = {
+  HP: "짧게 걷거나 몸을 풀며 힘을 천천히 쓰세요.",
+  LP: "좋은 흐름이에요. 하던 대로 이어가세요.",
+  HN: "숨 고르기 1분으로 긴장부터 풀어 보세요.",
+  LN: "자리에서 1분 기지개, 그거면 오늘은 충분해요.",
+};
 
 /** 디렉팅 입력 — 기분·긴장은 필수, 나머지 셋은 있으면 이유 문장에만 쓴다(지금은 묻지 않는다). */
 type SamAnswerDone = { valence: SamScore; arousal: SamScore } & Partial<Record<"dominance" | "sleep" | "satisfaction", SamScore | null>>;
@@ -192,5 +210,9 @@ export function directing(ans: SamAnswerDone, body: Level | null, slot: number, 
   const advice = closing(q, body, slot) + (ans.dominance != null && ans.dominance <= 2
     ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
     : "");
-  return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" ") };
+  // 요약: 상태 · (그림·색 있으면) 한 줄 · 제안. 그림·색 덩어리는 사분면에 맞춘 문장을 「또」로 잇는다.
+  const picks = [...(blots ?? []).map((b) => (b === BLOT_UNSURE ? null : blotClause(b, q))), colorClause(color, q)].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
+  const mid = picks.length ? `${(blots ?? []).some((b) => b !== null && b !== BLOT_UNSURE) ? (colorClause(color, q) ? "그림과 색을 보면" : "그림을 보면") : "끌린 색을 보면"} ${picks.join(" 또 ")}` : null;
+  const short = [`하늘은 ${L("valence", ans.valence)}, 물은 ${L("arousal", ans.arousal)} — ${STATE_SHORT[q]}`, mid, ADVICE_SHORT[q]].filter(Boolean).join(" ");
+  return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" "), short };
 }

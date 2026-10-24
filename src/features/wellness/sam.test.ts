@@ -82,3 +82,23 @@ describe("directing", () => {
     expect(directing(full(3, 3), null, 1).text).toContain("어제 몸 기록이 아직 없어서");
   });
 });
+
+describe("요약(short) — 6~7줄 안쪽", () => {
+  it("상태·그림색·제안 한 줄씩 · 전체 글보다 훨씬 짧고 전체 글은 그대로", () => {
+    const d = directing({ valence: 2, arousal: 5 }, 3, 1, [2], 4);
+    expect(d.short).toContain("하늘은 흐림, 물은 폭포");
+    expect(d.short).toContain("그림과 색을 보면");
+    expect(d.short).toContain("숨 고르기 1분");
+    expect(d.short.length).toBeLessThanOrEqual(150);
+    expect(d.short.length).toBeLessThan(d.text.length * 0.5);
+    expect(d.short).not.toMatch(/\n|undefined|null/);
+    expect(d.text).toContain("이럴 땐 생각으로 정리하려 할수록");
+  });
+  it("그림·색을 건너뛰면 그 줄이 빠진다 · 네 사분면 모두 160자 이하", () => {
+    const skip = directing({ valence: 4, arousal: 2 }, 3, 1, [-1], -1).short;
+    expect(skip).not.toContain("보면");
+    for (const [v, a] of [[5, 5], [4, 2], [2, 5], [1, 1]] as [SamScore, SamScore][]) {
+      for (const c of [0, 1, 2, 3, 4, 5]) expect(directing({ valence: v, arousal: a }, 3, 1, [c % 5], c).short.length).toBeLessThanOrEqual(160);
+    }
+  });
+});
