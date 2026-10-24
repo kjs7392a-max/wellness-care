@@ -10,21 +10,21 @@ export const BLOT_COUNT = 12;
 export const BLOT_STEPS = 2;
 
 export interface BlotChoice { id: number; label: string; theme: string }
-/** 보기 다섯 — 어느 것도 좋고 나쁨이 없다. id 는 상태 저장용(−1 = 건너뛰기 · 문장 없음). */
+/** 느낌 보기 다섯 — 어느 것도 좋고 나쁨이 없다. id 는 상태 저장용(−1 = 건너뛰기 · 문장 없음). */
 export const BLOT_CHOICES: readonly BlotChoice[] = [
-  { id: 0, label: "마주 보는 두 사람", theme: "connect" },
-  { id: 1, label: "날개를 편 새", theme: "release" },
-  { id: 2, label: "가면", theme: "guard" },
-  { id: 3, label: "나무와 숲", theme: "shelter" },
-  { id: 4, label: "번지는 불꽃", theme: "fire" },
+  { id: 0, label: "따뜻하고 가까운 느낌", theme: "connect" },
+  { id: 1, label: "자유롭고 가벼운 느낌", theme: "release" },
+  { id: 2, label: "조심스럽고 숨고 싶은 느낌", theme: "guard" },
+  { id: 3, label: "고요하고 포근한 느낌", theme: "shelter" },
+  { id: 4, label: "뜨겁고 힘이 솟는 느낌", theme: "fire" },
 ];
 export const BLOT_UNSURE = -1;
 
-/** 인터넷 재미 테스트 말투의 질문 — 두 번 나오는 얼룩에 서로 다른 문구를 붙인다. */
+/** 인터넷 재미 테스트 말투의 질문 — 두 번 나오는 얼룩에 서로 다른 문구를 붙인다. 2026-10-24: 「뭐가 보이나요」는 사물을 못 찾겠다는 지적으로 **느낌 고르기**로 바꿨다. */
 export const BLOT_QUESTIONS: readonly string[] = [
-  "이 그림을 보고 제일 먼저 떠오르는 건?",
-  "눈을 가늘게 뜨고 보면 뭐가 보이나요?",
-  "이 그림 속에 숨은 건?",
+  "이 그림에서 제일 먼저 느껴지는 건?",
+  "이 그림을 보면 어떤 기분이 드나요?",
+  "이 그림 속으로 들어간다면 어떤 느낌일까요?",
 ];
 
 /** 이번 카드에 쓸 얼룩 둘(서로 다른 그림 · 직전 카드의 첫 장은 피한다) + 질문 문구 둘(서로 다름). rnd 는 테스트용 주입(0 이상 1 미만). */
@@ -39,7 +39,7 @@ export function dealBlots(prevFirst: number | null = null, rnd: () => number = M
 }
 export const INITIAL_BLOT_DEAL: BlotDeal = { images: [1, 2], questions: [0, 1] };
 
-/** 「얼룩에서 떠올린 걸 보면 」 뒤에 이어지는 한 덩어리 — 보기 × 사분면. 보기 이름은 되풀이하지 않는다(화면에 고른 줄이 이미 남아 있다). */
+/** 「그림에서 느낀 걸 보면 」 뒤에 이어지는 한 덩어리 — 보기 × 사분면. 보기 이름은 되풀이하지 않는다(화면에 고른 줄이 이미 남아 있다). */
 const LINE: Record<number, Record<Quadrant, string>> = {
   0: {
     HP: "오늘은 이 힘을 함께 나눌 사람이 떠오르는 날일 수 있어요.",
@@ -73,7 +73,7 @@ const LINE: Record<number, Record<Quadrant, string>> = {
   },
 };
 
-const LEAD = "얼룩에서 떠올린 걸 보면";
+const LEAD = "그림에서 느낀 걸 보면";
 
 /** 보기 하나 + 이미 아는 사분면 → 이어 붙는 한 덩어리. 건너뛰기·없음 = null. */
 export function blotClause(choice: number | null | undefined, q: Quadrant): string | null {

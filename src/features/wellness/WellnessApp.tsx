@@ -2211,7 +2211,7 @@ export default function WellnessApp() {
           {stateDone && blotIdx !== -1 && (
             <div key={`blot-step-${blotIdx}`} data-blot-step={blotIdx} style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
               <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{BLOT_QUESTIONS[s.blotDeal.questions[blotIdx]]}</div>
-              <div style={sx("font-size:11.5px; color:#8ba8b3")}>정답은 없어요 · 처음 눈에 들어온 것을 골라 주세요</div>
+              <div style={sx("font-size:11.5px; color:#8ba8b3")}>정답은 없어요 · 처음 느껴진 쪽을 골라 주세요</div>
               <div style={sx("width:100%; max-width:260px; aspect-ratio:1/1; margin:0 auto; border-radius:16px; overflow:hidden; background:#f4f1ea")}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`${IMG}/blot-${s.blotDeal.images[blotIdx]}.png`} alt="색 얼룩" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

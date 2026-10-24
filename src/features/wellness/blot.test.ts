@@ -31,12 +31,12 @@ describe("blot — 색 얼룩 둘 · 상태에 접목", () => {
   });
   it("두 답 → 한 덩어리: 같으면 한 번만 · 다르면 「또」로 잇고 리드는 한 번", () => {
     const same = blotText([2, 2], "LN")!;
-    expect(same.match(/얼룩에서 떠올린 걸 보면/g)).toHaveLength(1);
-    expect(same).toBe(`얼룩에서 떠올린 걸 보면 ${blotClause(2, "LN")}`);
+    expect(same.match(/그림에서 느낀 걸 보면/g)).toHaveLength(1);
+    expect(same).toBe(`그림에서 느낀 걸 보면 ${blotClause(2, "LN")}`);
     const diff = blotText([0, 3], "HN")!;
     expect(diff).toContain(" 또 ");
-    expect(diff.match(/얼룩에서 떠올린 걸 보면/g)).toHaveLength(1);
-    expect(blotText([0, BLOT_UNSURE], "HN")).toBe(`얼룩에서 떠올린 걸 보면 ${blotClause(0, "HN")}`);
+    expect(diff.match(/그림에서 느낀 걸 보면/g)).toHaveLength(1);
+    expect(blotText([0, BLOT_UNSURE], "HN")).toBe(`그림에서 느낀 걸 보면 ${blotClause(0, "HN")}`);
   });
   it("dealBlots — 서로 다른 그림 둘 · 질문 문구 둘 · 직전 첫 장 피함 · 범위", () => {
     for (let t = 0; t < 200; t++) {
@@ -54,7 +54,7 @@ describe("blot — 색 얼룩 둘 · 상태에 접목", () => {
     const base = directing(two(2, 5), 3, 1).text;
     expect(base).not.toMatch(/undefined|null/);
     const withBlot = directing(two(2, 5), 3, 1, [2, 4]).text;
-    expect(withBlot).toContain("얼룩에서 떠올린 걸 보면");
+    expect(withBlot).toContain("그림에서 느낀 걸 보면");
     expect(withBlot).not.toMatch(/\n\s*\n/);
     expect(withBlot.length).toBeGreaterThan(base.length);
     expect(directing(two(2, 5), 3, 1, [BLOT_UNSURE, BLOT_UNSURE]).text).toBe(base);
