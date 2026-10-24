@@ -1,4 +1,5 @@
 import type { Level } from "./condition";
+import { blotText } from "./blot";
 
 /**
  * 「오늘의 마음카드」 — 그림으로 답하는 자가보고 5줄 + 종합 디렉팅.
@@ -36,13 +37,20 @@ export interface Axis {
   basis: string;
 }
 
-export const AXES: Axis[] = [
+/** 축 정의 전체(옛 5축 — 라벨·그림 자산은 그대로 둔다). 지금 묻는 건 아래 AXES 둘뿐. */
+export const ALL_AXES: Axis[] = [
   { key: "valence", question: "오늘 마음의 하늘을 고른다면?", hint: "폭우 ↔ 노을", labels: ["폭우", "흐림", "옅은 구름", "맑음", "노을"], basis: "SAM 기분" },
   { key: "arousal", question: "지금 내 안의 물은 어떤 모양인가요?", hint: "잔잔한 호수 ↔ 폭포", labels: ["잔잔한 호수", "느린 강", "잔물결", "파도", "폭포"], basis: "SAM 긴장" },
   { key: "dominance", question: "오늘 나는 어떤 배에 타고 있었나요?", hint: "떠내려감 ↔ 키를 잡음", labels: ["떠내려가는 종이배", "노 없는 배", "흔들리는 배", "노 젓는 배", "키를 잡은 배"], basis: "SAM 통제감" },
   { key: "sleep", question: "어젯밤을 한 장면으로 고른다면?", hint: "뒤척임 ↔ 깊은 잠", labels: ["뒤척인 밤", "반쯤 뜬 눈", "얕은 잠", "편한 잠", "깊은 잠"], basis: "수면 단일 문항" },
   { key: "satisfaction", question: "오늘 교실의 날씨는 어땠나요?", hint: "천둥 ↔ 화창", labels: ["천둥", "비", "흐림", "맑음", "화창"], basis: "Kunin Faces(만족)" },
 ];
+
+/**
+ * 2026-10-24 사용자 지시 — 5문항 중 기록·사분면에 실제로 쓰이는 건 기분·긴장 둘뿐이라 **둘만 묻는다**(+ 잉크 얼룩 둘 · blot.ts).
+ * 잠·통제감·만족은 더 묻지 않는다(답이 없으면 피드백의 「이유」 문장을 건너뛴다).
+ */
+export const AXES: Axis[] = ALL_AXES.filter((x) => x.key === "valence" || x.key === "arousal");
 
 export function samDone(a: SamAnswer): boolean {
   return AXES.every((x) => a[x.key] !== null);
@@ -72,7 +80,7 @@ export function samWeight(v: SamScore): "heavy" | "light" | "neutral" {
   return v <= 2 ? "heavy" : v >= 4 ? "light" : "neutral";
 }
 
-const L = (key: AxisKey, n: SamScore) => AXES.find((x) => x.key === key)!.labels[n - 1];
+const L = (key: AxisKey, n: SamScore) => ALL_AXES.find((x) => x.key === key)!.labels[n - 1];
 
 /** 첫 문단 — 고른 은유를 받아서 시작 + 사분면 상태 말 */
 function opening(q: Quadrant, v: SamScore, a: SamScore): string {
@@ -109,8 +117,8 @@ const WHY: Record<Quadrant, string> = {
  */
 function reasonClauses(ans: SamAnswerDone, body: Level | null): string[] {
   const out: string[] = [];
-  if (ans.sleep <= 2) out.push(`어젯밤 잠이 ${L("sleep", ans.sleep)}이었던 것도 한몫해요 — 잠이 모자라면 기분도 긴장도 실제보다 나쁘게 느껴지거든요.`);
-  if (ans.dominance <= 2) out.push(`하루가 ${L("dominance", ans.dominance)}처럼 흘러갔다는 것도 그렇고요.`);
+  if (ans.sleep != null && ans.sleep <= 2) out.push(`어젯밤 잠이 ${L("sleep", ans.sleep)}이었던 것도 한몫해요 — 잠이 모자라면 기분도 긴장도 실제보다 나쁘게 느껴지거든요.`);
+  if (ans.dominance != null && ans.dominance <= 2) out.push(`하루가 ${L("dominance", ans.dominance)}처럼 흘러갔다는 것도 그렇고요.`);
   if (body === null) out.push("어제 몸 기록이 아직 없어서 오늘은 마음 쪽만 보고 말씀드려요.");
   else if (body <= 2) out.push("어제 몸 컨디션이 낮은 쪽이었던 것까지 겹쳐 있어요.");
   else if (body >= 4) out.push("그래도 어제 몸에는 힘이 남아 있어요.");
@@ -164,7 +172,8 @@ export interface Directing {
   text: string;
 }
 
-type SamAnswerDone = Required<{ [K in AxisKey]: SamScore }>;
+/** 디렉팅 입력 — 기분·긴장은 필수, 나머지 셋은 있으면 이유 문장에만 쓴다(지금은 묻지 않는다). */
+type SamAnswerDone = { valence: SamScore; arousal: SamScore } & Partial<Record<"dominance" | "sleep" | "satisfaction", SamScore | null>>;
 
 /**
  * 다섯 답 → **글 하나**. 지금 상태와 그 이유 → 오늘 한 가지 → 안심이 **한 덩어리로 이어진다.**
@@ -175,10 +184,11 @@ type SamAnswerDone = Required<{ [K in AxisKey]: SamScore }>;
  *   ② 그걸 문단 셋으로 줄였더니 *"문단 셋으로 나누지 말고 하나로 해"* — **문단을 나누지 않는다.**
  * 🚫 문단을 다시 나누지 말 것 — `sam.test.ts` 가 빈 줄(문단 구분)이 하나도 없음을 못박는다.
  */
-export function directing(ans: SamAnswerDone, body: Level | null, slot: number): Directing {
+export function directing(ans: SamAnswerDone, body: Level | null, slot: number, blots?: readonly (number | null)[]): Directing {
   const q = quadrantOf(ans.valence, ans.arousal);
-  const state = [opening(q, ans.valence, ans.arousal), WHY[q], ...reasonClauses(ans, body)].join(" ");
-  const advice = closing(q, body, slot) + (ans.dominance <= 2
+  // 얼룩 답(있으면)은 이미 아는 사분면에 접목해 상태 말 바로 뒤에 한 문장으로 — 문단은 여전히 하나.
+  const state = [opening(q, ans.valence, ans.arousal), WHY[q], ...reasonClauses(ans, body), blotText(blots, q)].filter(Boolean).join(" ");
+  const advice = closing(q, body, slot) + (ans.dominance != null && ans.dominance <= 2
     ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
     : "");
   return { quadrant: q, weight: samWeight(ans.valence), text: [state, advice, REASSURE[q]].join(" ") };

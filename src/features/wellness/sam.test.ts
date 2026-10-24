@@ -1,20 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { AXES, directing, EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamScore } from "./sam";
+import { ALL_AXES, AXES, directing, EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamScore } from "./sam";
 
 const S: SamScore[] = [1, 2, 3, 4, 5];
 const full = (v: SamScore, a: SamScore, d: SamScore = 4, sl: SamScore = 4, sat: SamScore = 4) => ({ valence: v, arousal: a, dominance: d, sleep: sl, satisfaction: sat });
 
 describe("축 정의", () => {
-  it("5축, 축마다 은유 질문·그림 이름표 5개·근거 표기가 있고 직접 질문('기분은 어느 쪽')이 없다", () => {
-    expect(AXES).toHaveLength(5);
-    for (const x of AXES) {
+  it("옛 5축 정의는 남기고(라벨·자산) 지금 묻는 건 기분·긴장 둘 — 축마다 은유 질문·그림 이름표 5개·근거 표기가 있고 직접 질문('기분은 어느 쪽')이 없다", () => {
+    expect(ALL_AXES).toHaveLength(5);
+    expect(AXES.map((x) => x.key)).toEqual(["valence", "arousal"]);
+    for (const x of ALL_AXES) {
       expect(x.labels).toHaveLength(5);
       expect(x.basis.length).toBeGreaterThan(2);
       expect(x.question).not.toMatch(/기분은 어느|몸은 어느/);
       expect(x.question.endsWith("?")).toBe(true);
     }
     expect(samDone(EMPTY_SAM)).toBe(false);
-    expect(samAnswered({ ...EMPTY_SAM, valence: 3, sleep: 2 })).toBe(2);
+    expect(samAnswered({ ...EMPTY_SAM, valence: 3, sleep: 2 })).toBe(1);
+    expect(samDone({ ...EMPTY_SAM, valence: 3 })).toBe(false);
+    expect(samDone({ ...EMPTY_SAM, valence: 3, arousal: 4 })).toBe(true);
     expect(samDone(full(3, 3))).toBe(true);
   });
 });
