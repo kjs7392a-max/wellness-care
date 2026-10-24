@@ -142,7 +142,7 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     // 2026-09-21 사용자 정정 "칩을 만들지 말고 마음 성향 박스 아래 탭으로 · 수직 배열" → 마음 성향 카드는 항상 위 · 그 아래 세로 줄 6개(누르면 그 아래 펼침).
     expect(healing).not.toMatch(/data-dir-tab|overflow-x:auto/);
     const rowsFn = fn("directingRows"); // 줄 목록은 헬퍼 하나 — 목록 화면과 페이지가 같이 쓴다(2026-09-22)
-    for (const id of ["todo", "music", "makeup", "outfit", "sentences", "walk"]) expect(rowsFn, id).toContain(`{ id: "${id}"`);
+    for (const id of ["todo", "music", "books", "makeup", "outfit", "sentences", "walk"]) expect(rowsFn, id).toContain(`{ id: "${id}"`);
     expect(rowsFn).not.toContain(`{ id: "persona"`);
     expect(healing).toMatch(/directingRows\(\)/);
     expect(healing).toMatch(/\{renderPersonaCard\(\)\}/);
@@ -153,7 +153,8 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(src).toMatch(/s\.sheet === "directing" && renderDirectingSheet\(\)/);
     const body = fn("renderDirectingBody");
     expect(body).toMatch(/id === "todo"\) return renderTodoCard\(\)/);
-    expect(body).toMatch(/id === "music"\) return <>\{renderMusicCard\(\)\}\{renderBooksCard\(\)\}<\/>/);
+    expect(body).toMatch(/id === "music"\) return renderMusicCard\(\)/);
+    expect(body).toMatch(/id === "books"\) return renderBooksTab\(\)/);
     // 2026-09-22 사용자 "전부 성별 나이는 물어야" → 여섯 페이지 전부 프로필이 없으면 프로필 화면부터 · 목록에 「내 프로필」 카드
     expect(body).toMatch(/if \(!s\.dirProfile\) return renderProfilePick\(\);/);
     expect(body).toMatch(/id === "makeup"\) return renderMakeupTab\(s\.dirProfile\)/);
@@ -163,9 +164,12 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(body).toMatch(/id === "sentences"\) return renderSentencesTab\(\)/);
     expect(body).toMatch(/return renderWalkTab\(\)/);
     expect(fn("renderDirectingSheet")).toMatch(/onClick=\{\(\) => patch\(\{ sheet: null \}\)\}[^\n]*‹/);
-    expect(src).toContain('label: "오늘의 추천음악&추천도서"');
-    expect(fn("renderBooksCard")).toMatch(/t\.books\.map\(/);
-    expect(fn("renderBooksCard")).toMatch(/bookSearchUrl\(b\)/);
+    expect(src).toContain('label: "오늘의 추천음악"');
+    expect(src).toContain('label: "오늘의 추천도서"');
+    // 2026-10-24 추천도서는 음악과 분리 · 분류 칩 → 베스트셀러 1~5위 → 고르면 링크
+    expect(fn("renderBooksTab")).toMatch(/BOOK_CATEGORIES\.map\(/);
+    expect(fn("renderBooksTab")).toMatch(/cat\.best\.map\(/);
+    expect(fn("renderBooksTab")).toMatch(/bestBookNaverUrl\(picked\)/);
     // 유형 전에도 여섯 줄 전부 열린다(잠금 없음)
     expect(healing).not.toMatch(/opacity: done|if \(!done\) return/);
     // 유형이 꼭 필요한 TO do it 만 안내 · 유형은 기기에 저장(마운트 로드 · 바뀔 때 저장 · 설정 「유형 바꾸기/지우기」 · 전체 파기 포함)

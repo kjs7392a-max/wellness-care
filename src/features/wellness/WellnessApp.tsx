@@ -23,12 +23,13 @@ import { AGE_BANDS, GENDER_LABEL, PROFILE_STORE_KEY, parseProfile, serializeProf
 import { MAKEUP_QUESTIONS, pickMakeup, weatherAnalysis, type MakeupAnswers } from "./directing/makeup";
 import { OUTFIT_QUESTIONS, pickOutfit, type OutfitAnswers } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
+import { BOOK_CATEGORIES, BOOKS_BEST_AS_OF, bestBookAladinUrl, bestBookNaverUrl, bookCategory, type BookCategoryId } from "./directing/books";
 import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
 import { SILENT_STOP_MS, dropSentPrefix, heardSince, mergeHeard, sendDelay, sentMemoryAfter, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_GENRES, MUSIC_MOOD_LABEL, defaultGroupFor, embedSrc, pickCollection, type MusicGenre } from "./music";
 import { MUSIC_COLLECTIONS } from "./music-collections";
-import { BOOKS_AS_OF, PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
+import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
  * 데일리 힐링 추천 음악 — 유튜브 채널 emptysilver(@emptysilver · UCyvNK9b_Rs7djuIQ4a7i5aw)의 긴 플레이리스트 영상만 우리 순서로.
@@ -54,7 +55,7 @@ const EMPTY_STATE = false;
 
 interface Session { title: string; time: string }
 
-type DirTab = "persona" | "todo" | "music" | "makeup" | "outfit" | "sentences" | "walk";
+type DirTab = "persona" | "todo" | "music" | "books" | "makeup" | "outfit" | "sentences" | "walk";
 
 interface State {
   now: Date;
@@ -129,6 +130,9 @@ interface State {
   geo: { lat: number; lon: number; real: boolean } | null;
   /** 「나를 위한 디렉팅」 안 탭(2026-09-21 사용자 지시 · 마음온도 「피드백」 이식). */
   dirTab: DirTab;
+  /** 「오늘의 추천도서」 — 고른 분류 · 고른 순위(1~5, null = 아직). */
+  bookCat: BookCategoryId;
+  bookPick: number | null;
   /** 코디·메이크업용 성별·나이대(기기 저장 · directing/profile.ts). null = 아직 안 골랐다. */
   dirProfile: DirectingProfile | null;
   dirDraft: { gender: Gender | null; ageBand: AgeBand | null };
@@ -186,7 +190,7 @@ export default function WellnessApp() {
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     msgSeed: null,
-    geo: null, dirTab: "persona", dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, outfitAns: {},
+    geo: null, dirTab: "persona", bookCat: "essay", bookPick: null, dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, outfitAns: {},
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
@@ -1149,7 +1153,8 @@ export default function WellnessApp() {
   function directingRows(): { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] {
     return [
       { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
-      { id: "music", label: "오늘의 추천음악&추천도서", emoji: "🎧", hint: "가요·팝송 시대별 모음(7080·90년대…) · 재즈·클래식 분위기별 모음 · 책 두 권" },
+      { id: "music", label: "오늘의 추천음악", emoji: "🎧", hint: "가요·팝송 시대별 모음(7080·90년대…) · 재즈·클래식 분위기별 모음" },
+      { id: "books", label: "오늘의 추천도서", emoji: "📚", hint: "에세이·시집·소설·자기개발서 분류별 베스트셀러 1~5위" },
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
       { id: "outfit", label: "오늘의 코디", emoji: "🧥", hint: "3초 퀵 체크로 오늘 컨디션·날씨에 맞게" },
       { id: "sentences", label: "마음과 닮은 문장", emoji: "📖", hint: "지금 마음에 가까운 세 문장" },
@@ -1162,7 +1167,8 @@ export default function WellnessApp() {
     // 2026-09-22 사용자 "전부 성별 나이는 물어야 하는 거 아냐?" → 마음온도 프로필 단계처럼 여섯 페이지 전부 성별·나이대를 먼저 받는다(한 번 · 기기 저장).
     if (!s.dirProfile) return renderProfilePick();
     if (id === "todo") return renderTodoCard();
-    if (id === "music") return <>{renderMusicCard()}{renderBooksCard()}</>;
+    if (id === "music") return renderMusicCard();
+    if (id === "books") return renderBooksTab();
     if (id === "makeup") return renderMakeupTab(s.dirProfile);
     if (id === "outfit") return renderOutfitTab(s.dirProfile);
     if (id === "sentences") return renderSentencesTab();
@@ -1230,27 +1236,49 @@ export default function WellnessApp() {
     );
   }
 
-  /** 「추천음악&추천도서」 줄의 도서 — 유형별 두 권(성향 결과 2/2 와 같은 목록·같은 네이버 링크 · 2026-09-22 사용자 지시로 음악 아래 함께). 유형 없으면 안내. */
-  function renderBooksCard() {
-    const done = s.personaDone;
-    const t = done ? PERSONA_TYPES[done.type] : null;
-    if (!done || !t) {
-      return <div style={sx("padding:14px 16px; border-radius:16px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13.5px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>추천 도서는 성향에 맞춰 골라요. 위 「마음 성향」에서 내 유형을 먼저 골라 주세요.</div>;
-    }
+  /** 「오늘의 추천도서」 — 분류 칩 넷(에세이·시집·소설·자기개발서) → 그 분류 베스트셀러 1~5위 → 하나 고르면 네이버·알라딘 링크. 데이터 directing/books.ts. */
+  function renderBooksTab() {
+    const cat = bookCategory(s.bookCat);
+    const picked = cat.best.find((b) => b.rank === s.bookPick) ?? null;
     return (
-      <div data-books-card style={sx("display:flex; flex-direction:column; gap:10px; padding:16px 16px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
-        <div style={sx("display:flex; align-items:center; gap:10px")}>
-          <div style={sx("width:34px; height:34px; flex:none; border-radius:11px; background:#f2edfa; display:flex; align-items:center; justify-content:center; font-size:16px")}>📚</div>
-          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-            <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>추천 도서 · {t.name}</div>
-            <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>{BOOKS_AS_OF}에서 {done.type} 성향에 맞춘 두 권</div>
-          </div>
+      <div data-books-card style={sx("display:flex; flex-direction:column; gap:12px")}>
+        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>읽고 싶은 분류를 고르면 그 분류의 베스트셀러 1~5위를 보여 드려요. 마음 가는 책을 눌러 보세요.</div>
+        <div data-role="book-cats" style={sx("display:flex; gap:8px; flex-wrap:wrap")}>
+          {BOOK_CATEGORIES.map((c) => {
+            const on = c.id === cat.id;
+            return (
+              <div key={c.id} data-book-cat={c.id} onClick={() => patch({ bookCat: c.id, bookPick: null })} style={sx(`cursor:pointer; padding:9px 14px; border-radius:999px; font-size:13.5px; font-weight:800; border:1.5px solid ${on ? "#7a6bc4" : "#d9d2ec"}; background:${on ? "#7a6bc4" : "#fff"}; color:${on ? "#fff" : "#5f5397"}`)}>{c.emoji} {c.label}</div>
+            );
+          })}
         </div>
-        {t.books.map((b) => (
-          <a key={b} href={bookSearchUrl(b)} target="_blank" rel="noreferrer" style={sx("display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 12px; border-radius:13px; background:#f7fbf9; border:1px solid #d7ebe2; font-size:14px; color:#3a4a72; line-height:1.6; text-decoration:none")}>
-            <span>{b}</span><span style={sx("flex:none; font-size:11.5px; font-weight:700; color:#03c75a")}>네이버에서 보기 ›</span>
-          </a>
-        ))}
+        <div style={sx("display:flex; flex-direction:column; gap:8px; padding:16px 14px 14px; border-radius:22px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 6px 18px rgba(45,92,110,0.08)")}>
+          <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>{cat.label} 베스트셀러 1~5위</div>
+          <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>{BOOKS_BEST_AS_OF} 기준</div>
+          {cat.best.map((b) => {
+            const on = b.rank === s.bookPick;
+            return (
+              <div key={b.rank} data-book-rank={b.rank} onClick={() => patch({ bookPick: on ? null : b.rank })} style={sx(`cursor:pointer; display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:13px; border:1.5px solid ${on ? "#7a6bc4" : "#d7ebe2"}; background:${on ? "#f2edfa" : "#f7fbf9"}`)}>
+                <div style={sx(`flex:none; width:26px; height:26px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; background:${b.rank <= 3 ? "#7a6bc4" : "#e3dff2"}; color:${b.rank <= 3 ? "#fff" : "#5f5397"}`)}>{b.rank}</div>
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                  <div style={sx("font-size:14px; font-weight:700; color:#3a4a72; line-height:1.4")}>{b.title}</div>
+                  <div style={sx("font-size:12px; color:#6b8c9a")}>{b.author}</div>
+                </div>
+                <div style={sx(`flex:none; font-size:12px; font-weight:800; color:${on ? "#7a6bc4" : "#b3a9d9"}`)}>{on ? "✓ 선택" : "선택"}</div>
+              </div>
+            );
+          })}
+        </div>
+        {picked && (
+          <div data-role="book-picked" style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:18px; background:#f2edfa; border:1.5px solid #cfc5ea")}>
+            <div style={sx("font-size:12px; font-weight:800; color:#7a6bc4")}>{cat.label} {picked.rank}위</div>
+            <div style={sx("font-size:16px; font-weight:800; color:#3a4a72; line-height:1.5")}>{picked.title}</div>
+            <div style={sx("font-size:13px; color:#5f5397")}>{picked.author}</div>
+            <div style={sx("display:flex; gap:8px")}>
+              <a href={bestBookNaverUrl(picked)} target="_blank" rel="noreferrer" style={sx("flex:1; text-align:center; padding:11px; border-radius:12px; background:#fff; border:1.5px solid #03c75a; color:#03c75a; font-size:13px; font-weight:800; text-decoration:none")}>네이버에서 보기 ›</a>
+              <a href={bestBookAladinUrl(picked)} target="_blank" rel="noreferrer" style={sx("flex:1; text-align:center; padding:11px; border-radius:12px; background:#fff; border:1.5px solid #7a6bc4; color:#7a6bc4; font-size:13px; font-weight:800; text-decoration:none")}>알라딘에서 보기 ›</a>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1459,7 +1487,7 @@ export default function WellnessApp() {
    * 추천 음악 — 장르 칩 넷(가요·클래식·재즈·팝송) → 묶음 칩(가요·팝송 = 시대 · 재즈·클래식 = 분위기) → 플레이어 → 그 묶음의 모음 목록(2026-10-20 사용자 지시
    *   "그냥 노래선곡하지 말고 여러곡이 나오는 … 7080 모음 · 90년대 모음 이런 식으로 분류해줘"). 처음 펼치는 묶음만 나이대·성향으로 정한다(music.ts).
    * 모음을 누르면 그 모음이 플레이어에 걸린다(자동재생은 없다 — ▶ 를 눌러야 소리가 난다).
-   * 자리 = 성향 결과 2/2 「문장과 책」의 추천 도서 바로 아래 + 라이프가이드 「오늘의 추천음악&추천도서」.
+   * 자리 = 성향 결과 2/2 「문장과 책」의 추천 도서 바로 아래 + 라이프가이드 「오늘의 추천음악」.
    */
   function renderMusicCard() {
           const genre = MUSIC_GENRES.find((g) => g.key === s.musicKey) ?? MUSIC_GENRES[0];
