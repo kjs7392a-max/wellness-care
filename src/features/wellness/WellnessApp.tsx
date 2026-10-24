@@ -110,8 +110,6 @@ interface State {
   blots: (number | null)[];
   /** 마음카드 색 고르기 — null = 아직 · COLOR_SKIP(−1) = 건너뛰기 · 0~5 = 색(color.ts). */
   color: number | null;
-  /** 마음카드 결과 「더 보기」 — false = 6~7줄 요약만 · true = 전체 글. */
-  dirMore: boolean;
   /** 이번 카드에 쓸 얼룩 둘·질문 문구 둘(카드를 열 때마다 무작위로 다시 뽑는다 — blot.ts dealBlots). */
   blotDeal: BlotDeal;
   minutes: number;
@@ -204,7 +202,7 @@ export default function WellnessApp() {
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: EMPTY_SAM, blots: [null], color: null, dirMore: false, blotDeal: INITIAL_BLOT_DEAL, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, blots: [null], color: null, blotDeal: INITIAL_BLOT_DEAL, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
@@ -1134,7 +1132,7 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
             {[
               { id: "talk", emoji: "💬", label: "오늘, 어떤 하루였나요?", hint: "말이나 글로 편하게 · 답은 글로 와요", go: () => patch({ sheet: "mind" }) },
-              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 두 장과 얼룩·색 하나씩으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, dirMore: false, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 두 장과 얼룩·색 하나씩으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
             ].map((x) => (
               <div key={x.id} data-mind-row={x.id} onClick={x.go} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:18px; border:1.5px solid #c4b8ec; background:#fff; box-shadow:0 4px 12px rgba(110,95,190,0.10)")}>
                 <div style={sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:#f2edfa")}>{x.emoji}</div>
@@ -1812,7 +1810,7 @@ export default function WellnessApp() {
     ];
     const mindActions = [
       { label: "「오늘, 어떤 하루였나요?」에서 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
-      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, dirMore: false, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
     ];
     const heavyRatio = M.pictureDays ? M.heavyDays / M.pictureDays : 0;
     const mindSolution = M.pictureDays === 0 ? `${ym.m}월엔 마음카드 기록이 아직 없어요. 말로 꺼내기 어려운 날, 그림 하나만 골라도 기록이 남아요.`
@@ -2287,14 +2285,13 @@ export default function WellnessApp() {
                   <div style={sx("font-size:13px; font-weight:800; color:#5f5397; margin-right:2px")}>오늘의 디렉팅</div>
                   {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #cfc5ea; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
                 </div>
-                <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{s.dirMore ? dir.text : dir.short}</div>
-                <div data-dir-more onClick={() => patch({ dirMore: !s.dirMore })} style={sx("cursor:pointer; align-self:flex-start; font-size:12.5px; font-weight:800; color:#7a6bc4; padding:2px 0")}>{s.dirMore ? "접기 ˄" : "더 보기 ˅"}</div>
+                <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.short}</div>
                 {/* 유형×시간대 한 줄(마음온도 「디렉팅」에서 골라 온 자리) — 유형이 있을 때만. 판정엔 안 들어가고 말투만(persona.ts 머리 주석). */}
                 {s.personaDone && <div style={sx("font-size:13.5px; font-weight:600; line-height:1.7; color:#5f5397; text-wrap:pretty; padding:10px 12px; border-radius:12px; background:#f2edfa; border:1px solid #cfc5ea")}>{PERSONA_TYPES[s.personaDone.type].name} · {personaDirecting(s.personaDone.type, s.now.getHours())}</div>}
                 <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩은 재미로 보는 마음 거울이에요. 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
-                <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null], color: null, dirMore: false, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
+                <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
                 <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
               </div>
             </div>
