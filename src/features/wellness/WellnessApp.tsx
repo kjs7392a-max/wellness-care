@@ -5,8 +5,10 @@ import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
 import { COLOR_CHOICES, COLOR_QUESTION, COLOR_SKIP } from "./color";
+import { readPicks } from "./needs";
+import { todoFor } from "./todo";
 import { BLOT_CHOICES, BLOT_QUESTIONS, BLOT_STEPS, BLOT_UNSURE, INITIAL_BLOT_DEAL, dealBlots, type BlotDeal } from "./blot";
-import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
+import { AXES, directing, EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion, suggestionChoices } from "./suggestion";
 import { buildDaySolution, parqNotice } from "./daySolution";
@@ -31,7 +33,7 @@ import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseCha
 import { SILENT_STOP_MS, dropSentPrefix, heardSince, mergeHeard, sendDelay, sentMemoryAfter, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_GENRES, MUSIC_MOOD_LABEL, defaultGroupFor, embedSrc, pickCollection, type MusicGenre } from "./music";
 import { MUSIC_COLLECTIONS } from "./music-collections";
-import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaDirecting, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
+import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SOURCE, PERSONA_TYPES, bookSearchUrl, personaResult, pickedPersona, PERSONA_STORE_KEY, parsePersonaDone, serializePersonaDone, type PersonaAnswers, type PersonaDone } from "./persona";
 
 /**
  * 데일리 힐링 추천 음악 — 유튜브 채널 emptysilver(@emptysilver · UCyvNK9b_Rs7djuIQ4a7i5aw)의 긴 플레이리스트 영상만 우리 순서로.
@@ -97,7 +99,7 @@ interface State {
   tab: "home" | "care" | "healing" | "my";
   sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing";
   /**
-   * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 말투·「오늘 해볼 것」·마음카드 밑 한 줄에만 쓴다(persona.ts 머리 주석).
+   * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 「내 성향」 정보 카드·결과 시트에만 쓴다 — 2026-10-24: 오늘의 추천(해볼 것·마음카드 피드백)은 성향이 아니라 상태로 정한다.
    * 2026-09-19: 결과는 테스트(lean 있음) 또는 **직접 선택**(lean null · `personaPick` 시트) — 사용자 "직접 선택하게 하고 테스트는 모르면".
    */
   persona: PersonaAnswers;
@@ -1160,7 +1162,7 @@ export default function WellnessApp() {
   /** 디렉팅 여섯 줄 — 이름·아이콘·한 줄 설명. 목록 화면(renderHealing)과 페이지(renderDirectingSheet)가 같은 것을 쓴다. */
   function directingRows(): { id: Exclude<DirTab, "persona">; label: string; emoji: string; hint: string }[] {
     return [
-      { id: "todo", label: "TO do it", emoji: "☘", hint: "내 성향에 맞는 오늘 해볼 것 셋" },
+      { id: "todo", label: "TO do it", emoji: "☘", hint: "오늘 마음에 맞는 해볼 것 셋" },
       { id: "music", label: "오늘의 추천음악", emoji: "🎧", hint: "가요·팝송 시대별 모음(7080·90년대…) · 재즈·클래식 분위기별 모음" },
       { id: "books", label: "오늘의 추천도서", emoji: "📚", hint: "에세이·시집·소설·자기개발서 분류별 베스트셀러 1~5위" },
       { id: "makeup", label: s.dirProfile?.gender === "male" ? "오늘의 데일리케어" : "오늘의 메이크업", emoji: "💄", hint: "3초 퀵 체크로 오늘 피부에 맞게" },
@@ -1599,32 +1601,34 @@ export default function WellnessApp() {
     );
   }
 
-  /** 「TO do it」 탭 카드 — 유형별 「오늘 해볼 것」 셋(마음온도 TO do it 자리 · 9/19 이식분). (옛 renderHealingCards 의 뒤 절반) */
+  /**
+   * 「TO do it」 탭 카드 — 오늘 해볼 것 셋. 2026-10-24 사용자 지시: 성향(유형)을 따르지 않고 **오늘의 상태**로 고른다(todo.ts).
+   * 오늘 마음카드(기분×긴장 + 그림·색 방향)가 있으면 그에 맞춰, 없으면 누구에게나 무난한 작은 것. 날짜마다 달라진다.
+   */
   function renderTodoCard() {
-    const done = s.personaDone;
-    const t = done ? PERSONA_TYPES[done.type] : null;
-    if (!done || !t) {
-      return (
-        <div style={sx("padding:14px 16px; border-radius:16px; background:#f2edfa; border:1px solid #cfc5ea; font-size:13.5px; font-weight:600; color:#5f5397; line-height:1.6; text-wrap:pretty")}>「오늘 해볼 것」은 성향에 맞춰 골라요. 위 「마음 성향」에서 내 유형을 먼저 골라 주세요.</div>
-      );
-    }
+    const cardDone = samDone(s.sam);
+    const q = cardDone ? quadrantOf(s.sam.valence as SamScore, s.sam.arousal as SamScore) : null;
+    const read = cardDone ? readPicks(s.sam.arousal as SamScore, s.blots, s.color) : null;
+    const items = todoFor(q, read, Math.floor(s.now.getTime() / 86400000));
     return (
-    // 오늘 해볼 것 — 유형별 3가지(제안 · 마음온도 「TO do it」에서 골라 온 자리). 유형이 있을 때만.
-          <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#e6f5ee 0%,#e2edf9 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
-            <div style={sx("display:flex; align-items:center; gap:14px")}>
-              <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>☘</div>
-              <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-                <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>오늘 해볼 것 · {t.name}</div>
-                <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>이 성향에 잘 맞는 작은 것 셋 — 하나만 골라도, 안 해도 괜찮아요</div>
-              </div>
-            </div>
-            {t.todo.map((x) => (
-              <div key={x.title} style={sx("display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:13px; background:#f7fbf9; border:1px solid #d7ebe2")}>
-                <div style={sx("font-size:14px; font-weight:700; color:#245c48; line-height:1.5; text-wrap:pretty")}>{x.title}</div>
-                <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty")}>{x.why}</div>
-              </div>
-            ))}
+      <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#e6f5ee 0%,#e2edf9 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
+        <div style={sx("display:flex; align-items:center; gap:14px")}>
+          <div style={sx("width:50px; height:50px; flex:none; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 2px 6px rgba(80,160,130,0.18)")}>☘</div>
+          <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+            <div style={sx("font-size:16px; font-weight:700; color:#245c48")}>오늘 해볼 것</div>
+            <div style={sx("font-size:12px; color:#6b8c9a; line-height:1.5")}>{cardDone ? "오늘 마음카드에 맞춘 작은 것 셋 — 하나만 골라도, 안 해도 괜찮아요" : "누구에게나 무난한 작은 것 셋 — 마음카드를 하면 오늘 마음에 더 맞춰져요"}</div>
           </div>
+        </div>
+        {items.map((x) => (
+          <div key={x.title} data-todo-item={x.tone} style={sx("display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:13px; background:#f7fbf9; border:1px solid #d7ebe2")}>
+            <div style={sx("font-size:14px; font-weight:700; color:#245c48; line-height:1.5; text-wrap:pretty")}>{x.title}</div>
+            <div style={sx("font-size:12.5px; color:#3f7a64; line-height:1.55; text-wrap:pretty")}>{x.why}</div>
+          </div>
+        ))}
+        {!cardDone && (
+          <div data-todo-go onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800")}>오늘의 마음카드 하러 가기 ›</div>
+        )}
+      </div>
     );
   }
 
@@ -2286,8 +2290,6 @@ export default function WellnessApp() {
                   {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #cfc5ea; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
                 </div>
                 <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.short}</div>
-                {/* 유형×시간대 한 줄(마음온도 「디렉팅」에서 골라 온 자리) — 유형이 있을 때만. 판정엔 안 들어가고 말투만(persona.ts 머리 주석). */}
-                {s.personaDone && <div style={sx("font-size:13.5px; font-weight:600; line-height:1.7; color:#5f5397; text-wrap:pretty; padding:10px 12px; border-radius:12px; background:#f2edfa; border:1px solid #cfc5ea")}>{PERSONA_TYPES[s.personaDone.type].name} · {personaDirecting(s.personaDone.type, s.now.getHours())}</div>}
                 <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩·색은 재미 요소라 뜻을 풀이하지 않고, 고른 것이 끌리는 방향(차분↔활기, 혼자↔사람)만 계산해 지금 긴장과 견줘요(기분 관리 이론, Zillmann 1988). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>

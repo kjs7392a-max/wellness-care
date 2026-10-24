@@ -28,12 +28,16 @@ describe("WellnessApp — 유형 직접 선택", () => {
 });
 
 describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링크", () => {
-  it("데일리 힐링에 「오늘 해볼 것」 카드가 유형의 todo 를 그린다", () => {
+  it("「오늘 해볼 것」 카드는 유형이 아니라 오늘의 상태(todoFor)로 고른다 — 유형 없이도 열린다(2026-10-24)", () => {
     expect(src).toMatch(/오늘 해볼 것/);
-    expect(src).toMatch(/\.todo\.map\(/);
+    const a0 = src.indexOf("function renderTodoCard(");
+    const card = src.slice(a0, src.indexOf("\n  function ", a0 + 10));
+    expect(a0).toBeGreaterThan(0);
+    expect(card).toMatch(/todoFor\(/);
+    expect(card).not.toMatch(/personaDone|PERSONA_TYPES|\.todo\.map\(/);
   });
-  it("마음카드 디렉팅 뒤에 personaDirecting 한 줄이 붙는다(유형이 있을 때만)", () => {
-    expect(src).toMatch(/personaDirecting\(/);
+  it("마음카드 디렉팅 아래에 유형 한 줄(personaDirecting)을 붙이지 않는다 — 피드백은 상태 기준(2026-10-24)", () => {
+    expect(src).not.toMatch(/personaDirecting\(/);
   });
   it("추천 도서는 bookSearchUrl 링크로 새 창", () => {
     expect(src).toMatch(/bookSearchUrl\(/);
@@ -172,8 +176,8 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(fn("renderBooksTab")).toMatch(/bestBookNaverUrl\(picked\)/);
     // 유형 전에도 여섯 줄 전부 열린다(잠금 없음)
     expect(healing).not.toMatch(/opacity: done|if \(!done\) return/);
-    // 유형이 꼭 필요한 TO do it 만 안내 · 유형은 기기에 저장(마운트 로드 · 바뀔 때 저장 · 설정 「유형 바꾸기/지우기」 · 전체 파기 포함)
-    expect(fn("renderTodoCard")).toMatch(/내 유형을 먼저 골라 주세요/);
+    // TO do it 은 유형 없이 열린다(상태 기준) · 유형은 기기에 저장(마운트 로드 · 바뀔 때 저장 · 설정 「유형 바꾸기/지우기」 · 전체 파기 포함)
+    expect(fn("renderTodoCard")).not.toMatch(/내 유형을 먼저 골라 주세요/);
     expect(src).toMatch(/parsePersonaDone\(window\.localStorage\.getItem\(PERSONA_STORE_KEY\)\)/);
     expect(src).toMatch(/setItem\(PERSONA_STORE_KEY, serializePersonaDone\(s\.personaDone\)\)/);
     expect(fn("renderSettings")).toMatch(/유형 지우기/);
