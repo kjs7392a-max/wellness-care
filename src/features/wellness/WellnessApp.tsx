@@ -1243,11 +1243,11 @@ export default function WellnessApp() {
     return (
       <div data-books-card style={sx("display:flex; flex-direction:column; gap:12px")}>
         <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>읽고 싶은 분류를 고르면 그 분류의 베스트셀러 1~5위를 보여 드려요. 마음 가는 책을 눌러 보세요.</div>
-        <div data-role="book-cats" style={sx("display:flex; gap:8px; flex-wrap:wrap")}>
+        <div data-role="book-cats" style={sx("display:grid; grid-template-columns:1fr 1fr; gap:8px")}>
           {BOOK_CATEGORIES.map((c) => {
             const on = c.id === cat.id;
             return (
-              <div key={c.id} data-book-cat={c.id} onClick={() => patch({ bookCat: c.id, bookPick: null })} style={sx(`cursor:pointer; padding:9px 14px; border-radius:999px; font-size:13.5px; font-weight:800; border:1.5px solid ${on ? "#7a6bc4" : "#d9d2ec"}; background:${on ? "#7a6bc4" : "#fff"}; color:${on ? "#fff" : "#5f5397"}`)}>{c.emoji} {c.label}</div>
+              <div key={c.id} data-book-cat={c.id} onClick={() => patch({ bookCat: c.id, bookPick: null })} style={sx(`cursor:pointer; text-align:center; padding:11px 8px; border-radius:999px; font-size:14px; font-weight:800; border:1.5px solid ${on ? "#7a6bc4" : "#d9d2ec"}; background:${on ? "#7a6bc4" : "#fff"}; color:${on ? "#fff" : "#5f5397"}`)}>{c.emoji} {c.label}</div>
             );
           })}
         </div>
