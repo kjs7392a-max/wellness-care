@@ -1,5 +1,6 @@
 import type { Level } from "./condition";
 import { blotText } from "./blot";
+import { colorText } from "./color";
 
 /**
  * 「오늘의 마음카드」 — 그림으로 답하는 자가보고 5줄 + 종합 디렉팅.
@@ -184,10 +185,10 @@ type SamAnswerDone = { valence: SamScore; arousal: SamScore } & Partial<Record<"
  *   ② 그걸 문단 셋으로 줄였더니 *"문단 셋으로 나누지 말고 하나로 해"* — **문단을 나누지 않는다.**
  * 🚫 문단을 다시 나누지 말 것 — `sam.test.ts` 가 빈 줄(문단 구분)이 하나도 없음을 못박는다.
  */
-export function directing(ans: SamAnswerDone, body: Level | null, slot: number, blots?: readonly (number | null)[]): Directing {
+export function directing(ans: SamAnswerDone, body: Level | null, slot: number, blots?: readonly (number | null)[], color?: number | null): Directing {
   const q = quadrantOf(ans.valence, ans.arousal);
   // 얼룩 답(있으면)은 이미 아는 사분면에 접목해 상태 말 바로 뒤에 한 문장으로 — 문단은 여전히 하나.
-  const state = [opening(q, ans.valence, ans.arousal), WHY[q], ...reasonClauses(ans, body), blotText(blots, q)].filter(Boolean).join(" ");
+  const state = [opening(q, ans.valence, ans.arousal), WHY[q], ...reasonClauses(ans, body), blotText(blots, q), colorText(color, q)].filter(Boolean).join(" ");
   const advice = closing(q, body, slot) + (ans.dominance != null && ans.dominance <= 2
     ? " 그리고 하루가 나를 끌고 간 날엔 아주 작은 선택 하나가 통제감을 돌려줘요 — 퇴근길 음악을 고르는 것 정도면 됩니다."
     : "");

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
+import { COLOR_CHOICES, COLOR_QUESTION, COLOR_SKIP } from "./color";
 import { BLOT_CHOICES, BLOT_QUESTIONS, BLOT_STEPS, BLOT_UNSURE, INITIAL_BLOT_DEAL, dealBlots, type BlotDeal } from "./blot";
 import { AXES, directing, EMPTY_SAM, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
@@ -107,6 +108,8 @@ interface State {
   sam: SamAnswer;
   /** 마음카드 얼룩 둘의 답 — null = 아직 · BLOT_UNSURE(−1) = 건너뛰기 · 0~4 = 보기. */
   blots: (number | null)[];
+  /** 마음카드 색 고르기 — null = 아직 · COLOR_SKIP(−1) = 건너뛰기 · 0~5 = 색(color.ts). */
+  color: number | null;
   /** 이번 카드에 쓸 얼룩 둘·질문 문구 둘(카드를 열 때마다 무작위로 다시 뽑는다 — blot.ts dealBlots). */
   blotDeal: BlotDeal;
   minutes: number;
@@ -199,7 +202,7 @@ export default function WellnessApp() {
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: EMPTY_SAM, blots: [null, null], blotDeal: INITIAL_BLOT_DEAL, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, blots: [null], color: null, blotDeal: INITIAL_BLOT_DEAL, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
@@ -1129,7 +1132,7 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
             {[
               { id: "talk", emoji: "💬", label: "오늘, 어떤 하루였나요?", hint: "말이나 글로 편하게 · 답은 글로 와요", go: () => patch({ sheet: "mind" }) },
-              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 두 장과 얼룩 두 장으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null, null], blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 두 장과 얼룩·색 하나씩으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
             ].map((x) => (
               <div key={x.id} data-mind-row={x.id} onClick={x.go} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:18px; border:1.5px solid #c4b8ec; background:#fff; box-shadow:0 4px 12px rgba(110,95,190,0.10)")}>
                 <div style={sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:#f2edfa")}>{x.emoji}</div>
@@ -1807,7 +1810,7 @@ export default function WellnessApp() {
     ];
     const mindActions = [
       { label: "「오늘, 어떤 하루였나요?」에서 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
-      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null, null], blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
     ];
     const heavyRatio = M.pictureDays ? M.heavyDays / M.pictureDays : 0;
     const mindSolution = M.pictureDays === 0 ? `${ym.m}월엔 마음카드 기록이 아직 없어요. 말로 꺼내기 어려운 날, 그림 하나만 골라도 기록이 남아요.`
@@ -2155,9 +2158,9 @@ export default function WellnessApp() {
     const answered = v.answered;
     const stateDone = samDone(s.sam);
     const blotIdx = s.blots.findIndex((b) => b === null); // 아직 답 안 한 첫 얼룩(−1 = 둘 다 답함)
-    const done = stateDone && blotIdx === -1;
-    const stepNo = answered + s.blots.filter((b) => b !== null).length; // 진행 점
-    const dir = done ? directing(s.sam as { valence: SamScore; arousal: SamScore }, v.cond.dayBody, v.slot, s.blots) : null;
+    const done = stateDone && blotIdx === -1 && s.color !== null;
+    const stepNo = answered + s.blots.filter((b) => b !== null).length + (s.color !== null ? 1 : 0); // 진행 점
+    const dir = done ? directing(s.sam as { valence: SamScore; arousal: SamScore }, v.cond.dayBody, v.slot, s.blots, s.color) : null;
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
@@ -2173,12 +2176,12 @@ export default function WellnessApp() {
         </div>
 
         <div style={sx("flex:1; overflow-y:auto; padding:14px 18px 24px; display:flex; flex-direction:column; gap:12px")}>
-          {/* 진행 점 4개(그림 2 + 얼룩 2) */}
+          {/* 진행 점 4개(그림 2 + 얼룩 1 + 색 1) */}
           <div style={sx("display:flex; align-items:center; gap:6px; justify-content:center")}>
-            {Array.from({ length: AXES.length + BLOT_STEPS }, (_, k) => (<div key={k} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === stepNo && !done ? 22 : 8, background: k < stepNo || done ? "#7a6bc4" : k === stepNo ? "#b9aee6" : "#dfe6ea" }} />))}
+            {Array.from({ length: AXES.length + BLOT_STEPS + 1 }, (_, k) => (<div key={k} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === stepNo && !done ? 22 : 8, background: k < stepNo || done ? "#7a6bc4" : k === stepNo ? "#b9aee6" : "#dfe6ea" }} />))}
           </div>
           {answered === 0 && (
-            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 그림 두 장과 얼룩 두 장이면 오늘의 디렉팅이 나와요.</div>
+            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 그림 두 장, 얼룩 하나, 색 하나면 오늘의 디렉팅이 나와요.</div>
           )}
 
           {/* 고른 줄은 한 줄로 접힘(바꾸기 가능) */}
@@ -2225,6 +2228,33 @@ export default function WellnessApp() {
             </div>
           )}
 
+          {/* 고른 색 줄 — 한 줄로 접힘(바꾸기 가능) */}
+          {stateDone && blotIdx === -1 && s.color !== null && (
+            <div data-color-row onClick={() => patch({ color: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #c9d6dc")}>
+              <div style={{ ...sx("width:34px; height:34px; border-radius:50%; flex:none; border:1px solid #e3dff2"), background: s.color === COLOR_SKIP ? "#f4f1f9" : COLOR_CHOICES[s.color]?.hex }} />
+              <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#6b8c9a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{COLOR_QUESTION}</div>
+              <div style={sx("flex:none; font-size:12.5px; font-weight:700; color:#2d5c6e")}>{s.color === COLOR_SKIP ? "건너뜀" : COLOR_CHOICES[s.color]?.label}</div>
+              <div style={sx("flex:none; font-size:11px; font-weight:700; color:#7a6bc4")}>바꾸기</div>
+            </div>
+          )}
+
+          {/* 색 단계 — 얼룩 뒤 마지막 한 번(정답 없음). 이미 아는 상태에 접목해 피드백에 한 덩어리로 녹는다(color.ts). */}
+          {stateDone && blotIdx === -1 && s.color === null && (
+            <div data-color-step style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
+              <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{COLOR_QUESTION}</div>
+              <div style={sx("font-size:11.5px; color:#8ba8b3")}>정답은 없어요 · 가장 먼저 눈이 간 색을 골라 주세요</div>
+              <div style={sx("display:grid; grid-template-columns:repeat(3,1fr); gap:10px")}>
+                {COLOR_CHOICES.map((c) => (
+                  <div key={c.id} data-color-choice={c.id} onClick={() => patch({ color: c.id })} style={sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 4px 9px; border-radius:16px; border:1.5px solid #e3dff2; background:#fbfaff")}>
+                    <div style={{ ...sx("width:54px; height:54px; border-radius:50%; box-shadow:inset 0 -6px 12px rgba(0,0,0,0.08)"), background: c.hex }} />
+                    <div style={sx("font-size:13px; font-weight:700; color:#2d5c6e")}>{c.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div data-color-choice={COLOR_SKIP} onClick={() => patch({ color: COLOR_SKIP })} style={sx("cursor:pointer; text-align:center; padding:11px; border-radius:14px; background:#f4f1f9; font-size:13px; font-weight:700; color:#7a6bc4")}>건너뛰기</div>
+            </div>
+          )}
+
           {/* 지금 답할 줄 — 그림 5장을 세로로 크게(기분·긴장 둘) */}
           {!stateDone && (() => {
             const x = AXES.find((ax) => s.sam[ax.key] === null)!;
@@ -2261,7 +2291,7 @@ export default function WellnessApp() {
                 <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩은 재미로 보는 마음 거울이에요. 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
               <div style={sx("display:flex; gap:8px")}>
-                <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null, null], blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
+                <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
                 <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
               </div>
             </div>

@@ -7,7 +7,7 @@ import type { Quadrant } from "./sam";
  * (어떤 얼룩이 나와도 해석은 같다 — 그래서 얼룩은 매번 무작위로 돌려도 된다). 순수 · 테스트 blot.test.ts
  */
 export const BLOT_COUNT = 12;
-export const BLOT_STEPS = 2;
+export const BLOT_STEPS = 1; // 2026-10-24 사용자 지시: 얼룩은 한 장만 하고 색 고르기(color.ts)를 넣는다
 
 export interface BlotChoice { id: number; label: string; theme: string }
 /** 느낌 보기 다섯 — 어느 것도 좋고 나쁨이 없다. id 는 상태 저장용(−1 = 건너뛰기 · 문장 없음). */
