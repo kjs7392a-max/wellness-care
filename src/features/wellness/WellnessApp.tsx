@@ -2292,6 +2292,19 @@ export default function WellnessApp() {
                 <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.short}</div>
                 <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩·색은 재미 요소라 뜻을 풀이하지 않고, 고른 것이 끌리는 방향(차분↔활기, 혼자↔사람)만 계산해 지금 긴장과 견줘요(기분 관리 이론, Zillmann 1988). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
               </div>
+              {/* 2026-10-31 사용자 지시: 마음카드 피드백 아래에 영상 링크 하나(「이런 것도 해보세요」). 앱 안 재생 아님 — 누르면 유튜브가 새 탭으로 열린다. */}
+              <a href="https://www.youtube.com/watch?v=MPJJI-Q5eCs" target="_blank" rel="noopener noreferrer" style={sx("flex:none; display:flex; align-items:center; gap:12px; padding:10px; border-radius:16px; background:#fff; border:1px solid #c9d6dc; text-decoration:none")}>
+                <div style={sx("position:relative; flex:none; width:108px; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#eef3f5")}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://i.ytimg.com/vi/MPJJI-Q5eCs/hqdefault.jpg" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <div style={sx("position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; text-shadow:0 1px 6px rgba(0,0,0,0.45)")}>▶</div>
+                </div>
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
+                  <div style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4")}>이런 것도 해보세요</div>
+                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e; line-height:1.4; text-wrap:pretty; word-break:keep-all")}>스트레스 원인을 바로 알 수 있는 동물 심리테스트</div>
+                  <div style={sx("font-size:11px; color:#8ba8b3")}>유튜브 · 퀴즈코리아 ›</div>
+                </div>
+              </a>
               <div style={sx("display:flex; gap:8px")}>
                 <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
                 <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
