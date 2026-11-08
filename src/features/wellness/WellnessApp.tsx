@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { StretchVideo } from "./StretchVideo";
+import { SpaceSheet } from "./SpaceSheet";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
 import { COLOR_CHOICES, COLOR_QUESTION, COLOR_SKIP } from "./color";
 import { readPicks } from "./needs";
@@ -97,7 +98,7 @@ interface State {
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "care" | "healing" | "my";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing" | "space";
   /**
    * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 「내 성향」 정보 카드·결과 시트에만 쓴다 — 2026-10-24: 오늘의 추천(해볼 것·마음카드 피드백)은 성향이 아니라 상태로 정한다.
    * 2026-09-19: 결과는 테스트(lean 있음) 또는 **직접 선택**(lean null · `personaPick` 시트) — 사용자 "직접 선택하게 하고 테스트는 모르면".
@@ -656,6 +657,7 @@ export default function WellnessApp() {
           {s.sheet === "personaPick" && renderPersonaPick()}
           {s.sheet === "personaResult" && renderPersonaResult()}
           {s.sheet === "directing" && renderDirectingSheet()}
+          {s.sheet === "space" && <SpaceSheet onClose={() => patch({ sheet: null })} />}
         </div>
       </div>
     </div>
@@ -1135,6 +1137,8 @@ export default function WellnessApp() {
             {[
               { id: "talk", emoji: "💬", label: "오늘, 어떤 하루였나요?", hint: "말이나 글로 편하게 · 답은 글로 와요", go: () => patch({ sheet: "mind" }) },
               { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 두 장과 얼룩·색 하나씩으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+              // 2026-11-08 사용자 지시: 불당·교회·성당·명상룸 영상 공간 — 「마음 쉼터」(SpaceSheet.tsx · 규칙 space.ts).
+              { id: "space", emoji: "🕯️", label: "마음 쉼터", hint: "불당 · 교회 · 성당 · 명상룸에서 잠시 머물기", go: () => patch({ sheet: "space" }) },
             ].map((x) => (
               <div key={x.id} data-mind-row={x.id} onClick={x.go} style={sx("cursor:pointer; display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:18px; border:1.5px solid #c4b8ec; background:#fff; box-shadow:0 4px 12px rgba(110,95,190,0.10)")}>
                 <div style={sx("width:38px; height:38px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:19px; background:#f2edfa")}>{x.emoji}</div>
