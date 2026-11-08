@@ -41,8 +41,8 @@ describe("setCharacterChat / clear — 캐릭터별 보관", () => {
 });
 
 describe("historyFor — 서버로 보내는 최근 대화", () => {
-  it("상한은 서버가 자르는 수와 같은 하나의 정의(20)", () => {
-    expect(HISTORY_LIMIT).toBe(20);
+  it("상한은 서버가 자르는 수와 같은 하나의 정의(32, 15턴 이상)", () => {
+    expect(HISTORY_LIMIT).toBe(32);
     const many = Array.from({ length: 60 }, (_, i) => m(i % 2 ? "bot" : "me", `t${i}`));
     const h = historyFor(many);
     expect(h).toHaveLength(HISTORY_LIMIT);

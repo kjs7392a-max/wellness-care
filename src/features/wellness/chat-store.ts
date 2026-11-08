@@ -12,7 +12,7 @@ import type { CharacterId } from "./characters";
  * ⚠ 폰을 바꾸거나 브라우저 데이터를 지우면 사라진다 — DB 가 오면 이 표를 그대로 올린다.
  */
 export const CHAT_STORE_KEY = "wellness-care:chat:v1";
-export const HISTORY_LIMIT = 20;
+export const HISTORY_LIMIT = 32;
 export const MAX_PER_CHARACTER = 200;
 
 export interface StoredMsg { role: "me" | "bot"; text: string; at: string; risk?: true }

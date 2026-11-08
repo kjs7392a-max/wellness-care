@@ -2,19 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
+import { shouldSubmitChatKey } from "./chat-input";
 import { StretchVideo } from "./StretchVideo";
 import { SpaceSheet } from "./SpaceSheet";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
-import { COLOR_CHOICES, COLOR_QUESTION, COLOR_SKIP } from "./color";
-import { readPicks } from "./needs";
+import { RainCard } from "./RainCard";
+import { EMPTY_RAIN_CARD, rainChatDraft, type RainCardAnswer } from "./rain-card";
 import { todoFor } from "./todo";
-import { BLOT_CHOICES, BLOT_QUESTIONS, BLOT_STEPS, BLOT_UNSURE, INITIAL_BLOT_DEAL, dealBlots, type BlotDeal } from "./blot";
-import { AXES, directing, EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
+import { AXES, EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
 import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion, suggestionChoices } from "./suggestion";
 import { buildDaySolution, parqNotice } from "./daySolution";
 import {
-  AREAS, CHAT_BEATS, CONDITION_HISTORY, YESTERDAY, DONE_WEEK, doneTotals, MIND_DAYS,
+  AREAS, CONDITION_HISTORY, YESTERDAY, DONE_WEEK, doneTotals, MIND_DAYS,
   // ⚠ NUDGE·NUDGE_LOW 는 아직 어느 화면에도 안 붙어 있다(CONTENT_STATE 별 넛지 문구·낮은 강도판).
   //    지우지 않고 둔 것은 데이터가 이미 다 쓰여 있어서다 — 넛지를 켤 때 여기서부터 시작하면 된다.
   NUDGE, NUDGE_LOW, OB, OB_AT, PRINCIPLES, PROGRAMS, ROLES,
@@ -43,6 +43,7 @@ import { PERSONA_CODES, PERSONA_ITEMS, PERSONA_NOTICE, PERSONA_SCALE, PERSONA_SO
  *   ⚠컴포넌트 안에 두면 렌더보다 늦게 초기화돼 TDZ 오류(실측) — 모듈 최상위에 둔다. 채널에 새 영상이 오르면 여기 id 만 더한다.
  */
 import { riskLevel, RISK_REPLY } from "./risk";
+import { normalizeReply, REPLY_UNAVAILABLE } from "./short-reply";
 import { ONBOARD_STORE_KEY, onboardIdFor, parseOnboardStore, recordFor, savedDateLabel, serializeOnboardStore, setRecord, type OnboardRecord } from "./onboard-store";
 import { canGoNext, canGoPrev, mockRecordsUntil, monthRange, monthSummary, weekConditions, ymAdd, ymLabel, ymOf, type YearMonth } from "./monthly";
 
@@ -109,12 +110,8 @@ interface State {
   personaPage: 1 | 2;
   /** 오늘의 마음카드(SAM) 답 — 기분·긴장 1~5. 둘 다 있으면 오늘 기록 */
   sam: SamAnswer;
-  /** 마음카드 얼룩 둘의 답 — null = 아직 · BLOT_UNSURE(−1) = 건너뛰기 · 0~4 = 보기. */
-  blots: (number | null)[];
-  /** 마음카드 색 고르기 — null = 아직 · COLOR_SKIP(−1) = 건너뛰기 · 0~5 = 색(color.ts). */
-  color: number | null;
-  /** 이번 카드에 쓸 얼룩 둘·질문 문구 둘(카드를 열 때마다 무작위로 다시 뽑는다 — blot.ts dealBlots). */
-  blotDeal: BlotDeal;
+  /** Scene choices are expressive, not scores. Text remains local until explicitly sent. */
+  rainCard: RainCardAnswer;
   minutes: number;
   remaining: number;
   running: boolean;
@@ -205,7 +202,7 @@ export default function WellnessApp() {
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: EMPTY_SAM, blots: [null], color: null, blotDeal: INITIAL_BLOT_DEAL, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD }, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
@@ -233,6 +230,8 @@ export default function WellnessApp() {
    */
   const sentUpToRef = useRef(0);
   const upToRef = useRef(0);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const composingChatRef = useRef(false);
   const heardRef = useRef("");
   /** 앞 인식 세션에서 듣고 아직 못 보낸 말 — 브라우저가 세션을 끊고 다시 시작해도 이어 붙인다. */
   const carryRef = useRef("");
@@ -329,22 +328,10 @@ export default function WellnessApp() {
   }
 
   function scripted() {
-    setS((st) => {
-      const beat = CHAT_BEATS[st.beat];
-      if (!beat) return { ...st, typing: false };
-      return st; // 실제 push는 아래 setTimeout에서
-    });
-    setTimeout(() => {
-      patchFn((st) => {
-        const beat = CHAT_BEATS[st.beat];
-        if (!beat) return { typing: false };
-        return {
-          chat: st.chat.concat(beat.map((b, j) => ({ role: "bot" as const, text: b, at: stampAt(st.chat.length + j, st.now) }))),
-          typing: false,
-          beat: st.beat + 1,
-        };
-      });
-    }, 900);
+    patchFn((st) => ({
+      chat: st.chat.concat([{ role: "bot", text: REPLY_UNAVAILABLE, at: stampAt(st.chat.length, st.now) }]),
+      typing: false,
+    }));
   }
 
   /**
@@ -503,7 +490,7 @@ export default function WellnessApp() {
       }
       if (j.reply && typeof j.reply === "string") {
         patchFn((st) => ({
-          chat: st.chat.concat([{ role: "bot", text: j.reply, at: stampAt(st.chat.length, st.now) }]),
+          chat: st.chat.concat([{ role: "bot", text: normalizeReply(j.reply), at: stampAt(st.chat.length, st.now) }]),
           typing: false, beat: st.beat + 1,
         }));
         return;
@@ -1136,7 +1123,7 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
             {[
               { id: "talk", emoji: "💬", label: "오늘, 어떤 하루였나요?", hint: "말이나 글로 편하게 · 답은 글로 와요", go: () => patch({ sheet: "mind" }) },
-              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 두 장과 얼룩·색 하나씩으로 지금 마음 보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "기분·긴장과 빗속의 장면으로 오늘 마음 돌아보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } }) },
               // 2026-11-08 사용자 지시: 불당·교회·성당·명상룸 영상 공간 — 「마음 쉼터」(SpaceSheet.tsx · 규칙 space.ts).
               { id: "space", emoji: "🕯️", label: "마음 쉼터", hint: "불당 · 교회 · 성당 · 명상룸에서 잠시 머물기", go: () => patch({ sheet: "space" }) },
             ].map((x) => (
@@ -1607,12 +1594,13 @@ export default function WellnessApp() {
 
   /**
    * 「TO do it」 탭 카드 — 오늘 해볼 것 셋. 2026-10-24 사용자 지시: 성향(유형)을 따르지 않고 **오늘의 상태**로 고른다(todo.ts).
-   * 오늘 마음카드(기분×긴장 + 그림·색 방향)가 있으면 그에 맞춰, 없으면 누구에게나 무난한 작은 것. 날짜마다 달라진다.
+   * 오늘 마음카드의 기분·긴장가 있으면 그에 맞춰, 없으면 누구에게나 무난한 작은 것. 날짜마다 달라진다.
    */
   function renderTodoCard() {
     const cardDone = samDone(s.sam);
     const q = cardDone ? quadrantOf(s.sam.valence as SamScore, s.sam.arousal as SamScore) : null;
-    const read = cardDone ? readPicks(s.sam.arousal as SamScore, s.blots, s.color) : null;
+    // Rain choices never influence recommendations or risk scoring.
+    const read = null;
     const items = todoFor(q, read, Math.floor(s.now.getTime() / 86400000));
     return (
       <div style={sx("display:flex; flex-direction:column; gap:12px; padding:26px 18px 20px; border-radius:22px; background:linear-gradient(120deg,#e6f5ee 0%,#e2edf9 100%); border:1.5px solid #9ccdb8; box-shadow:0 12px 28px rgba(60,140,110,0.34), 0 2px 8px rgba(60,140,110,0.22)")}>
@@ -1630,7 +1618,7 @@ export default function WellnessApp() {
           </div>
         ))}
         {!cardDone && (
-          <div data-todo-go onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800")}>오늘의 마음카드 하러 가기 ›</div>
+          <div data-todo-go onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } })} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800")}>오늘의 마음카드 하러 가기 ›</div>
         )}
       </div>
     );
@@ -1818,7 +1806,7 @@ export default function WellnessApp() {
     ];
     const mindActions = [
       { label: "「오늘, 어떤 하루였나요?」에서 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
-      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) }) },
+      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } }) },
     ];
     const heavyRatio = M.pictureDays ? M.heavyDays / M.pictureDays : 0;
     const mindSolution = M.pictureDays === 0 ? `${ym.m}월엔 마음카드 기록이 아직 없어요. 말로 꺼내기 어려운 날, 그림 하나만 골라도 기록이 남아요.`
@@ -2161,14 +2149,10 @@ export default function WellnessApp() {
   }
 
   function renderPicture() {
-    // 오늘의 마음카드 = 은유 그림 둘(하늘=기분 · 물=긴장, sam.ts) + 색 얼룩 둘(blot.ts · 무작위) → 디렉팅 하나(2026-10-24 사용자 지시).
-    // 단계는 앞 단계를 고르면 다음 단계가 나타난다. 얼룩 답은 이미 아는 상태(사분면)에 접목해 피드백에 녹는다.
     const answered = v.answered;
     const stateDone = samDone(s.sam);
-    const blotIdx = s.blots.findIndex((b) => b === null); // 아직 답 안 한 첫 얼룩(−1 = 둘 다 답함)
-    const done = stateDone && blotIdx === -1 && s.color !== null;
-    const stepNo = answered + s.blots.filter((b) => b !== null).length + (s.color !== null ? 1 : 0); // 진행 점
-    const dir = done ? directing(s.sam as { valence: SamScore; arousal: SamScore }, v.cond.dayBody, v.slot, s.blots, s.color, Math.floor(s.now.getTime() / 86400000)) : null;
+    const done = stateDone && s.rainCard.finished;
+    const stepNo = answered + Number(s.rainCard.rain !== null) + Number(s.rainCard.place !== null) + Number(s.rainCard.finished);
     return (
       <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
         <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
@@ -2184,12 +2168,12 @@ export default function WellnessApp() {
         </div>
 
         <div style={sx("flex:1; overflow-y:auto; padding:14px 18px 24px; display:flex; flex-direction:column; gap:12px")}>
-          {/* 진행 점 4개(그림 2 + 얼룩 1 + 색 1) */}
+          {/* 기분·긴장 2개 + 장면 2개 + 한마디(건너뛰기 가능) */}
           <div style={sx("display:flex; align-items:center; gap:6px; justify-content:center")}>
-            {Array.from({ length: AXES.length + BLOT_STEPS + 1 }, (_, k) => (<div key={k} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === stepNo && !done ? 22 : 8, background: k < stepNo || done ? "#7a6bc4" : k === stepNo ? "#b9aee6" : "#dfe6ea" }} />))}
+            {Array.from({ length: AXES.length + 3 }, (_, k) => (<div key={k} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === stepNo && !done ? 22 : 8, background: k < stepNo || done ? "#7a6bc4" : k === stepNo ? "#b9aee6" : "#dfe6ea" }} />))}
           </div>
           {answered === 0 && (
-            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 그림 두 장, 얼룩 하나, 색 하나면 오늘의 디렉팅이 나와요.</div>
+            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 기분·긴장을 살펴보고, 빗속의 장면 두 개에 내 이야기를 담아 보세요.</div>
           )}
 
           {/* 고른 줄은 한 줄로 접힘(바꾸기 가능) */}
@@ -2204,64 +2188,6 @@ export default function WellnessApp() {
               <div style={sx("flex:none; font-size:11px; font-weight:700; color:#7a6bc4")}>바꾸기</div>
             </div>
           ))}
-
-          {/* 고른 얼룩 줄 — 한 줄로 접힘(바꾸기 가능) */}
-          {stateDone && s.blots.map((c, i) => c === null ? null : (
-            <div key={`blot-${i}`} data-blot-row onClick={() => patch({ blots: s.blots.map((b, k) => (k === i ? null : b)) })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #c9d6dc")}>
-              <div style={sx("width:34px; height:34px; border-radius:9px; overflow:hidden; flex:none; background:#f4f1ea")}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${IMG}/blot-${s.blotDeal.images[i]}.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              </div>
-              <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#6b8c9a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{BLOT_QUESTIONS[s.blotDeal.questions[i]]}</div>
-              <div style={sx("flex:none; font-size:12.5px; font-weight:700; color:#2d5c6e")}>{c === BLOT_UNSURE ? "건너뜀" : BLOT_CHOICES[c]?.label}</div>
-              <div style={sx("flex:none; font-size:11px; font-weight:700; color:#7a6bc4")}>바꾸기</div>
-            </div>
-          ))}
-
-          {/* 얼룩 단계 — 기분·긴장을 고른 뒤 색 얼룩 하나씩(정답 없음 · 매번 무작위). 이미 아는 상태에 접목해 피드백에 한 덩어리로 녹는다(blot.ts). */}
-          {stateDone && blotIdx !== -1 && (
-            <div key={`blot-step-${blotIdx}`} data-blot-step={blotIdx} style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
-              <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{BLOT_QUESTIONS[s.blotDeal.questions[blotIdx]]}</div>
-              <div style={sx("font-size:11.5px; color:#8ba8b3")}>정답은 없어요 · 처음 느껴진 쪽을 골라 주세요</div>
-              <div style={sx("width:100%; max-width:260px; aspect-ratio:1/1; margin:0 auto; border-radius:16px; overflow:hidden; background:#f4f1ea")}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${IMG}/blot-${s.blotDeal.images[blotIdx]}.png`} alt="색 얼룩" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              </div>
-              <div style={sx("display:flex; flex-direction:column; gap:8px")}>
-                {BLOT_CHOICES.map((c) => (
-                  <div key={c.id} data-blot-choice={c.id} onClick={() => patch({ blots: s.blots.map((b, k) => (k === blotIdx ? c.id : b)) })} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:14px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>{c.label}</div>
-                ))}
-                <div data-blot-choice={BLOT_UNSURE} onClick={() => patch({ blots: s.blots.map((b, k) => (k === blotIdx ? BLOT_UNSURE : b)) })} style={sx("cursor:pointer; text-align:center; padding:11px; border-radius:14px; background:#f4f1f9; font-size:13px; font-weight:700; color:#7a6bc4")}>건너뛰기</div>
-              </div>
-            </div>
-          )}
-
-          {/* 고른 색 줄 — 한 줄로 접힘(바꾸기 가능) */}
-          {stateDone && blotIdx === -1 && s.color !== null && (
-            <div data-color-row onClick={() => patch({ color: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #c9d6dc")}>
-              <div style={{ ...sx("width:34px; height:34px; border-radius:50%; flex:none; border:1px solid #e3dff2"), background: s.color === COLOR_SKIP ? "#f4f1f9" : COLOR_CHOICES[s.color]?.hex }} />
-              <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#6b8c9a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{COLOR_QUESTION}</div>
-              <div style={sx("flex:none; font-size:12.5px; font-weight:700; color:#2d5c6e")}>{s.color === COLOR_SKIP ? "건너뜀" : COLOR_CHOICES[s.color]?.label}</div>
-              <div style={sx("flex:none; font-size:11px; font-weight:700; color:#7a6bc4")}>바꾸기</div>
-            </div>
-          )}
-
-          {/* 색 단계 — 얼룩 뒤 마지막 한 번(정답 없음). 이미 아는 상태에 접목해 피드백에 한 덩어리로 녹는다(color.ts). */}
-          {stateDone && blotIdx === -1 && s.color === null && (
-            <div data-color-step style={sx("flex:none; display:flex; flex-direction:column; gap:12px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
-              <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{COLOR_QUESTION}</div>
-              <div style={sx("font-size:11.5px; color:#8ba8b3")}>정답은 없어요 · 가장 먼저 눈이 간 색을 골라 주세요</div>
-              <div style={sx("display:grid; grid-template-columns:repeat(3,1fr); gap:10px")}>
-                {COLOR_CHOICES.map((c) => (
-                  <div key={c.id} data-color-choice={c.id} onClick={() => patch({ color: c.id })} style={sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 4px 9px; border-radius:16px; border:1.5px solid #e3dff2; background:#fbfaff")}>
-                    <div style={{ ...sx("width:54px; height:54px; border-radius:50%; box-shadow:inset 0 -6px 12px rgba(0,0,0,0.08)"), background: c.hex }} />
-                    <div style={sx("font-size:13px; font-weight:700; color:#2d5c6e")}>{c.label}</div>
-                  </div>
-                ))}
-              </div>
-              <div data-color-choice={COLOR_SKIP} onClick={() => patch({ color: COLOR_SKIP })} style={sx("cursor:pointer; text-align:center; padding:11px; border-radius:14px; background:#f4f1f9; font-size:13px; font-weight:700; color:#7a6bc4")}>건너뛰기</div>
-            </div>
-          )}
 
           {/* 지금 답할 줄 — 그림 5장을 세로로 크게(기분·긴장 둘) */}
           {!stateDone && (() => {
@@ -2286,35 +2212,11 @@ export default function WellnessApp() {
             );
           })()}
 
-          {dir && (
-            <div style={sx("flex:none; display:flex; flex-direction:column; gap:14px; animation:wRise 0.4s ease-out both")}>
-              <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px 17px; border-radius:20px; background:#f2edfa; border:1px solid #c9d6dc")}>
-                <div style={sx("display:flex; align-items:center; gap:6px; flex-wrap:wrap")}>
-                  <div style={sx("font-size:13px; font-weight:800; color:#5f5397; margin-right:2px")}>오늘의 디렉팅</div>
-                  {AXES.map((x) => (<div key={x.key} style={sx("font-size:11px; font-weight:700; color:#7a6bc4; background:#fff; border:1px solid #cfc5ea; border-radius:999px; padding:3px 8px")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>))}
-                </div>
-                <div style={sx("font-size:14.5px; font-weight:500; line-height:1.75; color:#2d5c6e; letter-spacing:-0.01em; text-wrap:pretty; white-space:pre-line")}>{dir.short}</div>
-                <div style={sx("font-size:11px; color:#8ba8b3; line-height:1.5; text-wrap:pretty")}>그림 척도로 물었어요 — 하늘·물은 SAM(Self-Assessment Manikin, Bradley &amp; Lang 1994)의 기분·긴장. 읽기는 정서 원형 모델(Russell 1980). 얼룩·색은 재미 요소라 뜻을 풀이하지 않고, 고른 것이 끌리는 방향(차분↔활기, 혼자↔사람)만 계산해 지금 긴장과 견줘요(기분 관리 이론, Zillmann 1988). 검사 결과가 아니라 지금 상태의 자가보고이고, 선생님만 봅니다.</div>
-              </div>
-              {/* 2026-10-31 사용자 지시: 마음카드 피드백 아래에 영상 링크 하나(「이런 것도 해보세요」). 앱 안 재생 아님 — 누르면 유튜브가 새 탭으로 열린다. */}
-              <a href="https://www.youtube.com/watch?v=MPJJI-Q5eCs" target="_blank" rel="noopener noreferrer" style={sx("flex:none; display:flex; align-items:center; gap:12px; padding:10px; border-radius:16px; background:#fff; border:1px solid #c9d6dc; text-decoration:none")}>
-                <div style={sx("position:relative; flex:none; width:108px; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#eef3f5")}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://i.ytimg.com/vi/MPJJI-Q5eCs/hqdefault.jpg" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  <div style={sx("position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; text-shadow:0 1px 6px rgba(0,0,0,0.45)")}>▶</div>
-                </div>
-                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:3px")}>
-                  <div style={sx("font-size:11.5px; font-weight:700; color:#7a6bc4")}>이런 것도 해보세요</div>
-                  <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e; line-height:1.4; text-wrap:pretty; word-break:keep-all")}>스트레스 원인을 바로 알 수 있는 동물 심리테스트</div>
-                  <div style={sx("font-size:11px; color:#8ba8b3")}>유튜브 · 퀴즈코리아 ›</div>
-                </div>
-              </a>
-              <div style={sx("display:flex; gap:8px")}>
-                <div onClick={() => patch({ sam: EMPTY_SAM, blots: [null], color: null, blotDeal: dealBlots(s.blotDeal.images[0]) })} style={sx("cursor:pointer; flex:1; text-align:center; padding:14px; border-radius:15px; background:#fff; border:1.5px solid #c9d6dc; font-size:14px; font-weight:700; color:#8ba8b3")}>다시 고르기</div>
-                <div onClick={() => patch({ sheet: null, pickedToday: true })} style={sx("cursor:pointer; flex:1.4; text-align:center; padding:14px; border-radius:15px; background:#7a6bc4; color:#fff; font-size:14px; font-weight:700")}>오늘 기록으로 남기기</div>
-              </div>
-            </div>
-          )}
+          {stateDone && <RainCard value={s.rainCard} onChange={(rainCard) => patch({ rainCard })}
+            onTalk={() => { stopMic(""); startTalkWith(s.character); patch({ input: rainChatDraft(s.rainCard) }); }}
+            onFinish={() => patch({ sheet: null, pickedToday: true })}
+            onRestart={() => patch({ sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } })} />}
+
         </div>
       </div>
     );
@@ -2652,8 +2554,21 @@ export default function WellnessApp() {
                 </svg>
               </div>
             )}
-            <input value={s.input} onChange={(e) => patch({ input: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder={s.micOk ? "적거나, 🎤 를 눌러 말하세요" : "아무 말이나 괜찮아요, 그냥 적어보세요"} style={sx("flex:1; min-width:0; border:none; background:#f4f1fb; border-radius:999px; padding:13px 16px; font-size:14px; color:#2d5c6e; outline:none; font-family:inherit")} />
-            <div onClick={() => send()} style={sx("cursor:pointer; width:44px; height:44px; flex:none; border-radius:50%; background:#7a6bc4; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(91,181,207,0.35)")}>↑</div>
+            <input ref={chatInputRef} value={s.input}
+              onCompositionStart={() => { composingChatRef.current = true; }}
+              onCompositionEnd={(e) => { composingChatRef.current = false; patch({ input: e.currentTarget.value }); }}
+              onChange={(e) => patch({ input: e.target.value })}
+              onKeyDown={(e) => {
+                if (!shouldSubmitChatKey(e.nativeEvent, composingChatRef.current)) return;
+                e.preventDefault();
+                send(e.currentTarget.value);
+              }} placeholder={s.micOk ? "적거나, 🎤 를 눌러 말하세요" : "아무 말이나 괜찮아요, 그냥 적어보세요"} style={sx("flex:1; min-width:0; border:none; background:#f4f1fb; border-radius:999px; padding:13px 16px; font-size:14px; color:#2d5c6e; outline:none; font-family:inherit")} />
+            <button type="button" aria-label="메시지 보내기" disabled={s.typing}
+              onClick={() => {
+                if (composingChatRef.current) return;
+                send(chatInputRef.current?.value ?? s.input);
+              }}
+              style={sx("cursor:pointer; border:0; padding:0; width:44px; height:44px; flex:none; border-radius:50%; background:#7a6bc4; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(91,181,207,0.35)")}>↑</button>
           </div>
         </div>
 

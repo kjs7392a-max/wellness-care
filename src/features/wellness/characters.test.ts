@@ -124,8 +124,8 @@ describe("SYSTEM_CORE — 공감의 배합(공감형 대화 분포 기반)", () 
   it("좋은 일에는 위로·조언을 붙이지 말라는 규칙이 있다", () => {
     expect(lines.some((l) => /좋은 일|기쁜/.test(l) && /위로/.test(l) && /조언|제안/.test(l) && /(않|말|금지)/.test(l))).toBe(true);
   });
-  it("무거운 말에는 동조 → 위로 → 제안 순서와 '네 번에 한 번' 상한이 있다", () => {
-    expect(lines.some((l) => /그럴 만하다|그럴 만/.test(l) && /위로/.test(l) && /네 번에 한 번|네 번 중 한 번/.test(l))).toBe(true);
+  it("무거운 말에도 짧게 공감하고 조언은 요청할 때만 한다", () => {
+    expect(lines.some((l) => /공감 하나/.test(l) && /위로/.test(l) && /네 번에 한 번|네 번 중 한 번/.test(l))).toBe(true);
   });
   it("당황에는 같이 놀라 주기부터라는 규칙이 있다", () => {
     expect(lines.some((l) => /당황/.test(l) && /놀라/.test(l))).toBe(true);
@@ -181,8 +181,8 @@ describe("SYSTEM_CORE — 화제 마무리(같은 말 되풀이 금지)", () => 
     expect(SYSTEM_CORE).toContain("가볍게 다른 이야기로 옮겨도 됩니다");
     expect(SYSTEM_CORE).not.toContain("상대가 꺼낸 화제에만 반응합니다");
   });
-  it("짧은 맞장구는 다 들은 뒤라면 '충분히 말했다'는 신호", () => {
-    expect(SYSTEM_CORE).toContain("'충분히 말했다'는 신호");
+  it("짧은 맞장구만으로 사용자의 이야기를 끝내지 않는다", () => {
+    expect(SYSTEM_CORE).toContain("짧은 동의만으로 충분히 말했다고 판단하지 않습니다");
     expect(SYSTEM_CORE).not.toContain("- 그럴 때는 앞 이야기를 한 걸음 더 이어서 말해 줍니다.");
   });
   it("예시에 화제 마무리 쌍과 피할 답(반복 반영·재질문)이 있다", () => {
