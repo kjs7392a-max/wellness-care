@@ -21,9 +21,11 @@ describe("마음 쉼터 — 공간 화면", () => {
     expect(roomView).not.toMatch(/object-fit:cover|objectFit:\s*"cover"/);
   });
 
-  it("소리 없는 공간은 무음(muted) — 소리 단추는 room.sound 일 때만", () => {
+  it("무음 영상은 유지하고 별도 오디오에도 소리 단추를 제공한다", () => {
     expect(roomView).toMatch(/muted=\{!room\.sound\}/);
-    expect(roomView).toMatch(/\{room\.sound && \(\s*<div data-space-sound/);
+    expect(roomView).toContain("data-space-sound");
+    expect(roomView).toContain("<audio");
+    expect(roomView).toContain("소리 듣기");
     expect(roomView).toMatch(/data-space-sound-toggle/);
     expect(roomView).toMatch(/type="range"[\s\S]*?data-space-volume/);
   });

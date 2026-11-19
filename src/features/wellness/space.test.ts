@@ -15,8 +15,33 @@ describe("마음 쉼터 — 공간 넷과 파일", () => {
     expect(SPACE_ROOMS.map((r) => r.name)).toEqual(["불당", "교회", "성당", "명상룸"]);
   });
 
-  it("소리는 명상룸만 — 나머지는 무음", () => {
+  it("영상 자체 소리는 명상룸만 — 나머지는 별도 오디오", () => {
     expect(SPACE_ROOMS.filter((r) => r.sound).map((r) => r.id)).toEqual(["meditation"]);
+  });
+
+  it("교회·성당·불당은 서로 다른 소리를 명시적으로 연결한다", () => {
+    expect(spaceRoom("church").audio?.[0].title).toContain("찬송가");
+    expect(spaceRoom("cathedral").audio?.[0].title).toContain("오르간");
+    expect(spaceRoom("temple").audio?.[0].title).toContain("반야심경");
+    expect(spaceRoom("temple").audio?.[0].title).toContain("한국어");
+    expect(new Set(SPACE_ROOMS.flatMap((r) => r.audio?.map((track) => track.src) ?? [])).size).toBe(7);
+    for (const room of SPACE_ROOMS.filter((r) => r.audio)) {
+      for (const track of room.audio ?? []) {
+        expect(track.src).toMatch(/^https:\/\//);
+        expect(track.sourceUrl).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
+  it("교회·성당은 서로 다른 세 곡, 불당은 기존 독경 한 편이다", () => {
+    for (const id of ["church", "cathedral"] as const) {
+      const tracks = spaceRoom(id).audio!;
+      expect(tracks).toHaveLength(3);
+      expect(new Set(tracks.map((track) => track.src)).size).toBe(3);
+      expect(tracks.every((track) => track.license && track.artist)).toBe(true);
+    }
+    expect(spaceRoom("temple").audio).toHaveLength(1);
+    expect(spaceRoom("meditation").audio).toBeUndefined();
   });
 
   it("영상·포스터 파일이 실제로 있고, 영상은 H.264(avc1)다 — HEVC 10비트 원본을 그대로 넣으면 안드로이드·크롬에서 안 나온다", () => {

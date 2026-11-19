@@ -1,7 +1,7 @@
 /**
  * 마음 쉼터 — 불당·교회·성당·명상룸(2026-11-08 사용자 지시: Higgsfield 영상 4개를 각 공간에 연결).
  *
- * - 영상은 그 공간에서 반복 재생한다. 불당·교회·성당은 무음(원본에 소리 트랙 없음), 명상룸만 싱잉볼 소리.
+ * - 영상은 반복 재생한다. 불당·교회·성당은 별도 소리 듣기를 누르면 오디오 재생, 명상룸은 영상의 싱잉볼 소리.
  * - 명상룸 영상엔 명상 안내 자막이 이미 들어 있다 → 🚫 앱이 같은 안내를 또 얹지 말 것.
  * - 세로 영상의 주요 인물·십자가·불상·자막이 잘리지 않게 공간마다 「지켜야 할 칸(safe)」을 적고,
  *   화면 크기에 맞춰 `fitRoomVideo` 가 영상 크기·위치를 정한다(순수 — 테스트 space.test.ts).
@@ -16,6 +16,11 @@ export type SpaceId = "temple" | "church" | "cathedral" | "meditation";
 /** 영상 안에서 반드시 보여야 할 칸 — 영상 폭·높이에 대한 비율(0~1). */
 export interface SafeBox { x0: number; x1: number; y0: number; y1: number }
 
+export interface SpaceTrack {
+  src: string; title: string; artist: string; sourceUrl: string;
+  license?: { label: string; url: string };
+}
+
 export interface SpaceRoom {
   id: SpaceId;
   name: string;
@@ -26,8 +31,10 @@ export interface SpaceRoom {
   /** 원본 영상 크기(px) — 비율만 쓴다. */
   w: number;
   h: number;
-  /** true = 소리 켜기·끄기·음량 조절을 보인다(명상룸만). false 면 늘 무음. */
+  /** 영상 자체의 소리 트랙 유무. 별도 소리는 audio에 둔다. */
   sound: boolean;
+  /** 별도 오디오: 공간 입장 때는 꺼지고 소리 듣기를 눌러야 재생된다. */
+  audio?: readonly [SpaceTrack, ...SpaceTrack[]];
   /**
    * 잘리면 안 되는 칸(2026-11-08 영상 프레임 0·2.5·5·7.5·9.9초 실측 + 여백).
    * - 불당: 불상(x .44–.52, y .37–.43) · 큰절하는 사람(x .28–.37, y .48–.56)
@@ -43,11 +50,38 @@ export interface SpaceRoom {
 export const SPACE_DIR = "/wellness/space";
 
 export const SPACE_ROOMS: readonly SpaceRoom[] = [
-  { id: "temple", name: "불당", hint: "소리 없이 머물기", src: `${SPACE_DIR}/temple.mp4`, poster: `${SPACE_DIR}/temple.jpg`, w: 1080, h: 1920, sound: false,
+  { id: "temple", name: "불당", hint: "반야심경 독경 · 눌러서 듣기", src: `${SPACE_DIR}/temple.mp4`, poster: `${SPACE_DIR}/temple.jpg`, w: 1080, h: 1920, sound: false,
+    audio: [{ src: "https://static1.squarespace.com/static/58d013bbe58c6272b30dad0b/t/59b04b3f8419c24d57a36c06/1504725831272/04-heart-sutra-korean%2BV1.mp3",
+      title: "반야심경 독경 · 한국어", artist: "Kwan Um School of Zen",
+      sourceUrl: "https://kwanumzen.org/resources-collection/2017/9/6/heart-sutra-in-korean" }],
     safe: { x0: 0.24, x1: 0.64, y0: 0.33, y1: 0.6 }, thumbPos: "50% 45%" },
-  { id: "church", name: "교회", hint: "소리 없이 머물기", src: `${SPACE_DIR}/church.mp4`, poster: `${SPACE_DIR}/church.jpg`, w: 1080, h: 1920, sound: false,
+  { id: "church", name: "교회", hint: "찬송가 합창 3곡 · 차례로 듣기", src: `${SPACE_DIR}/church.mp4`, poster: `${SPACE_DIR}/church.jpg`, w: 1080, h: 1920, sound: false,
+    audio: [{ src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/6a/Amazing_Grace_-_Choir.ogg/Amazing_Grace_-_Choir.ogg.mp3",
+      title: "찬송가 · Amazing Grace (영어 합창 발췌)", artist: "Choir / Sain (Recordiau) Cyf.",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Amazing_Grace_-_Choir.ogg",
+      license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" } },
+      { src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/61/Abide_With_Me_-_Llanelli_Male_Voice_Choir.ogg/Abide_With_Me_-_Llanelli_Male_Voice_Choir.ogg.mp3",
+        title: "찬송가 · Abide with Me (합창 발췌)", artist: "Llanelli Male Voice Choir / Sain (Recordiau) Cyf.",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Abide_With_Me_-_Llanelli_Male_Voice_Choir.ogg",
+        license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" } },
+      { src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/61/Adeste_Fideles_-_Llanelli_Male_Voice_Choir.ogg/Adeste_Fideles_-_Llanelli_Male_Voice_Choir.ogg.mp3",
+        title: "찬송가 · Adeste Fideles (합창 발췌)", artist: "Llanelli Male Voice Choir / Sain (Recordiau) Cyf.",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Adeste_Fideles_-_Llanelli_Male_Voice_Choir.ogg",
+        license: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" } }],
     safe: { x0: 0.28, x1: 0.7, y0: 0.15, y1: 0.57 }, thumbPos: "50% 36%" },
-  { id: "cathedral", name: "성당", hint: "소리 없이 머물기", src: `${SPACE_DIR}/cathedral.mp4`, poster: `${SPACE_DIR}/cathedral.jpg`, w: 1080, h: 1920, sound: false,
+  { id: "cathedral", name: "성당", hint: "오르간 3곡 · 차례로 듣기", src: `${SPACE_DIR}/cathedral.mp4`, poster: `${SPACE_DIR}/cathedral.jpg`, w: 1080, h: 1920, sound: false,
+    audio: [{ src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/8/88/Amazing_Grace-organ.ogg/Amazing_Grace-organ.ogg.mp3",
+      title: "오르간 연주 · Amazing Grace", artist: "The Uninvited Co., Inc.",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Amazing_Grace-organ.ogg",
+      license: { label: "CC BY-SA 2.5", url: "https://creativecommons.org/licenses/by-sa/2.5/" } },
+      { src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/d/dd/BWV_632_organ.ogg/BWV_632_organ.ogg.mp3",
+        title: "오르간 · 바흐 BWV 632", artist: "Mathsci (MIDI 오르간 연주)",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:BWV_632_organ.ogg",
+        license: { label: "CC BY 4.0", url: "https://creativecommons.org/licenses/by/4.0/" } },
+      { src: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/47/Jesu_Du_zartes_L%C3%A4mblein_-_Peter_Nahon.ogg/Jesu_Du_zartes_L%C3%A4mblein_-_Peter_Nahon.ogg.mp3",
+        title: "오르간 · Jesu, du zartes Lämblein", artist: "Peter Nahon / Arrastramiente",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Jesu_Du_zartes_L%C3%A4mblein_-_Peter_Nahon.ogg",
+        license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" } }],
     safe: { x0: 0.14, x1: 0.92, y0: 0.16, y1: 0.72 }, thumbPos: "50% 42%" },
   { id: "meditation", name: "명상룸", hint: "싱잉볼 소리 · 명상 안내", src: `${SPACE_DIR}/meditation.mp4`, poster: `${SPACE_DIR}/meditation.jpg`, w: 720, h: 1280, sound: true,
     safe: { x0: 0.04, x1: 0.96, y0: 0.34, y1: 0.965 }, thumbPos: "50% 0%" },

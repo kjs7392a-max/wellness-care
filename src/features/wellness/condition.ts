@@ -91,6 +91,25 @@ export function change(prev: Level | null, now: Level | null): Change {
 type Bucket = "low" | "mid" | "high";
 const bucket = (l: Level | null): Bucket => (l === null || l === 3 ? "mid" : l <= 2 ? "low" : "high");
 
+/**
+ * 홈 「이번 주 흐름」 전용 3분류 — 2026-11-19 사용자 지시: "휴식 필요 · 보통 · 좋음 3분류만".
+ * 묶음: 1 휴식 필요 · 2·3 보통(조금 지침 = 보통, 2026-11-19 사용자 지시) · 4·5 좋음. 단계 계산(5단계)은 그대로 두고 **보여 주는 칸만** 묶는다.
+ * ⚠ 위 `bucket`(제안 문구, ≤2 = low)과 경계가 다르다 — 의도된 차이. 하나로 합치지 말 것.
+ * 기록 없는 날(null)은 「보통」으로 채우지 않고 null 그대로 — 화면엔 「기록 없음」.
+ * 🚫 이 박스에 5단계 라벨(조금 지침·매우 좋음)을 되살리지 말 것.
+ */
+export type FlowTier = "rest" | "mid" | "good";
+export const FLOW_TIERS: readonly FlowTier[] = ["rest", "mid", "good"];
+export const FLOW_LABEL: Record<FlowTier, string> = { rest: "휴식 필요", mid: "보통", good: "좋음" };
+/** 색은 5단계 색에서 그대로 빌린다(휴식 필요=1 살구 · 보통=3 라벤더 · 좋음=4 민트). */
+export const FLOW_COLOR: Record<FlowTier, { bg: string; bar: string; fg: string }> = { rest: LEVEL_COLOR[1], mid: LEVEL_COLOR[3], good: LEVEL_COLOR[4] };
+/** 바 채움(%) — 3칸 */
+export const FLOW_FILL: Record<FlowTier, number> = { rest: 33, mid: 67, good: 100 };
+export function flowTier(l: Level | null): FlowTier | null {
+  if (l === null) return null;
+  return l === 1 ? "rest" : l <= 3 ? "mid" : "good";
+}
+
 /** 홈 카드 아래 한 줄 — 몸×마음 9조합. 지시가 아니라 제안, 하나만. */
 export function suggestion(body: Level | null, mind: Level | null): string {
   const key = `${bucket(body)}-${bucket(mind)}`;

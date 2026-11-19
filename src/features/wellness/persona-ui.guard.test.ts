@@ -191,7 +191,7 @@ describe("페이지 분할 — 홈은 오늘의 기록까지 · 케어 · 디렉
     expect(fn("renderOutfitTab")).toMatch(/patch\(\{ outfitAns: \{\} \}\)/);
     expect(fn("renderOutfitTab")).toContain("data-outfit-condition");
     expect(src).toMatch(/sentencesFor\(input\)/);
-    expect(src).toMatch(/WALK_COURSES\.map\(/);
+    expect(fn("renderWalkTab")).toContain("data-walk-course");
     expect(healing).not.toMatch(/신체 건강 케어|마음 건강 케어/);
     expect(src).toMatch(/s\.tab === "care" && renderCare\(\)/);
     expect(src).toMatch(/s\.tab === "healing" && renderHealing\(\)/);
@@ -274,7 +274,7 @@ describe("케어 탭 마음 박스 — 대화·마음카드는 세로 줄 둘(�
     const i = src.indexOf('data-mind-row');
     const block = src.slice(src.lastIndexOf("flex-direction:column", i) - 200, i);
     expect(block).toMatch(/id: "talk"[\s\S]*sheet: "mind"/);
-    expect(block).toMatch(/id: "card"[\s\S]*sheet: "picture", sam: EMPTY_SAM/);
+    expect(block).toMatch(/id: "card"[\s\S]*sheet: "picture"/);
     expect(block).toMatch(/flex-direction:column/);
   });
 });
@@ -347,7 +347,15 @@ describe("음성 입력 — 방금 보낸 말은 떼어 내고 보낸다", () =>
 describe("머리줄 뒤로가기 ‹ — 크게", () => {
   it("단독 ‹ 단추는 모두 34px · 40×40 이고 옛 20px ‹ 는 없다", () => {
     const backs = src.match(/style=\{sx\("[^"]*"\)\}>‹<\/div>/g) ?? [];
-    expect(backs.length).toBeGreaterThanOrEqual(10);
+    // The tenth header now lives in the extracted MindCard component.
+    const card = readFileSync(join(process.cwd(), "src/features/wellness/MindCard.tsx"), "utf8");
+    const css = readFileSync(join(process.cwd(), "src/features/wellness/MindCard.module.css"), "utf8");
+    expect(backs.length).toBeGreaterThanOrEqual(9);
+    expect(card).toContain('className={styles.back}');
+    const backStyle = css.match(/\.back \{([^}]+)\}/)?.[1] ?? "";
+    expect(backStyle).toContain("font-size:34px");
+    expect(backStyle).toContain("width:40px; height:40px");
+    expect(backStyle).toContain("font-weight:800");
     for (const b of backs) {
       expect(b).toContain("font-size:34px");
       expect(b).toContain("width:40px; height:40px");
@@ -382,5 +390,19 @@ describe("마음카드 화면 — 상단 칩 줄 없음", () => {
     const body = src.slice(a, src.indexOf("\n  function ", a + 10));
     expect(body).not.toContain('patch({ sheet: "talk" })');
     expect(body).not.toContain('display:flex; gap:6px; padding:0 16px 12px');
+  });
+});
+
+describe("홈 「이번 주 흐름」 — 휴식 필요·보통·좋음 3분류만(2026-11-19 사용자 지시)", () => {
+  const f = src.slice(src.indexOf("function renderWeekFlow("), src.indexOf("function renderTalk("));
+  it("바·라벨·범례·박스색 모두 flowTier/FLOW_* 로 — 5단계 LEVEL_* 를 이 박스에서 쓰지 않는다", () => {
+    expect(f.length).toBeGreaterThan(100);
+    expect(f).toMatch(/weekFlow\.map\(flowTier\)/);
+    expect(f).toMatch(/FLOW_TIERS\.map\(/);
+    expect(f).toMatch(/FLOW_LABEL\[/);
+    expect(f).toMatch(/FLOW_FILL\[/);
+    expect(f).not.toMatch(/LEVEL_LABEL|LEVEL_COLOR/);
+    expect(f).not.toMatch(/\[1, 2, 3, 4, 5\]/);
+    expect(f).not.toMatch(/h \* 20/);
   });
 });

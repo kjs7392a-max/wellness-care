@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodyEvidence, bodyLevel, change, LEVEL_LABEL, levelFromSum, mindEvidence, mindLevel, suggestion } from "./condition";
+import { bodyEvidence, bodyLevel, change, FLOW_COLOR, FLOW_FILL, FLOW_LABEL, FLOW_TIERS, flowTier, LEVEL_COLOR, LEVEL_LABEL, levelFromSum, mindEvidence, mindLevel, suggestion } from "./condition";
 
 describe("levelFromSum", () => {
   it("−3~+3 → 1~5", () => {
@@ -99,5 +99,26 @@ describe("하루 단위(어제)", () => {
     expect(flowText([null, 4])).toBe("— → 좋음");
     expect(dayBodyEvidence({ stretchCount: 2, moveVsUsual: 0, stepsVsUsual: 0 })[0]).toBe("스트레칭 2번");
     expect(dayMindEvidence({ pick: "light", chatCount: 1, riskFlagged: false })).toEqual(["오늘의 마음카드: 가벼운 결", "「오늘, 어떤 하루였나요?」 1번"]);
+  });
+});
+
+describe("flowTier — 홈 「이번 주 흐름」 3분류(2026-11-19 사용자 지시)", () => {
+  it("1 → 휴식 필요 · 2(조금 지침)·3 → 보통 · 4·5 → 좋음 · 기록 없음은 null 그대로", () => {
+    expect(([1, 2, 3, 4, 5] as const).map((l) => FLOW_LABEL[flowTier(l)!])).toEqual(["휴식 필요", "보통", "보통", "좋음", "좋음"]);
+    expect(flowTier(null)).toBeNull();
+  });
+  it("분류는 딱 셋 · 라벨에 5단계 말(조금 지침·매우 좋음)이 없다", () => {
+    expect(FLOW_TIERS.map((t) => FLOW_LABEL[t])).toEqual(["휴식 필요", "보통", "좋음"]);
+    expect(Object.values(FLOW_LABEL)).not.toContain(LEVEL_LABEL[2]);
+    expect(Object.values(FLOW_LABEL)).not.toContain(LEVEL_LABEL[5]);
+  });
+  it("라벨·색은 5단계의 같은 이름 칸과 맞는다 · 바 채움은 커지는 순", () => {
+    expect([FLOW_LABEL.rest, FLOW_LABEL.mid, FLOW_LABEL.good]).toEqual([LEVEL_LABEL[1], LEVEL_LABEL[3], LEVEL_LABEL[4]]);
+    expect(FLOW_COLOR.rest).toBe(LEVEL_COLOR[1]);
+    expect(FLOW_COLOR.mid).toBe(LEVEL_COLOR[3]);
+    expect(FLOW_COLOR.good).toBe(LEVEL_COLOR[4]);
+    expect(FLOW_FILL.rest).toBeLessThan(FLOW_FILL.mid);
+    expect(FLOW_FILL.mid).toBeLessThan(FLOW_FILL.good);
+    expect(FLOW_FILL.good).toBe(100);
   });
 });

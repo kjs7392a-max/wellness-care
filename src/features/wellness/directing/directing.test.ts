@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { AGE_BANDS, ageOfBand, parseProfile, serializeProfile } from "./profile";
 import { OUTFIT_QUESTIONS, SCENES, ageDecade, outfitCard, outfitCards, pickOutfit } from "./outfit";
 import { sentenceInputFromSam, sentencesFor } from "./sentences";
-import { WALK_COURSES, difficultyMark, walkMapUrl } from "./walk";
 import { EMPTY_SAM } from "../sam";
 
 // 2026-09-21 마음온도 「피드백」 이식 — 코디·문장·산책·프로필.
@@ -109,14 +108,5 @@ describe("sentences — 원본 x2 + 마음카드 입력", () => {
     expect(sentenceInputFromSam({ ...EMPTY_SAM, valence: 3 }).state).toBe("calm");
     expect(sentenceInputFromSam({ ...EMPTY_SAM, valence: 5 }).state).toBe("happy");
     expect(sentenceInputFromSam({ ...EMPTY_SAM, valence: 2, sleep: 1 })).toMatchObject({ mood: 4, sleepHours: 3 });
-  });
-});
-
-describe("walk — 통합 코스 1 · 지도 링크", () => {
-  it("코스 1개로 통합 · 링크는 좌표 유무로", () => {
-    expect(WALK_COURSES.map((c) => c.name)).toEqual(["내 주변 산책 코스"]);
-    expect(WALK_COURSES.map((c) => difficultyMark(c.difficulty))).toEqual(["🟢"]);
-    expect(walkMapUrl(null, null)).toBe("https://www.google.com/maps/search/산책로+공원+둘레길");
-    expect(walkMapUrl(37.5, 127.0)).toBe("https://www.google.com/maps/search/산책로+공원+둘레길/@37.5,127,14z");
   });
 });

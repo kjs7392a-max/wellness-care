@@ -6,11 +6,14 @@ import { shouldSubmitChatKey } from "./chat-input";
 import { StretchVideo } from "./StretchVideo";
 import { SpaceSheet } from "./SpaceSheet";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
-import { RainCard } from "./RainCard";
-import { EMPTY_RAIN_CARD, rainChatDraft, type RainCardAnswer } from "./rain-card";
+import { MindCard } from "./MindCard";
+import { MindCardMenu } from "./MindCardMenu";
+import { RainStory } from "./RainStory";
+import { emptyRainStory, type RainStoryAnswer } from "./rain-story";
+import { emptyMindCard, type MindCardAnswer } from "./mind-card";
 import { todoFor } from "./todo";
-import { AXES, EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
-import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
+import { EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
+import { bodyEvidence, bodyLevel, change, dayBodyLevel, dayMindLevel, FLOW_COLOR, FLOW_FILL, FLOW_LABEL, FLOW_TIERS, flowTier, LEVEL_COLOR, LEVEL_LABEL, mindEvidence, mindLevel, overallLevel, yesterdayLabel } from "./condition";
 import { resolveSuggestion, suggestionChoices } from "./suggestion";
 import { buildDaySolution, parqNotice } from "./daySolution";
 import {
@@ -29,7 +32,7 @@ import { MAKEUP_QUESTIONS, pickMakeup, weatherAnalysis, type MakeupAnswers } fro
 import { OUTFIT_QUESTIONS, pickOutfit, type OutfitAnswers } from "./directing/outfit";
 import { sentenceInputFromSam, sentencesFor } from "./directing/sentences";
 import { BOOK_CATEGORIES, BOOKS_BEST_AS_OF, bestBookAladinUrl, bestBookNaverUrl, bookCategory, type BookCategoryId } from "./directing/books";
-import { WALK_COURSES, difficultyMark, walkMapUrl } from "./directing/walk";
+import { walkDistanceLabel, type NearbyWalk } from "./directing/nearby-walk";
 import { CHAT_STORE_KEY, clearAllChats, clearCharacterChat, historyFor, parseChatStore, serializeChatStore, setCharacterChat, type StoredMsg } from "./chat-store";
 import { SILENT_STOP_MS, dropSentPrefix, heardSince, mergeHeard, sendDelay, sentMemoryAfter, steadyText, micHint, recognitionCtor, shouldResume, shouldSend, speechSupport, type MicState } from "./speech";
 import { MUSIC_GENRES, MUSIC_MOOD_LABEL, defaultGroupFor, embedSrc, pickCollection, type MusicGenre } from "./music";
@@ -99,7 +102,7 @@ interface State {
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "care" | "healing" | "my";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing" | "space";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "picture-test" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing" | "space" | "rain";
   /**
    * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 「내 성향」 정보 카드·결과 시트에만 쓴다 — 2026-10-24: 오늘의 추천(해볼 것·마음카드 피드백)은 성향이 아니라 상태로 정한다.
    * 2026-09-19: 결과는 테스트(lean 있음) 또는 **직접 선택**(lean null · `personaPick` 시트) — 사용자 "직접 선택하게 하고 테스트는 모르면".
@@ -110,8 +113,9 @@ interface State {
   personaPage: 1 | 2;
   /** 오늘의 마음카드(SAM) 답 — 기분·긴장 1~5. 둘 다 있으면 오늘 기록 */
   sam: SamAnswer;
-  /** Scene choices are expressive, not scores. Text remains local until explicitly sent. */
-  rainCard: RainCardAnswer;
+  /** Image associations remain expressive; daily answers guide session-only suggestions. */
+  mindCard: MindCardAnswer;
+  rainStory: RainStoryAnswer;
   minutes: number;
   remaining: number;
   running: boolean;
@@ -134,8 +138,6 @@ interface State {
   input: string;
   consultOpen: boolean;
   live: { key: WeatherKey; temp: number; feels: number; humidity: number | null } | null;
-  /** 날씨 조회에 쓴 좌표 — 「오늘의 산책」 지도 링크용(기본 서울시청이면 안 넘긴다). */
-  geo: { lat: number; lon: number; real: boolean } | null;
   /** 「나를 위한 디렉팅」 안 탭(2026-09-21 사용자 지시 · 마음온도 「피드백」 이식). */
   dirTab: DirTab;
   /** 「오늘의 추천도서」 — 고른 분류 · 고른 순위(1~5, null = 아직). */
@@ -195,14 +197,19 @@ function stampAt(n: number, ref?: Date): string {
 }
 
 export default function WellnessApp() {
+  const [walkSearch, setWalkSearch] = useState<{
+    status: "idle" | "locating" | "searching" | "done" | "error";
+    place: NearbyWalk | null; error: string | null;
+  }>({ status: "idle", place: null, error: null });
+  const walkSearchBusy = useRef(false);
   const [s, setS] = useState<State>(() => ({
     now: new Date(0), // hydration 안전: 마운트 후 실제 시각으로 교체
     msgSeed: null,
-    geo: null, dirTab: "persona", bookCat: "essay", bookPick: null, dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, outfitAns: {},
+    dirTab: "persona", bookCat: "essay", bookPick: null, dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, outfitAns: {},
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD }, minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, mindCard: emptyMindCard(), rainStory: emptyRainStory(), minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
@@ -323,7 +330,7 @@ export default function WellnessApp() {
       else if (feels >= 31) key = "hot";
       else if (temp <= 4) key = "cold";
       const humidity = Number.isFinite(c.relative_humidity_2m) ? Math.round(c.relative_humidity_2m) : null;
-      patch({ live: { key, temp, feels, humidity }, geo: { lat: pos.lat, lon: pos.lon, real: !(pos.lat === 37.5665 && pos.lon === 126.978) } });
+      patch({ live: { key, temp, feels, humidity } });
     } catch { /* 기본값 유지 */ }
   }
 
@@ -633,6 +640,8 @@ export default function WellnessApp() {
           {v.authed && !v.onboarding && renderTabs()}
 
           {s.sheet === "picture" && renderPicture()}
+          {s.sheet === "picture-test" && renderPictureTest()}
+          {s.sheet === "rain" && renderRainStory()}
           {s.sheet === "content" && renderContent()}
           {s.sheet === "library" && renderLibrary()}
           {s.sheet === "mind" && renderMind()}
@@ -1123,7 +1132,7 @@ export default function WellnessApp() {
           <div style={sx("display:flex; flex-direction:column; gap:10px")}>
             {[
               { id: "talk", emoji: "💬", label: "오늘, 어떤 하루였나요?", hint: "말이나 글로 편하게 · 답은 글로 와요", go: () => patch({ sheet: "mind" }) },
-              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "기분·긴장과 빗속의 장면으로 오늘 마음 돌아보기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } }) },
+              { id: "card", emoji: "🎨", label: "오늘의 마음카드", hint: "그림 속 장면으로 마음을 돌아보고 나에게 맞는 쉼 찾기", go: () => patch({ sheet: "picture" }) },
               // 2026-11-08 사용자 지시: 불당·교회·성당·명상룸 영상 공간 — 「마음 쉼터」(SpaceSheet.tsx · 규칙 space.ts).
               { id: "space", emoji: "🕯️", label: "마음 쉼터", hint: "불당 · 교회 · 성당 · 명상룸에서 잠시 머물기", go: () => patch({ sheet: "space" }) },
             ].map((x) => (
@@ -1459,27 +1468,61 @@ export default function WellnessApp() {
     );
   }
 
-  /** 오늘의 산책 — 내 주변 코스 1 + 지도. directing/walk.ts. */
+  /** 사용자가 버튼을 누를 때만 위치를 받아 Google Places로 검색한다. 날씨 좌표는 쓰지 않는다. */
+  async function findNearestWalk() {
+    if (walkSearchBusy.current) return;
+    walkSearchBusy.current = true;
+    setWalkSearch({ status: "locating", place: null, error: null });
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) { reject(new Error("unsupported")); return; }
+        navigator.geolocation.getCurrentPosition(resolve, reject,
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+      }).catch((error: { code?: number }) => {
+        throw new Error(error.code === 1
+          ? "위치 접근을 허용한 뒤 다시 눌러 주세요."
+          : "현재 위치를 확인하지 못했어요. 기기의 위치 설정을 확인한 뒤 다시 눌러 주세요.");
+      });
+      setWalkSearch({ status: "searching", place: null, error: null });
+      const response = await fetch("/api/wellness/walk", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        cache: "no-store", signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }),
+      });
+      const data = await response.json() as { place?: NearbyWalk | null; error?: string };
+      if (!response.ok) throw new Error(data.error || "산책로 검색을 이용할 수 없어요.");
+      if (!("place" in data)) throw new Error("산책로 검색 결과를 확인하지 못했어요.");
+      setWalkSearch({ status: "done", place: data.place ?? null, error: null });
+    } catch (error) {
+      setWalkSearch({ status: "error", place: null, error: error instanceof Error && error.name !== "TimeoutError"
+        ? error.message : "산책로 검색이 지연되고 있어요. 잠시 후 다시 눌러 주세요." });
+    } finally { walkSearchBusy.current = false; }
+  }
+
+  /** Google에 등록된 가까운 공원·산책 장소 한 곳과 실제 장소 링크. */
   function renderWalkTab() {
-    const map = walkMapUrl(s.geo?.real ? s.geo.lat : null, s.geo?.real ? s.geo.lon : null);
+    const busy = walkSearch.status === "locating" || walkSearch.status === "searching";
+    const place = walkSearch.place;
     return (
       <div style={sx("display:flex; flex-direction:column; gap:12px")}>
         <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; padding:0 2px")}>오늘의 산책</div>
-        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; text-wrap:pretty; padding:0 2px")}>오늘은 내 주변 산책 코스를 추천해요. 맑은 공기를 마시며 걸어보세요 🌿</div>
-        {WALK_COURSES.map((c) => (
-          <div key={c.id} data-walk-course style={sx("display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:18px; background:linear-gradient(135deg,#eaf7f0 0%,#e6f4ee 100%); border:1.5px solid #bfe2cf")}>
-            <div style={sx("display:flex; align-items:center; gap:8px")}>
-              <div style={sx("flex:1; font-size:15px; font-weight:800; color:#245c48")}>{c.name}</div>
-              <div style={sx("flex:none; font-size:11.5px; font-weight:800; color:#245c48; padding:3px 9px; border-radius:999px; background:#fff; border:1px solid #bfe2cf")}>{difficultyMark(c.difficulty)} {c.difficulty}</div>
-            </div>
-            <div style={sx("font-size:12.5px; color:#3f7a64; font-weight:600")}>📍 {c.distance} · ⏱ {c.duration}</div>
-            <div style={sx("font-size:13px; color:#2d3748; line-height:1.6; text-wrap:pretty")}>{c.description}</div>
-            <div style={sx("display:flex; flex-wrap:wrap; gap:6px")}>
-              {c.features.map((f) => <div key={f} style={sx("font-size:11.5px; font-weight:700; color:#245c48; padding:4px 9px; border-radius:999px; background:#fff; border:1px solid #d7ebe2")}>{f}</div>)}
-            </div>
-            <a href={map} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:10px; border-radius:12px; background:#2d7a5f; color:#fff; font-size:13px; font-weight:800; text-decoration:none")}>내 주변 산책로 지도 열기 ›</a>
-          </div>
-        ))}
+        <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.6; padding:0 2px")}>현재 위치에서 가장 가까운 공원·산책 장소를 찾아드려요 🌿</div>
+        <div data-walk-course style={sx("display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:linear-gradient(135deg,#eaf7f0 0%,#e6f4ee 100%); border:1.5px solid #bfe2cf")}>
+          <div style={sx("font-size:15px; font-weight:800; color:#245c48")}>{place ? place.name : "내 주변 산책로 찾기"}</div>
+          {place && <>
+            <div style={sx("font-size:13px; font-weight:700; color:#3f7a64")}>현재 위치에서 직선거리 약 {walkDistanceLabel(place.distanceMeters)}</div>
+            {place.address && <div style={sx("font-size:13px; color:#2d3748; line-height:1.6")}>{place.address}</div>}
+            <div style={sx("font-size:12px; color:#3f7a64; line-height:1.6")}>검색된 장소 중 직선거리 기준으로 가장 가까운 곳이에요. 실제 도보 거리와 시간, 출입구 위치는 지도에서 확인해 주세요.</div>
+            {place.distanceMeters > 1000 && <div style={sx("font-size:12px; color:#875139; line-height:1.6")}>가장 가까운 곳도 거리가 있어요. 가볍게 걷기에는 멀 수 있으니 이동 거리를 먼저 확인해 주세요.</div>}
+            <a href={place.mapUrl} target="_blank" rel="noopener noreferrer" style={sx("display:block; text-align:center; padding:11px; border-radius:12px; background:#2d7a5f; color:#fff; font-size:13px; font-weight:800; text-decoration:none")}>이 장소 구글 지도에서 보기 ›</a>
+            <div translate="no" style={sx("font-family:sans-serif; font-size:12px; font-weight:400; color:#5e5e5e; white-space:nowrap")}>Google Maps</div>
+            {place.attributions.map((attribution, i) => <div key={i} style={sx("font-size:12px; color:#5e5e5e")}>{attribution.url ? <a href={attribution.url} target="_blank" rel="noopener noreferrer">{attribution.name}</a> : attribution.name}</div>)}
+          </>}
+          {walkSearch.status === "done" && !place && <div role="status" style={sx("font-size:13px; color:#3f7a64; line-height:1.6")}>반경 5km 안에 등록된 공원·산책 장소가 없어요. 다른 위치에서 다시 찾아보세요.</div>}
+          {walkSearch.error && <div role="alert" style={sx("font-size:13px; color:#875139; line-height:1.6")}>{walkSearch.error}</div>}
+          <button type="button" onClick={findNearestWalk} disabled={busy} style={sx("padding:11px; border:1px solid #2d7a5f; border-radius:12px; background:#fff; color:#245c48; font-size:13px; font-weight:800; cursor:pointer")}>{walkSearch.status === "locating" ? "현재 위치 확인 중…" : walkSearch.status === "searching" ? "가장 가까운 장소 찾는 중…" : place ? "현재 위치에서 다시 찾기" : "가장 가까운 산책로 찾기"}</button>
+          <div style={sx("font-size:12px; color:#3f7a64; line-height:1.6")}>버튼을 누르면 현재 위치를 Google에 전달해 검색해요. 이 앱은 위치와 검색 결과를 별도로 저장하지 않아요.</div>
+        </div>
       </div>
     );
   }
@@ -1618,7 +1661,7 @@ export default function WellnessApp() {
           </div>
         ))}
         {!cardDone && (
-          <div data-todo-go onClick={() => patch({ sheet: "picture", sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } })} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800")}>오늘의 마음카드 하러 가기 ›</div>
+          <div data-todo-go onClick={() => patch({ sheet: "picture" })} style={sx("cursor:pointer; text-align:center; padding:12px; border-radius:13px; background:#fff; border:1.5px solid #9ccdb8; color:#245c48; font-size:13px; font-weight:800")}>오늘의 마음카드 하러 가기 ›</div>
         )}
       </div>
     );
@@ -1806,7 +1849,7 @@ export default function WellnessApp() {
     ];
     const mindActions = [
       { label: "「오늘, 어떤 하루였나요?」에서 요즘 이야기 꺼내보기", go: () => patch({ sheet: "talk" }) },
-      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture", sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } }) },
+      { label: "오늘의 마음카드로 지금 마음 확인하기", go: () => patch({ sheet: "picture" }) },
     ];
     const heavyRatio = M.pictureDays ? M.heavyDays / M.pictureDays : 0;
     const mindSolution = M.pictureDays === 0 ? `${ym.m}월엔 마음카드 기록이 아직 없어요. 말로 꺼내기 어려운 날, 그림 하나만 골라도 기록이 남아요.`
@@ -2099,13 +2142,13 @@ export default function WellnessApp() {
         <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); storage()?.removeItem(ONBOARD_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); storage()?.removeItem(ONBOARD_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ rainStory: emptyRainStory(), input: "" }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
           <div onClick={() => { writeChatStore(clearAllChats()); patchFn((st) => ({ chat: [{ role: "bot", text: characterOf(st.character).intro, at: stampAt(0, st.now) }], riskShown: false, beat: 0 })); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>이 기기 대화 전부 지우기</div>
         </div>
 
         <div style={sx("display:flex; gap:10px; padding:4px 0 8px")}>
           <div onClick={() => patch({ ob: 0, skipParq: false })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
-          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, skipParq: false, tab: "home", sheet: null }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, skipParq: false, tab: "home", sheet: null, rainStory: emptyRainStory(), input: "" }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
       </div>
@@ -2149,77 +2192,34 @@ export default function WellnessApp() {
   }
 
   function renderPicture() {
-    const answered = v.answered;
-    const stateDone = samDone(s.sam);
-    const done = stateDone && s.rainCard.finished;
-    const stepNo = answered + Number(s.rainCard.rain !== null) + Number(s.rainCard.place !== null) + Number(s.rainCard.finished);
-    return (
-      <div style={sx("position:absolute; inset:0; background:linear-gradient(180deg,#fdfbff 0%,#f1f6fc 100%); display:flex; flex-direction:column; animation:wFade 0.25s ease-out")}>
-        <div style={sx("flex:none; display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #eaf2f5")}>
-          <div style={sx("padding:48px 16px 10px; display:flex; align-items:center; gap:11px")}>
-            <div onClick={() => patch({ sheet: null })} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; font-weight:800; -webkit-text-stroke:1.2px #4f4390; color:#4f4390")}>‹</div>
-            <div style={sx(`width:38px; height:38px; border-radius:13px; flex:none; overflow:hidden; background:url(${IMG}/icon-mind.png) center/cover`)} />
-            <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-              <div style={sx("font-size:15px; font-weight:700; color:#2d5c6e")}>마음 건강</div>
-              <div style={sx("font-size:11px; color:#8ba8b3")}>기록은 선생님만 봅니다</div>
-            </div>
-          </div>
-          {/* 2026-10-16 사용자 지시: 상단 칩 줄(대화 | 마음카드) 삭제. 🚫 되살리지 말 것(가드). */}
-        </div>
+    return <MindCardMenu pictureDone={!!s.mindCard.completedAt} rainDone={!!s.rainStory.completedAt}
+      onPicture={() => { stopMic(""); patch({ sheet: "picture-test", mindCard: s.mindCard.completedAt ? emptyMindCard() : s.mindCard }); }}
+      onRain={() => { stopMic(""); patch({ sheet: "rain" }); }}
+      onClose={() => patch({ sheet: null })}/>;
+  }
 
-        <div style={sx("flex:1; overflow-y:auto; padding:14px 18px 24px; display:flex; flex-direction:column; gap:12px")}>
-          {/* 기분·긴장 2개 + 장면 2개 + 한마디(건너뛰기 가능) */}
-          <div style={sx("display:flex; align-items:center; gap:6px; justify-content:center")}>
-            {Array.from({ length: AXES.length + 3 }, (_, k) => (<div key={k} style={{ ...sx("height:6px; border-radius:999px; transition:all 0.25s"), width: k === stepNo && !done ? 22 : 8, background: k < stepNo || done ? "#7a6bc4" : k === stepNo ? "#b9aee6" : "#dfe6ea" }} />))}
-          </div>
-          {answered === 0 && (
-            <div style={sx("flex:none; text-align:center; font-size:12.5px; color:#8ba8b3; padding:0 16px; line-height:1.6; text-wrap:pretty")}>정답은 없어요. 지금 느낌에 가장 가까운 그림을 고르면 됩니다. 기분·긴장을 살펴보고, 빗속의 장면 두 개에 내 이야기를 담아 보세요.</div>
-          )}
+  function renderPictureTest() {
+    return <MindCard value={s.mindCard}
+      allowWalk={v.parqAll && v.tier === 0 && !v.delayOn}
+      onChange={(mindCard) => patch({ mindCard })}
+      onComplete={(mindCard) => patch({
+        mindCard, pickedToday: true,
+        // Only explicit, completed daily responses feed existing recommendations.
+        // Abstract image choices never supply an assessment or a depression score.
+        sam: typeof mindCard.mood === "number" && typeof mindCard.stress === "number"
+          ? { ...EMPTY_SAM, valence: mindCard.mood, arousal: mindCard.stress }
+          : { ...EMPTY_SAM },
+      })}
+      onClose={() => patch({ sheet: "picture" })}
+      />
+  }
 
-          {/* 고른 줄은 한 줄로 접힘(바꾸기 가능) */}
-          {AXES.filter((x, k) => s.sam[x.key] !== null && (k < answered || done)).map((x) => (
-            <div key={x.key} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: null } }))} style={sx("cursor:pointer; flex:none; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:#fff; border:1px solid #c9d6dc")}>
-              <div style={sx("width:34px; height:34px; border-radius:9px; overflow:hidden; flex:none; background:#eef3f5")}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${IMG}/sam-${x.key}-${s.sam[x.key]}.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              </div>
-              <div style={sx("flex:1; min-width:0; font-size:12.5px; color:#6b8c9a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis")}>{x.question}</div>
-              <div style={sx("flex:none; font-size:12.5px; font-weight:700; color:#2d5c6e")}>{x.labels[(s.sam[x.key] as SamScore) - 1]}</div>
-              <div style={sx("flex:none; font-size:11px; font-weight:700; color:#7a6bc4")}>바꾸기</div>
-            </div>
-          ))}
-
-          {/* 지금 답할 줄 — 그림 5장을 세로로 크게(기분·긴장 둘) */}
-          {!stateDone && (() => {
-            const x = AXES.find((ax) => s.sam[ax.key] === null)!;
-            return (
-              <div key={x.key} style={sx("flex:none; display:flex; flex-direction:column; gap:10px; padding:16px 14px 14px; border-radius:20px; background:#fff; border:1px solid #c9d6dc; box-shadow:0 4px 14px rgba(45,92,110,0.06); animation:wRise 0.3s ease-out both")}>
-                <div style={sx("font-size:16px; font-weight:700; color:#2d5c6e; text-wrap:pretty")}>{x.question}</div>
-                <div style={sx("font-size:11.5px; color:#8ba8b3")}>{x.hint} · 지금 느낌에 가장 가까운 그림을 골라 주세요</div>
-                <div style={sx("display:flex; flex-direction:column; gap:8px")}>
-                  {([1, 2, 3, 4, 5] as SamScore[]).map((n) => (
-                    <div key={n} onClick={() => patchFn((st) => ({ sam: { ...st.sam, [x.key]: n } }))} style={sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; padding:8px 8px 9px; border-radius:16px; border:1.5px solid #c9d6dc; background:#fff; transition:all 0.18s")}>
-                      {/* 그림을 가운데 크게, 이름표는 아래(사용자 지시) */}
-                      <div style={sx("width:100%; max-width:220px; aspect-ratio:2/1; border-radius:12px; overflow:hidden; background:#eef3f5")}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`${IMG}/sam-${x.key}-${n}.png`} alt={x.labels[n - 1]} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                      </div>
-                      <div style={sx("font-size:13.5px; font-weight:700; color:#2d5c6e; text-align:center")}>{x.labels[n - 1]}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {stateDone && <RainCard value={s.rainCard} onChange={(rainCard) => patch({ rainCard })}
-            onTalk={() => { stopMic(""); startTalkWith(s.character); patch({ input: rainChatDraft(s.rainCard) }); }}
-            onFinish={() => patch({ sheet: null, pickedToday: true })}
-            onRestart={() => patch({ sam: EMPTY_SAM, rainCard: { ...EMPTY_RAIN_CARD } })} />}
-
-        </div>
-      </div>
-    );
+  function renderRainStory() {
+    return <RainStory value={s.rainStory}
+      onChange={(rainStory) => patch({ rainStory })}
+      onComplete={(rainStory) => patch({ rainStory, pickedToday: true })}
+      onClose={() => patch({ sheet: "picture" })}
+      />
   }
 
   function renderContent() {
@@ -2423,8 +2423,10 @@ export default function WellnessApp() {
   /** 주간 흐름 막대 + 범례 — 2026-09-17 사용자 지시로 「주간 기록 보기」 시트를 없애고 홈 박스에 둔다.
    *  2026-10-15 사용자 지시로 단추들을 이 박스 밖(home-shortcuts)으로 뺐다가, 2026-10-19 사용자 지시로 「월간 기록 보기」만 이 박스 머리줄 오른쪽으로 돌아왔다. */
   function renderWeekFlow(footer?: React.ReactNode) {
-    const flow = v.cond.weekFlow;
-    const oc = v.cond.dayOverall ? LEVEL_COLOR[v.cond.dayOverall] : { bg: "#eef3f5", fg: "#6b8c9a" };
+    // 2026-11-19 사용자 지시: 이 박스는 「휴식 필요 · 보통 · 좋음」 3분류만 — 5단계를 flowTier 로 묶어서 보여 준다(condition.ts).
+    const flow = v.cond.weekFlow.map(flowTier);
+    const ot = flowTier(v.cond.dayOverall);
+    const oc = ot ? FLOW_COLOR[ot] : { bg: "#eef3f5", fg: "#6b8c9a" };
     const dowLabels = (() => {
       // 이번 주 흐름 라벨: 어제로 끝나는 flow.length 일치 요일
       const d = new Date(s.now.getFullYear(), s.now.getMonth(), s.now.getDate() - 1);
@@ -2438,28 +2440,28 @@ export default function WellnessApp() {
               <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; "), color: oc.fg }}>이번 주 흐름</div>
               <div data-role="week-flow-month" onClick={() => patch({ sheet: "month" })} style={sx("flex:none; cursor:pointer; text-align:center; padding:6px 11px; border-radius:999px; font-size:12px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#7a6bc4; color:#fff; box-shadow:0 3px 9px rgba(122,107,196,0.28)")}>월간 기록 보기 ›</div>
             </div>
-            {/* 요일마다 가로 바 — 채움 길이 = 단계(5칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}
+            {/* 요일마다 가로 바 — 채움 길이 = 분류(3칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}
             <div style={sx("display:flex; flex-direction:column; gap:7px")}>
               {flow.map((h, i) => {
-                const hc = h ? LEVEL_COLOR[h] : { bg: "#eef3f5", bar: "#d5dde2", fg: "#8ba8b3" };
+                const hc = h ? FLOW_COLOR[h] : { bg: "#eef3f5", bar: "#d5dde2", fg: "#8ba8b3" };
                 const last = i === flow.length - 1;
                 return (
                   <div key={i} style={{ ...sx("display:flex; align-items:center; gap:9px"), opacity: last ? 1 : 0.8 }}>
                     <div style={{ ...sx("flex:none; width:28px; font-size:11.5px; font-weight:700; text-align:right"), color: oc.fg }}>{last ? "어제" : dowLabels[i]}</div>
                     <div style={sx("flex:1; height:9px; border-radius:999px; background:rgba(255,255,255,0.75); overflow:hidden")}>
-                      <div style={{ ...sx("height:100%; border-radius:999px; transition:width 0.4s"), width: h ? `${h * 20}%` : "0%", background: hc.bar, opacity: last ? 1 : 0.85 }} />
+                      <div style={{ ...sx("height:100%; border-radius:999px; transition:width 0.4s"), width: h ? `${FLOW_FILL[h]}%` : "0%", background: hc.bar, opacity: last ? 1 : 0.85 }} />
                     </div>
-                    <div style={{ ...sx("flex:none; width:58px; font-size:11.5px; text-align:left; white-space:nowrap"), color: hc.fg, fontWeight: last ? 800 : 600 }}>{h ? LEVEL_LABEL[h] : "기록 없음"}</div>
+                    <div style={{ ...sx("flex:none; width:58px; font-size:11.5px; text-align:left; white-space:nowrap"), color: hc.fg, fontWeight: last ? 800 : 600 }}>{h ? FLOW_LABEL[h] : "기록 없음"}</div>
                   </div>
                 );
               })}
             </div>
-            {/* 범례 — 단계 색 5개(사용자 지시). 바의 채움색과 같은 값(LEVEL_COLOR.fg). */}
+            {/* 범례 — 3분류(휴식 필요·보통·좋음, 2026-11-19 사용자 지시 · 그전엔 5단계). 바의 채움색과 같은 값(FLOW_COLOR.bar). */}
             <div style={sx("display:flex; flex-wrap:wrap; gap:6px 12px; padding-top:2px")}>
-              {([1, 2, 3, 4, 5] as const).map((l) => (
-                <div key={l} style={sx("display:flex; align-items:center; gap:5px")}>
-                  <div style={{ ...sx("width:14px; height:7px; border-radius:999px"), background: LEVEL_COLOR[l].bar }} />
-                  <div style={{ ...sx("font-size:10.5px; font-weight:600; opacity:0.85"), color: oc.fg }}>{LEVEL_LABEL[l]}</div>
+              {FLOW_TIERS.map((t) => (
+                <div key={t} style={sx("display:flex; align-items:center; gap:5px")}>
+                  <div style={{ ...sx("width:14px; height:7px; border-radius:999px"), background: FLOW_COLOR[t].bar }} />
+                  <div style={{ ...sx("font-size:10.5px; font-weight:600; opacity:0.85"), color: oc.fg }}>{FLOW_LABEL[t]}</div>
                 </div>
               ))}
             </div>
