@@ -1,9 +1,10 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SOUND_PREF_KEY, SPACE_ROOMS, fitRoomVideo, parseSoundPref, setVolume, spaceRoom, toggleSound, type SoundPref, type SpaceId, type SpaceRoom } from "./space";
 import { sx } from "./sx";
 import { createRoomPlayback, createRoomPlaylist, type RoomPlayback, type RoomPlaylist } from "./room-playback";
+import { createMeditationGuide, pickKoreanVoice, type MeditationGuide } from "./meditation-voice";
 
 /**
  * 마음 쉼터(2026-11-08) — 케어 탭 마음 박스의 「마음 쉼터」 줄이 연다.
@@ -11,6 +12,8 @@ import { createRoomPlayback, createRoomPlaylist, type RoomPlayback, type RoomPla
  * - 불당·교회·성당 = 소리 듣기를 눌러 별도 오디오 재생. 명상룸 = 싱잉볼 소리.
  * - 🚫 명상룸 영상엔 명상 안내 자막이 이미 있다 — 이 화면에 안내 글을 얹지 말 것(머리줄엔 공간 이름만).
  * - 영상 자리·크기는 space.ts `fitRoomVideo`(주요 인물·십자가·불상·자막이 머리줄 아래에 다 보이게). 남는 띠는 흐린 포스터.
+ * - 명상룸 음성 안내(2026-11-19 사용자 지시): 자막 세 줄을 기기 내장 한국어 음성으로 잔잔하게 — 들어올 때 한 바퀴 한 번,
+ *   머리줄 음성 단추로 다시 듣기·멈추기. 소리를 끄면 읽지 않는다. 말·시점·목소리 고르기는 meditation-voice.ts(순수·테스트).
  */
 
 /** 머리줄(‹·이름·소리 단추)이 덮는 위쪽 높이 — 지켜야 할 칸은 이 아래에 둔다. space.test.ts 의 INSET_TOP 과 같게. */
@@ -48,6 +51,52 @@ function primeAudio() {
   }
 }
 
+// ---- 음성 안내(명상룸) ----
+const speech = (): SpeechSynthesis | null =>
+  typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis : null;
+
+/**
+ * iOS 사파리는 첫 speak() 가 사용자 클릭 안이어야 그 뒤 음성도 난다 — 클릭에서 빈 말 한 번.
+ * ★iOS(=미디어 음량을 못 바꾸는 기기)에서만. 크롬은 빈 말 바로 뒤에 넣은 말을 삼킨다(2026-11-19 실측) — 크롬엔 필요도 없다.
+ */
+function primeSpeech() {
+  const s = speech();
+  if (!s || typeof SpeechSynthesisUtterance === "undefined" || canSetVolume()) return;
+  try {
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    s.speak(u);
+  } catch {
+    /* 못 해도 자막은 그대로 보인다 */
+  }
+}
+
+/** 한국어 목소리 — 목록이 늦게 오는 브라우저가 있어 voiceschanged 를 기다린다. undefined = 찾는 중 · null = 없음(읽지 않음). */
+function useKoreanVoice(enabled: boolean): SpeechSynthesisVoice | null | undefined {
+  const [voice, setVoice] = useState<SpeechSynthesisVoice | null | undefined>(undefined);
+  useEffect(() => {
+    const s = speech();
+    if (!enabled || !s) { setVoice(null); return; }
+    // 한 번 고르면 끝 — 크롬은 voiceschanged 를 여러 번 보내는데, 그때마다 바꾸면 읽던 안내가 끊긴다.
+    let found = false;
+    const read = (): boolean => {
+      if (found) return true;
+      const v = pickKoreanVoice(s.getVoices());
+      if (!v) return false;
+      found = true;
+      setVoice(v);
+      s.removeEventListener?.("voiceschanged", onChange);
+      return true;
+    };
+    function onChange() { read(); }
+    if (read()) return;
+    s.addEventListener?.("voiceschanged", onChange);
+    const timer = window.setTimeout(() => setVoice((v) => v ?? null), 2000);
+    return () => { s.removeEventListener?.("voiceschanged", onChange); window.clearTimeout(timer); };
+  }, [enabled]);
+  return voice;
+}
+
 function loadPref(): SoundPref {
   try {
     return parseSoundPref(window.localStorage.getItem(SOUND_PREF_KEY));
@@ -70,6 +119,7 @@ export function SpaceSheet({ onClose }: { onClose: () => void }) {
 
   const enter = (r: SpaceRoom) => {
     if (r.sound) primeAudio();
+    if (r.voiceGuide) primeSpeech();
     setRoomId(r.id);
   };
 
@@ -120,6 +170,12 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
   const [pref, setPref] = useState<SoundPref>(() => room.audio ? { ...loadPref(), on: false } : room.sound ? loadPref() : { on: false, volume: 0 });
   // 음량 막대를 보일 수 있는가 — 직접 바꿀 수 있거나, Web Audio 로 이었을 때만.
   const [volumeOk, setVolumeOk] = useState(true);
+  // 음성 안내(명상룸) — 들어올 때 한 바퀴 한 번. 영상 시간(timeupdate)에 맞춰 meditation-voice 가 읽는다.
+  const voice = useKoreanVoice(!!room.voiceGuide);
+  const guideRef = useRef<MeditationGuide | null>(null);
+  const [guidePlaying, setGuidePlaying] = useState(false);
+  const autoGuideRef = useRef(!!room.voiceGuide); // 이 방문에 아직 읽지 않았다
+  const prefRef = useRef(pref);
 
   // 화면 크기 — 영상 자리는 이 크기로 정한다.
   useLayoutEffect(() => {
@@ -135,6 +191,9 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
 
   const soundElement = () => room.audio ? audioRef.current : ref.current;
   const apply = (p: SoundPref) => {
+    prefRef.current = p;
+    guideRef.current?.setVolume(p.volume);
+    if (!p.on) guideRef.current?.stop(); // 소리를 끄면 음성도 멈춘다
     const video = ref.current;
     if (video) video.muted = !room.sound || !p.on;
     const el = soundElement();
@@ -144,6 +203,31 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
     if (gainRef.current) gainRef.current.gain.value = p.on ? p.volume : 0;
     else if (canSetVolume()) el.volume = p.volume;
   };
+
+  /** 아직 안 읽었고 · 목소리가 있고 · 영상이 소리 켜고 재생 중이면 한 바퀴 시작. */
+  const maybeAutoGuide = () => {
+    const video = ref.current;
+    const guide = guideRef.current;
+    if (!autoGuideRef.current || !guide || !video || video.paused || !prefRef.current.on) return;
+    autoGuideRef.current = false;
+    guide.start(video.currentTime);
+  };
+
+  useEffect(() => {
+    const s = speech();
+    if (!room.voiceGuide || !voice || !s) return;
+    const guide = createMeditationGuide<SpeechSynthesisUtterance>({
+      synth: s,
+      makeUtterance: (text) => new SpeechSynthesisUtterance(text),
+      voice,
+      onChange: setGuidePlaying,
+    });
+    guide.setVolume(prefRef.current.volume);
+    guideRef.current = guide;
+    maybeAutoGuide();
+    return () => { guide.stop(); guideRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice]);
 
   useLayoutEffect(() => {
     const video = ref.current;
@@ -181,6 +265,7 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
     const source = sourceRef.current;
     const gain = gainRef.current;
     return () => {
+      guideRef.current?.stop();
       playlistRef.current?.pause();
       playback.dispose();
       // 아직 play()를 부르지 않은 요소도 실제 노드를 잡아 정리한다.
@@ -196,10 +281,19 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
   const change = (next: SoundPref) => {
     const request = ++soundRequestRef.current;
     if (audioCtx && audioCtx.state === "suspended") void audioCtx.resume();
+    const wasOn = prefRef.current.on;
     setAudioFailed(false);
     setPref(next);
     savePref(next);
     apply(next);
+    // 소리를 처음 켠 순간 — 아직 안 읽었으면 영상을 처음으로 돌려 세 줄을 처음부터 읽는다.
+    if (room.voiceGuide && next.on && !wasOn) {
+      primeSpeech();
+      if (autoGuideRef.current && guideRef.current && ref.current) {
+        try { ref.current.currentTime = 0; } catch { /* 준비 전 */ }
+      }
+      maybeAutoGuide();
+    }
     const el = soundElement();
     const playback = playbackRef.current;
     if (!el || !playback) return;
@@ -238,7 +332,20 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
     void playback.play(video).then((ok) => { if (playback.active) setNeedTap(!ok); });
   };
 
-  const leave = () => { ++soundRequestRef.current; playlistRef.current?.pause(); playbackRef.current?.dispose(); onBack(); };
+  /** 음성 단추 — 읽는 중이면 멈추고, 아니면 영상을 처음으로 돌려 세 줄을 다시. */
+  const toggleGuide = () => {
+    const guide = guideRef.current;
+    const video = ref.current;
+    if (!guide || !video) return;
+    if (guide.playing) { guide.stop(); return; }
+    primeSpeech();
+    autoGuideRef.current = false;
+    try { video.currentTime = 0; } catch { /* 준비 전 */ }
+    guide.start(0);
+    if (video.paused) tapPlay();
+  };
+
+  const leave = () => { ++soundRequestRef.current; guideRef.current?.stop(); playlistRef.current?.pause(); playbackRef.current?.dispose(); onBack(); };
 
   const rect = fitRoomVideo(size.w, size.h, room.w, room.h, room.safe, HEADER_INSET, BOTTOM_INSET);
   const soundOn = (room.sound || !!room.audio) && pref.on;
@@ -258,6 +365,8 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
         muted={!room.sound}
         autoPlay={!room.sound}
         onError={() => setFailed(true)}
+        onPlaying={maybeAutoGuide}
+        onTimeUpdate={(e) => guideRef.current?.tick(e.currentTarget.currentTime)}
         style={{ ...sx("position:absolute; display:block; max-width:none"), left: rect.left, top: rect.top, width: rect.width, height: rect.height, visibility: size.w > 0 ? "visible" : "hidden" }}
       />
       {tracks && <audio data-space-audio ref={audioRef} src={tracks[0].src} preload="none" loop={tracks.length === 1}
@@ -280,6 +389,20 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
               <SpeakerIcon on={soundOn} />
               {room.audio && <span style={sx("font-size:11px; font-weight:700; padding-right:8px; white-space:nowrap")}>{soundOn ? "소리 멈추기" : "소리 듣기"}</span>}
             </button>
+            {/* 음성 안내 단추(명상룸 · 한국어 목소리가 있고 소리가 켜져 있을 때만) — 읽는 중이면 멈추기, 아니면 처음부터 다시. 🚫 안내 글을 화면에 띄우지 말 것. */}
+            {room.voiceGuide && voice && soundOn && (
+              <button
+                type="button"
+                data-space-voice-guide
+                aria-label={guidePlaying ? "음성 안내 멈추기" : "음성 안내 다시 듣기"}
+                title={guidePlaying ? "음성 안내 멈추기" : "음성 안내 다시 듣기"}
+                aria-pressed={guidePlaying}
+                onClick={toggleGuide}
+                style={{ ...sx("cursor:pointer; flex:none; width:34px; height:34px; border-radius:999px; border:none; padding:0; display:flex; align-items:center; justify-content:center"), background: guidePlaying ? "#c9bdf5" : "rgba(255,255,255,0.92)" }}
+              >
+                <VoiceIcon />
+              </button>
+            )}
             {volumeOk && (
               <input
                 type="range"
@@ -319,6 +442,18 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
         <div style={sx("position:absolute; left:20px; right:20px; bottom:40px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.92); color:#2d5c6e; font-size:13px; line-height:1.5; text-align:center")}>영상을 불러오지 못했어요. 잠시 뒤 다시 들어와 주세요.</div>
       )}
     </div>
+  );
+}
+
+/** 말하는 사람 — 음성 안내 단추 */
+function VoiceIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4a3f80" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="8" r="3.4" fill="#4a3f80" />
+      <path d="M2.8 20c0-3.4 2.8-6.1 6.2-6.1s6.2 2.7 6.2 6.1" />
+      <path d="M17 6.2a4.2 4.2 0 0 1 0 5.6" />
+      <path d="M19.6 3.8a7.6 7.6 0 0 1 0 10.4" />
+    </svg>
   );
 }
 

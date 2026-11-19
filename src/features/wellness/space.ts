@@ -35,6 +35,8 @@ export interface SpaceRoom {
   sound: boolean;
   /** 별도 오디오: 공간 입장 때는 꺼지고 소리 듣기를 눌러야 재생된다. */
   audio?: readonly [SpaceTrack, ...SpaceTrack[]];
+  /** 영상 속 자막을 기기 내장 음성으로 읽어 준다(명상룸 · 2026-11-19 · meditation-voice.ts). */
+  voiceGuide?: boolean;
   /**
    * 잘리면 안 되는 칸(2026-11-08 영상 프레임 0·2.5·5·7.5·9.9초 실측 + 여백).
    * - 불당: 불상(x .44–.52, y .37–.43) · 큰절하는 사람(x .28–.37, y .48–.56)
@@ -83,7 +85,7 @@ export const SPACE_ROOMS: readonly SpaceRoom[] = [
         sourceUrl: "https://commons.wikimedia.org/wiki/File:Jesu_Du_zartes_L%C3%A4mblein_-_Peter_Nahon.ogg",
         license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" } }],
     safe: { x0: 0.14, x1: 0.92, y0: 0.16, y1: 0.72 }, thumbPos: "50% 42%" },
-  { id: "meditation", name: "명상룸", hint: "싱잉볼 소리 · 명상 안내", src: `${SPACE_DIR}/meditation.mp4`, poster: `${SPACE_DIR}/meditation.jpg`, w: 720, h: 1280, sound: true,
+  { id: "meditation", name: "명상룸", hint: "싱잉볼 소리 · 명상 안내", src: `${SPACE_DIR}/meditation.mp4`, poster: `${SPACE_DIR}/meditation.jpg`, w: 720, h: 1280, sound: true, voiceGuide: true,
     safe: { x0: 0.04, x1: 0.96, y0: 0.34, y1: 0.965 }, thumbPos: "50% 0%" },
 ];
 
