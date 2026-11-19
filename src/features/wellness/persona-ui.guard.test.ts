@@ -50,12 +50,13 @@ describe("홈 — 「월간 기록 보기」는 이번 주 흐름 머리줄 오�
     const f = src.slice(src.indexOf("function renderWeekFlow("), src.indexOf("function renderWeekFlow(") + 4000);
     const iTitle = f.indexOf(">이번 주 웰니스 컨디션<");
     expect(src).not.toContain(">이번 주 흐름<"); // 2026-11-19 사용자 지시로 제목 변경
-    const iMonth = f.indexOf("월간 기록 보기 ›");
+    const iMonth = f.indexOf("월간 컨디션 보기 ›");
     expect(iTitle).toBeGreaterThan(0);
     expect(iMonth).toBeGreaterThan(iTitle);
     expect(f.slice(0, iMonth)).toMatch(/justify-content:space-between/);
     expect(f.slice(iTitle, iMonth + 20)).toMatch(/sheet: "month"/);
-    expect(src.split("월간 기록 보기 ›").length - 1).toBe(1); // 홈에 한 곳만
+    expect(src.split("월간 컨디션 보기 ›").length - 1).toBe(1); // 홈에 한 곳만
+    expect(src).not.toContain("월간 기록 보기"); // 2026-11-19 사용자 지시로 탭 이름 변경
   });
   it("바로가기 박스 = 흐름 박스 뒤 · 세로(flex-direction:column) · 데일리헬스케어 위 · 라이프가이드 아래 · 구분선 없음", () => {
     const iFlow = src.indexOf("{renderWeekFlow()}");
@@ -66,7 +67,7 @@ describe("홈 — 「월간 기록 보기」는 이번 주 흐름 머리줄 오�
     expect(box).toMatch(/patch\(\{ tab: "care" \}\)\} style=[^>]*>데일리헬스케어 바로가기 ›/);
     expect(box).toMatch(/patch\(\{ tab: "healing" \}\)\} style=[^>]*>라이프가이드 바로가기 ›/);
     expect(box.indexOf("데일리헬스케어")).toBeLessThan(box.indexOf("라이프가이드"));
-    expect(box).not.toContain("월간 기록 보기");
+    expect(box).not.toContain("월간 컨디션 보기");
     expect(src).not.toContain("week-flow-divider");
     expect(src).not.toMatch(/케어 가기|케어&힐링 가기/);
   });
