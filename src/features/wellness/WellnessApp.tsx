@@ -2435,9 +2435,10 @@ export default function WellnessApp() {
     })();
     return (
       <div style={{ ...sx("display:flex; flex-direction:column; gap:10px; padding:15px 16px 13px; border-radius:18px; border:2px solid rgba(45,92,110,0.45)"), background: oc.bg }}>
-            {/* 2026-10-19 사용자 지시: 머리줄 = 왼쪽 「이번 주 흐름」 | 오른쪽 「월간 기록 보기」 작은 탭 */}
+            {/* 2026-10-19 사용자 지시: 머리줄 = 왼쪽 제목 | 오른쪽 「월간 기록 보기」 작은 탭.
+                2026-11-19 사용자 지시: 제목 「이번 주 흐름」 → 「이번 주 웰니스 컨디션」. 🚫 옛 제목으로 되돌리지 말 것. */}
             <div style={sx("display:flex; align-items:center; justify-content:space-between; gap:10px")}>
-              <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; "), color: oc.fg }}>이번 주 흐름</div>
+              <div style={{ ...sx("font-size:12.5px; font-weight:700; opacity:0.8; "), color: oc.fg }}>이번 주 웰니스 컨디션</div>
               <div data-role="week-flow-month" onClick={() => patch({ sheet: "month" })} style={sx("flex:none; cursor:pointer; text-align:center; padding:6px 11px; border-radius:999px; font-size:12px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap; background:#7a6bc4; color:#fff; box-shadow:0 3px 9px rgba(122,107,196,0.28)")}>월간 기록 보기 ›</div>
             </div>
             {/* 요일마다 가로 바 — 채움 길이 = 분류(3칸), 숫자 없음. 영상 진행 바와 같은 결(사용자 지시). 어제 줄은 진하게. */}

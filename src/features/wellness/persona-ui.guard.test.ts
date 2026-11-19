@@ -46,9 +46,10 @@ describe("WellnessApp — 오늘 해볼 것 · 디렉팅 한 줄 · 도서 링�
 });
 
 describe("홈 — 「월간 기록 보기」는 이번 주 흐름 머리줄 오른쪽 · 바로가기 둘은 따로 박스에 위아래(2026-10-19 사용자 지시)", () => {
-  it("월간은 renderWeekFlow 안 머리줄에서 「이번 주 흐름」 다음(오른쪽) · sheet month", () => {
+  it("월간은 renderWeekFlow 안 머리줄에서 제목 「이번 주 웰니스 컨디션」 다음(오른쪽) · sheet month", () => {
     const f = src.slice(src.indexOf("function renderWeekFlow("), src.indexOf("function renderWeekFlow(") + 4000);
-    const iTitle = f.indexOf(">이번 주 흐름<");
+    const iTitle = f.indexOf(">이번 주 웰니스 컨디션<");
+    expect(src).not.toContain(">이번 주 흐름<"); // 2026-11-19 사용자 지시로 제목 변경
     const iMonth = f.indexOf("월간 기록 보기 ›");
     expect(iTitle).toBeGreaterThan(0);
     expect(iMonth).toBeGreaterThan(iTitle);
