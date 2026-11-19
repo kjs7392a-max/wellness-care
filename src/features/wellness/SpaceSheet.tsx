@@ -13,7 +13,8 @@ import { createMeditationGuide, pickKoreanVoice, type MeditationGuide } from "./
  * - 🚫 명상룸 영상엔 명상 안내 자막이 이미 있다 — 이 화면에 안내 글을 얹지 말 것(머리줄엔 공간 이름만).
  * - 영상 자리·크기는 space.ts `fitRoomVideo`(주요 인물·십자가·불상·자막이 머리줄 아래에 다 보이게). 남는 띠는 흐린 포스터.
  * - 명상룸 음성 안내(2026-11-19 사용자 지시): 자막 세 줄을 기기 내장 한국어 음성으로 잔잔하게 — 들어올 때 한 바퀴 한 번,
- *   머리줄 음성 단추로 다시 듣기·멈추기. 소리를 끄면 읽지 않는다. 말·시점·목소리 고르기는 meditation-voice.ts(순수·테스트).
+ *   머리줄 음성 단추로 다시 듣기·멈추기. 소리를 끄면 읽지 않는다. 말·시점·끝 시각에 맞춘 속도·쉼·목소리 고르기는
+ *   meditation-voice.ts(순수·테스트). 명상룸 영상은 30초(자막 한 장 10초 ×3).
  */
 
 /** 머리줄(‹·이름·소리 단추)이 덮는 위쪽 높이 — 지켜야 할 칸은 이 아래에 둔다. space.test.ts 의 INSET_TOP 과 같게. */
@@ -95,6 +96,28 @@ function useKoreanVoice(enabled: boolean): SpeechSynthesisVoice | null | undefin
     return () => { s.removeEventListener?.("voiceschanged", onChange); window.clearTimeout(timer); };
   }, [enabled]);
   return voice;
+}
+
+/** 목소리마다 잰 빠르기(음절/초) — 다음에 들어와도 첫 문장부터 끝 시각을 맞추게(meditation-voice `pace`). */
+const PACE_KEY = "wellness-care:voice-pace:v1";
+function loadPace(name: string): number | undefined {
+  try {
+    const o: unknown = JSON.parse(window.localStorage.getItem(PACE_KEY) ?? "{}");
+    const v = o && typeof o === "object" ? (o as Record<string, unknown>)[name] : undefined;
+    return typeof v === "number" && v > 1 && v < 20 ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function savePace(name: string, pace: number) {
+  try {
+    const o: unknown = JSON.parse(window.localStorage.getItem(PACE_KEY) ?? "{}");
+    const next = o && typeof o === "object" ? { ...(o as Record<string, unknown>) } : {};
+    next[name] = Math.round(pace * 100) / 100;
+    window.localStorage.setItem(PACE_KEY, JSON.stringify(next));
+  } catch {
+    /* 저장 못 해도 이번 방문엔 그대로 쓴다 */
+  }
 }
 
 function loadPref(): SoundPref {
@@ -221,6 +244,8 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
       makeUtterance: (text) => new SpeechSynthesisUtterance(text),
       voice,
       onChange: setGuidePlaying,
+      pace: loadPace(voice.name),
+      onPace: (p) => savePace(voice.name, p),
     });
     guide.setVolume(prefRef.current.volume);
     guideRef.current = guide;

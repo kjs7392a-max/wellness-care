@@ -85,6 +85,7 @@ export const SPACE_ROOMS: readonly SpaceRoom[] = [
         sourceUrl: "https://commons.wikimedia.org/wiki/File:Jesu_Du_zartes_L%C3%A4mblein_-_Peter_Nahon.ogg",
         license: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" } }],
     safe: { x0: 0.14, x1: 0.92, y0: 0.16, y1: 0.72 }, thumbPos: "50% 42%" },
+  // 명상룸 영상 = 30초(2026-11-19 · 10초 장면 ×3, 자막 한 장 10초씩 — 음성 안내가 서두르지 않게). 원본(05 · 자막 없음) + 지금 영상과 같은 색 보정 + 같은 자막 상자.
   { id: "meditation", name: "명상룸", hint: "싱잉볼 소리 · 명상 안내", src: `${SPACE_DIR}/meditation.mp4`, poster: `${SPACE_DIR}/meditation.jpg`, w: 720, h: 1280, sound: true, voiceGuide: true,
     safe: { x0: 0.04, x1: 0.96, y0: 0.34, y1: 0.965 }, thumbPos: "50% 0%" },
 ];
