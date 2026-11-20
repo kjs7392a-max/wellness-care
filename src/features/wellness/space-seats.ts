@@ -45,7 +45,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.42, y: 0.648, s: 1.0 }, { x: 0.66, y: 0.648, s: 1.0 }, { x: 0.18, y: 0.648, s: 1.0 }, { x: 0.88, y: 0.648, s: 1.0 },
       { x: 0.43, y: 0.603, s: 0.86 }, { x: 0.62, y: 0.603, s: 0.86 }, { x: 0.24, y: 0.603, s: 0.86 }, { x: 0.8, y: 0.603, s: 0.86 },
     ],
-    door: { x: 0.5, y: 1.04, s: 1.25 },
+    door: { x: 0.5, y: 1.04, s: 1.1 },
     face: "forward",
     sitOn: "floor",
   },
@@ -56,7 +56,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.2, y: 0.635, s: 0.93 }, { x: 0.38, y: 0.635, s: 0.93 }, { x: 0.82, y: 0.636, s: 0.93 },
       { x: 0.28, y: 0.696, s: 1.05 },
     ],
-    door: { x: 0.61, y: 1.04, s: 1.25 },
+    door: { x: 0.61, y: 1.04, s: 1.1 },
     face: "forward",
     sitOn: "pew",
     aisle: { x: 0.6, left: 0.47, right: 0.74 },
@@ -68,7 +68,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.23, y: 0.604, s: 0.72 }, { x: 0.7, y: 0.582, s: 0.6 }, { x: 0.3, y: 0.576, s: 0.58 },
       { x: 0.15, y: 0.625, s: 0.85 }, { x: 0.62, y: 0.571, s: 0.55 },
     ],
-    door: { x: 0.49, y: 1.04, s: 1.25 },
+    door: { x: 0.49, y: 1.04, s: 1.1 },
     face: "forward",
     sitOn: "pew",
     aisle: { x: 0.46, left: 0.34, right: 0.58 },
@@ -114,11 +114,11 @@ export function figureHeight(rect: Rect, s: number): number {
 
 /**
  * 걸어서 가는 시간(ms) — 2026-11-20 "스르르 움직이지 말고 걷는 것처럼": 발이 미끄러져 보이지 않게
- * 빠르기를 **캐릭터 키에 맞춘다**(키 0.5배/초 · 그림 속 걸음 주기 1초와 맞물림 → 한 걸음 ≈ 키의 0.25).
+ * 빠르기를 **캐릭터 키에 맞춘다**(키 0.58배/초 · 그림 속 걸음 주기 0.9초와 맞물림 → 한 걸음 ≈ 키의 0.26).
  * 같은 날 "너무 빨리 움직여 · 천천히 자연스럽게" → 0.9배/초에서 늦춤. 첫 구간은 천천히 출발, 마지막 구간은 천천히 멈춘다(SpaceTogether).
  * figH = 걷는 모습의 키(px, 출발·도착 평균) · 아주 짧은 구간은 0(바로).
  */
-export const WALK_SPEED_H = 0.5;
+export const WALK_SPEED_H = 0.58;
 export function walkMs(a: { x: number; y: number }, b: { x: number; y: number }, figH: number): number {
   const d = Math.hypot(b.x - a.x, b.y - a.y);
   if (d < 0.5) return 0;

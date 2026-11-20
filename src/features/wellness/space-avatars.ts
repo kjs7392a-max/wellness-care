@@ -171,13 +171,13 @@ function headSide(a: AvatarDef): string {
 
 /**
  * 걷기 한 주기(2026-11-20 사용자 "귀신도 아니고 스르르 움직이지 말고 세밀하게 걷는 것처럼") — 그림 안 CSS.
- * 1초에 두 걸음(같은 날 "너무 빨라 · 천천히 자연스럽게" → 0.52초에서 늦춤 · 사람이 천천히 걷는 박자). 0% = 이 다리 뒤꿈치가 닿는 순간 · 반대 다리는 반 주기 늦게.
+ * 0.9초에 두 걸음(같은 날 "너무 빨라 · 천천히 자연스럽게" → 0.52초에서 늦춤 · 사람이 편히 걷는 박자). 0% = 이 다리 뒤꿈치가 닿는 순간 · 반대 다리는 반 주기 늦게.
  * - 옆모습: 허벅지(엉덩이 축)와 정강이(무릎 축)를 따로 돌린다 — 디딜 땐 펴고, 뒤로 차올린 뒤 무릎을 접어 앞으로 내딛는다.
  * - 앞·뒷모습: 내딛는 다리는 길어 보이고(가까움), 들어 올리는 다리는 짧아진다(무릎이 앞으로) · 몸이 디딘 발 쪽으로 살짝 실린다.
  * - 팔은 반대쪽 다리와 함께 · 몸은 발이 닿을 때 내려가고 한 발로 설 때 올라간다(두 걸음에 두 번).
  * 화면의 이동 빠르기(space-seats WALK_SPEED_H)를 이 주기에 맞춰 발이 미끄러져 보이지 않게 했다.
  */
-export const WALK_CYCLE_S = 1.0;
+export const WALK_CYCLE_S = 0.9;
 function walkStyle(facing: FigureFacing): string {
   const T = `${WALK_CYCLE_S}s`, half = `-${WALK_CYCLE_S / 2}s`;
   const run = (name: string, ease = "linear") => `animation:${name} ${T} ${ease} infinite`;
@@ -187,7 +187,7 @@ function walkStyle(facing: FigureFacing): string {
   ];
   const side = [
     // 허벅지: 앞(-) ↔ 뒤(+) · 정강이: 무릎 굽힘(+)
-    `@keyframes th{0%{transform:rotate(-28deg)}15%{transform:rotate(-21deg)}50%{transform:rotate(24deg)}62%{transform:rotate(15deg)}82%{transform:rotate(-18deg)}100%{transform:rotate(-28deg)}}`,
+    `@keyframes th{0%{transform:rotate(-31deg)}15%{transform:rotate(-23deg)}50%{transform:rotate(26deg)}62%{transform:rotate(16deg)}82%{transform:rotate(-20deg)}100%{transform:rotate(-31deg)}}`,
     `@keyframes kn{0%{transform:rotate(0)}12%{transform:rotate(9deg)}35%{transform:rotate(2deg)}50%{transform:rotate(12deg)}64%{transform:rotate(55deg)}80%{transform:rotate(30deg)}94%{transform:rotate(2deg)}100%{transform:rotate(0)}}`,
     `@keyframes ar{0%{transform:rotate(15deg)}50%{transform:rotate(-15deg)}100%{transform:rotate(15deg)}}`,
     `@keyframes fa{0%{transform:rotate(-5deg)}50%{transform:rotate(-20deg)}100%{transform:rotate(-5deg)}}`,
