@@ -139,7 +139,8 @@ describe("앉는 곳(2026-11-20 — 교회·성당은 장의자)", () => {
   it("장의자 그림은 다리(바지) 없이 윗몸만 · 앞/옆/뒤 눈 2/1/0", async () => {
     const { AVATARS, figureSvg, FIGURE_VIEW } = await import("./space-avatars");
     const eyes = (svg: string) => (svg.match(/fill="#3a3340"/g) ?? []).length;
-    expect(FIGURE_VIEW.pew).toEqual(FIGURE_VIEW.sit);
+    expect(FIGURE_VIEW.pew.w).toBe(FIGURE_VIEW.sit.w);
+    expect(FIGURE_VIEW.pew.h).toBeLessThan(FIGURE_VIEW.sit.h); // 가슴께에서 잘린 윗몸
     for (const a of AVATARS) {
       for (const f of ["front", "side", "back"] as const) expect(figureSvg(a.id, "pew", f)).not.toContain(`fill="${a.pants}"`);
       expect(eyes(figureSvg(a.id, "pew", "front"))).toBe(2);

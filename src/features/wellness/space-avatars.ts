@@ -115,8 +115,8 @@ export function avatarSvg(id: AvatarId): string {
 export type FigurePose = "sit" | "pew" | "walk";
 /** 그림 방향 — front 앞모습 · back 뒷모습 · side 옆모습(오른쪽을 봄 · 왼쪽은 화면에서 좌우 뒤집기) */
 export type FigureFacing = "front" | "back" | "side";
-/** 장면 속 전신 그림의 가로:세로 — 앉음 100×126 · 걸음 100×150 (방향과 상관없이 같다) */
-export const FIGURE_VIEW: Record<FigurePose, { w: number; h: number }> = { sit: { w: 100, h: 126 }, pew: { w: 100, h: 126 }, walk: { w: 100, h: 150 } };
+/** 장면 속 전신 그림의 가로:세로 — 앉음 100×126 · 장의자 100×104(가슴께에서 잘림) · 걸음 100×150 (방향과 상관없이 같다) */
+export const FIGURE_VIEW: Record<FigurePose, { w: number; h: number }> = { sit: { w: 100, h: 126 }, pew: { w: 100, h: 104 }, walk: { w: 100, h: 150 } };
 
 const dotsSvg = (dots: readonly [number, number, number][], fill: string) => dots.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}"/>`).join("");
 
@@ -197,20 +197,20 @@ export function figureSvg(id: AvatarId, pose: FigurePose, facing: FigureFacing =
   const neckRect = `<rect x="43" y="57" width="14" height="14" rx="5" fill="${neck}"/>`;
   let parts: string[];
   if (pose === "pew") {
-    // 장의자(교회·성당) — 다리는 없고 윗몸이 그림 아래 끝까지(그 아래는 앞 의자 등받이에 가린 것처럼 잘림). 손도 무릎 위라 안 보인다.
+    // 장의자(교회·성당) — 머리·어깨·가슴께까지만(그 아래는 앞 의자 등받이에 가린 것처럼 잘림). 다리·손은 안 보인다.
     if (facing === "side") {
       parts = [
         `<rect x="45" y="57" width="11" height="14" rx="5" fill="${neck}"/>`,
-        `<path d="M39 76Q39 68 47 68H54Q62 68 62 76L63 126H37Z" fill="${a.shirt}"/>`,
-        `<path d="M53 75Q59 95 61 128" fill="none" stroke="${sleeve}" stroke-width="10"/>`,
+        `<path d="M39 76Q39 68 47 68H54Q62 68 62 76L62.5 104H37.5Z" fill="${a.shirt}"/>`,
+        `<path d="M53 75Q58 90 60 106" fill="none" stroke="${sleeve}" stroke-width="10"/>`,
         headSide(a),
       ];
     } else {
       const body = [
         neckRect,
-        `<path d="M33 76Q33 68 42 68H58Q67 68 67 76L68 126H32Z" fill="${a.shirt}"/>`,
-        `<path d="M36 75Q29 93 30 128" fill="none" stroke="${sleeve}" stroke-width="10"/>`,
-        `<path d="M64 75Q71 93 70 128" fill="none" stroke="${sleeve}" stroke-width="10"/>`,
+        `<path d="M33 76Q33 68 42 68H58Q67 68 67 76L67.5 104H32.5Z" fill="${a.shirt}"/>`,
+        `<path d="M36 75Q30 89 30.5 106" fill="none" stroke="${sleeve}" stroke-width="10"/>`,
+        `<path d="M64 75Q70 89 69.5 106" fill="none" stroke="${sleeve}" stroke-width="10"/>`,
       ];
       parts = facing === "back" ? [...body, headBack(a)] : [hairBack(a), ...body, collar, headFront(a)];
     }

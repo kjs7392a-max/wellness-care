@@ -471,7 +471,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         const bubble = bubbles[a.uid];
         const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
         // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
-        const headGap = Math.round(h * (pose === "walk" ? 0.12 : 0.14));
+        const headGap = Math.round(h * (pose === "walk" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
