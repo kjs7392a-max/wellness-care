@@ -335,14 +335,28 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
  * 영상 위에 캐릭터를 자리(space-seats)에 앉힌다.
  * - 나보다 늦게 들어온 사람(그리고 나 자신)은 문에서 걸어 들어와 앉는다 · 먼저 있던 사람은 처음부터 앉아 있다.
  * - 자리가 바뀌면 걸어서 옮긴다 · 나가면(presence 에서 사라지면) 문으로 걸어 나가며 사라진다.
- * - 빈자리를 누르면 내가 옮겨 앉는다 · 다른 사람을 누르면 대화 시트(1:1·차단·신고).
+ * - 빈자리 표시(원)는 평소엔 없다(2026-11-20 사용자 "꼭 원이 그려져 있나?") — **내 캐릭터를 누르면** 잠깐(PICK_MS) 빈자리가 보이고,
+ *   그중 하나를 누르면 옮겨 앉는다. 다시 누르거나 시간이 지나면 사라진다.
+ * - 다른 사람을 누르면 대화 시트(1:1·차단·신고).
  */
+const PICK_MS = 6000;
 function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTap, onPersonTap }: {
   layout: RoomLayout; rect: Rect; me: string; myJoin: number;
   people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, { text: string; id: string }>;
   onSeatTap: (i: number) => void; onPersonTap: (uid: string) => void;
 }) {
   const [actors, setActors] = useState<Record<string, Actor>>({});
+  // 자리 고르기 — 내 캐릭터를 눌렀을 때만 빈자리 표시
+  const [picking, setPicking] = useState(false);
+  const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopPicking = () => { if (pickTimer.current) clearTimeout(pickTimer.current); pickTimer.current = null; setPicking(false); };
+  const togglePicking = () => {
+    if (picking) { stopPicking(); return; }
+    setPicking(true);
+    if (pickTimer.current) clearTimeout(pickTimer.current);
+    pickTimer.current = setTimeout(() => setPicking(false), PICK_MS);
+  };
+  useEffect(() => () => { if (pickTimer.current) clearTimeout(pickTimer.current); }, []);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rectRef = useRef(rect); rectRef.current = rect;
   const still = useMemo(() => reducedMotion(), []);
@@ -445,15 +459,15 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
   return (
     <div ref={boxRef} data-space-scene style={sx("position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden")}>
       <style>{`@keyframes wcBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@media (prefers-reduced-motion:reduce){[data-space-actor] *{animation:none!important}}`}</style>
-      {/* 빈자리 — 누르면 옮겨 앉는다(내가 앉아 있을 때만) */}
-      {mySeated && layout.seats.map((seat, i) => {
+      {/* 빈자리 — 내 캐릭터를 눌렀을 때만 보인다 · 누르면 옮겨 앉는다 */}
+      {picking && mySeated && layout.seats.map((seat, i) => {
         if (occupied.has(i)) return null;
         const pt = toScreen(rect, seat);
         const h = figureHeight(rect, seat.s);
         const w = Math.round(h * 0.78);
         return (
-          <button key={`seat-${i}`} type="button" data-space-seat={i} aria-label="이 자리로 옮겨 앉기" onClick={() => onSeatTap(i)}
-            style={{ ...sx("position:absolute; pointer-events:auto; cursor:pointer; padding:0; border-radius:50%; background:rgba(255,255,255,0.10); border:1.5px dashed rgba(255,255,255,0.55)"), left: pt.x - w / 2, top: pt.y - h * 0.16, width: w, height: Math.max(10, Math.round(h * 0.26)) }} />
+          <button key={`seat-${i}`} type="button" data-space-seat={i} aria-label="이 자리로 옮겨 앉기" onClick={() => { stopPicking(); onSeatTap(i); }}
+            style={{ ...sx("position:absolute; pointer-events:auto; cursor:pointer; padding:0; border-radius:50%; background:rgba(201,189,245,0.22); border:1.5px dashed rgba(255,255,255,0.7); animation:wFade 0.2s ease-out"), left: pt.x - w / 2, top: pt.y - h * 0.16, width: w, height: Math.max(10, Math.round(h * 0.26)) }} />
         );
       })}
       {Object.values(actors).map((a) => {
@@ -474,13 +488,14 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         const headGap = Math.round(h * (pose === "walk" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"}
-            onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
+            onClick={a.leaving ? undefined : mine ? (a.moving ? undefined : togglePicking) : () => onPersonTap(a.uid)}
+            role="button" aria-label={mine ? (picking ? "자리 고르기 그만" : "내 자리 옮기기") : `${displayName(a.avatar, a.uid)} 님 메뉴`}
             style={{
               ...sx("position:absolute; display:flex; flex-direction:column; align-items:center"),
               left: pt.x - w / 2, top: pt.y - h, width: w, height: h, zIndex: Math.round(pt.y),
               transition: `left ${t}, top ${t}, height ${t}, opacity ${a.leaving ? Math.max(300, a.ms) : 300}ms ease-in`,
               opacity: a.leaving ? 0 : 1,
-              pointerEvents: mine || a.leaving ? "none" : "auto", cursor: mine ? "default" : "pointer",
+              pointerEvents: a.leaving ? "none" : "auto", cursor: "pointer",
             }}>
             {bubble && !a.leaving && (
               <div data-space-bubble style={{ ...sx("position:absolute; left:50%; max-width:150px; width:max-content; padding:5px 9px; border-radius:12px; background:rgba(255,255,255,0.95); color:#3a4a72; font-size:11.5px; font-weight:600; line-height:1.4; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; text-align:center"), bottom: `calc(100% - ${headGap}px + 17px)`, transform: `translateX(calc(-50% + ${shift}px))` }}>
@@ -494,7 +509,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
                 style={{ ...sx("display:block; width:100%; height:100%"), transform: heading.flip ? "scaleX(-1)" : undefined, filter: mine ? "drop-shadow(0 0 3px rgba(201,189,245,0.95))" : "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" }} />
             </div>
             <div data-space-name style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:1px 6px; border-radius:999px; font-size:9.5px; font-weight:700; line-height:1.25; white-space:nowrap; color:#fff"), bottom: `calc(100% - ${headGap}px + 1px)`, background: mine ? "rgba(122,107,196,0.92)" : "rgba(14,22,30,0.55)" }}>
-              {mine ? "나" : displayName(a.avatar, a.uid)}
+              {mine ? (picking ? "옮길 자리를 눌러요" : "나") : displayName(a.avatar, a.uid)}
             </div>
           </div>
         );

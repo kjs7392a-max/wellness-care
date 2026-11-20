@@ -94,9 +94,12 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(ui).toMatch(/if \(tab === "room"\) showBubble\(me, m\.text, m\.id\)/);
     expect(ui).toMatch(/text: bubbleText\(text\)/);
   });
-  it("빈자리를 누르면 옮겨 앉고, 다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
-    expect(scene).toMatch(/onClick=\{\(\) => onSeatTap\(i\)\}/);
-    expect(scene).toMatch(/mine \|\| a\.leaving \? undefined : \(\) => onPersonTap\(a\.uid\)/);
+  it("빈자리 원은 평소엔 없고 내 캐릭터를 눌렀을 때만 · 누르면 옮겨 앉고, 다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
+    expect(scene).toMatch(/\{picking && mySeated && layout\.seats\.map\(/);
+    expect(scene).not.toMatch(/\{mySeated && layout\.seats\.map\(/);
+    expect(scene).toMatch(/onClick=\{\(\) => \{ stopPicking\(\); onSeatTap\(i\); \}\}/);
+    expect(scene).toMatch(/onClick=\{a\.leaving \? undefined : mine \? \(a\.moving \? undefined : togglePicking\) : \(\) => onPersonTap\(a\.uid\)\}/);
+    expect(scene).toMatch(/setTimeout\(\(\) => setPicking\(false\), PICK_MS\)/);
     expect(ui).toMatch(/const openPeer = \(uid: string\) => \{ openSheet\(\); setPeerMenu\(uid\); \}/);
   });
 });
