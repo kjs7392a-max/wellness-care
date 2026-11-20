@@ -3,10 +3,10 @@ import { bubbleText, figureHeight, resolveSeats, ROOM_LAYOUT, toScreen, walkMs }
 import { SPACE_ROOMS } from "./space";
 
 describe("공간마다 자리", () => {
-  it("네 공간 모두 자리 6~8개 · 문 하나", () => {
+  it("네 공간 모두 자리 6~8개(성당은 장의자 안쪽만 5개) · 문 하나", () => {
     for (const r of SPACE_ROOMS) {
       const L = ROOM_LAYOUT[r.id];
-      expect(L.seats.length, r.id).toBeGreaterThanOrEqual(6);
+      expect(L.seats.length, r.id).toBeGreaterThanOrEqual(r.id === "cathedral" ? 5 : 6);
       expect(L.seats.length, r.id).toBeLessThanOrEqual(8);
       expect(L.door).toBeTruthy();
     }
@@ -147,6 +147,20 @@ describe("앉는 곳(2026-11-20 — 교회·성당은 장의자)", () => {
       expect(eyes(figureSvg(a.id, "pew", "side"))).toBe(1);
       expect(eyes(figureSvg(a.id, "pew", "back"))).toBe(0);
       expect(figureSvg(a.id, "sit", "back")).toContain(`fill="${a.pants}"`); // 바닥(불당)은 그대로 책상다리
+    }
+  });
+});
+
+describe("교회·성당 자리 — 통로·영상 속 사람·화면 가장자리를 피한다(2026-11-20 재실측)", () => {
+  it("가운데 통로엔 자리가 없다", () => {
+    for (const s of ROOM_LAYOUT.church.seats) expect(s.x < 0.47 || s.x > 0.74).toBe(true);
+    for (const s of ROOM_LAYOUT.cathedral.seats) expect(s.x < 0.33 || s.x > 0.58).toBe(true);
+  });
+  it("성당 오른쪽 기도하는 사람 자리(x .74~.9 · y .55~.68)는 비운다 · 모든 자리는 화면 안쪽(x .12~.88)", () => {
+    for (const s of ROOM_LAYOUT.cathedral.seats) expect(s.x > 0.72 && s.y > 0.55 && s.y < 0.7).toBe(false);
+    for (const room of ["church", "cathedral"] as const) for (const s of ROOM_LAYOUT[room].seats) {
+      expect(s.x).toBeGreaterThanOrEqual(0.12);
+      expect(s.x).toBeLessThanOrEqual(0.88);
     }
   });
 });
