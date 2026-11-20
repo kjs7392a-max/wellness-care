@@ -653,7 +653,7 @@ export default function WellnessApp() {
           {s.sheet === "personaPick" && renderPersonaPick()}
           {s.sheet === "personaResult" && renderPersonaResult()}
           {s.sheet === "directing" && renderDirectingSheet()}
-          {s.sheet === "space" && <SpaceSheet onClose={() => patch({ sheet: null })} />}
+          {s.sheet === "space" && <SpaceSheet onClose={() => patch({ sheet: null })} who={{ guest: s.guest, loginId: s.loginId }} />}
         </div>
       </div>
     </div>

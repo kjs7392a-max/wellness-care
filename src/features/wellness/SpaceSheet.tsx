@@ -5,6 +5,10 @@ import { SOUND_PREF_KEY, SPACE_ROOMS, fitRoomVideo, parseSoundPref, setVolume, s
 import { sx } from "./sx";
 import { createRoomPlayback, createRoomPlaylist, type RoomPlayback, type RoomPlaylist } from "./room-playback";
 import { createMeditationGuide, pickKoreanVoice, type MeditationGuide } from "./meditation-voice";
+import { spaceRealtimeReady } from "./space-config";
+import type { SpaceWho } from "./space-realtime";
+import { AvatarImg, AvatarPicker, loadAvatar, saveAvatar, TogetherLayer } from "./SpaceTogether";
+import { avatarOf, type AvatarId } from "./space-avatars";
 
 /**
  * 마음 쉼터(2026-11-08) — 케어 탭 마음 박스의 「마음 쉼터」 줄이 연다.
@@ -15,6 +19,8 @@ import { createMeditationGuide, pickKoreanVoice, type MeditationGuide } from "./
  * - 명상룸 음성 안내(2026-11-19 사용자 지시): 자막 세 줄을 기기 내장 한국어 음성으로 잔잔하게 — 들어올 때 한 바퀴 한 번,
  *   머리줄 음성 단추로 다시 듣기·멈추기. 소리를 끄면 읽지 않는다. 말·시점·끝 시각에 맞춘 속도·쉼·목소리 고르기는
  *   meditation-voice.ts(순수·테스트). 명상룸 영상은 30초(자막 한 장 10초 ×3).
+ * - 함께 머무는 사람(2026-11-20 사용자 지시): 캐릭터를 고르면 같은 공간에 있는 사람끼리 서로 보이고 단체·1:1 대화.
+ *   계정 없이 둘러보기여도 된다. 화면은 SpaceTogether.tsx · 연결은 space-realtime.ts · 연결 정보(space-config)가 없으면 안 나온다.
  */
 
 /** 머리줄(‹·이름·소리 단추)이 덮는 위쪽 높이 — 지켜야 할 칸은 이 아래에 둔다. space.test.ts 의 INSET_TOP 과 같게. */
@@ -136,9 +142,17 @@ function savePref(p: SoundPref) {
   }
 }
 
-export function SpaceSheet({ onClose }: { onClose: () => void }) {
+const GUEST: SpaceWho = { guest: true, loginId: "" };
+
+export function SpaceSheet({ onClose, who = GUEST }: { onClose: () => void; who?: SpaceWho }) {
   const [roomId, setRoomId] = useState<SpaceId | null>(null);
-  if (roomId) return <RoomView key={roomId} room={spaceRoom(roomId)} onBack={() => setRoomId(null)} />;
+  const together = spaceRealtimeReady();
+  // 함께 머물 캐릭터 — 계정은 기기에 아이디별로 · 둘러보기는 이 탭 동안만(SpaceTogether loadAvatar)
+  const [avatar, setAvatar] = useState<AvatarId | null>(() => (together && typeof window !== "undefined" ? loadAvatar(who) : null));
+  const [changing, setChanging] = useState(false);
+  const pick = (id: AvatarId) => { setAvatar(id); saveAvatar(who, id); setChanging(false); };
+  if (roomId) return <RoomView key={roomId} room={spaceRoom(roomId)} onBack={() => setRoomId(null)} together={together ? { who, avatar, onPickAvatar: pick } : null} />;
+  const mine = avatarOf(avatar);
 
   const enter = (r: SpaceRoom) => {
     if (r.sound) primeAudio();
@@ -156,6 +170,26 @@ export function SpaceSheet({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <div style={sx("flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding:20px 20px 28px")}>
+        {together && (
+          <div data-space-together-choose style={sx("display:flex; flex-direction:column; gap:10px; padding:14px 14px 12px; border-radius:18px; background:#fff; border:1.5px solid #d9d2ec")}>
+            {mine && !changing ? (
+              <div style={sx("display:flex; align-items:center; gap:12px")}>
+                <AvatarImg id={mine.id} size={44} />
+                <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
+                  <div style={sx("font-size:14px; font-weight:800; color:#4a3f80")}>{mine.name}(으)로 함께 머물러요</div>
+                  <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>같은 공간에 있는 사람들이 서로 보이고 대화할 수 있어요.</div>
+                </div>
+                <button type="button" onClick={() => setChanging(true)} style={sx("flex:none; cursor:pointer; padding:7px 12px; border-radius:999px; border:1.5px solid #cfc5ea; background:#fff; color:#4a3f80; font-size:12px; font-weight:700")}>바꾸기</button>
+              </div>
+            ) : (
+              <>
+                <div style={sx("font-size:14px; font-weight:800; color:#4a3f80")}>함께 머물 캐릭터를 골라 주세요</div>
+                <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.55")}>같은 공간에 들어온 사람끼리 캐릭터가 보이고 대화할 수 있어요. 실명 대신 캐릭터 이름만 보여요.</div>
+                <AvatarPicker value={avatar} onPick={pick} />
+              </>
+            )}
+          </div>
+        )}
         <div style={sx("text-align:center; font-size:13.5px; color:#6b8c9a; line-height:1.6; text-wrap:pretty")}>머물고 싶은 곳을 골라 주세요.</div>
         <div style={sx("display:grid; grid-template-columns:repeat(2, 1fr); gap:12px")}>
           {SPACE_ROOMS.map((r) => (
@@ -174,7 +208,7 @@ export function SpaceSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
+function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => void; together: { who: SpaceWho; avatar: AvatarId | null; onPickAvatar: (id: AvatarId) => void } | null }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const ref = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -466,6 +500,8 @@ function RoomView({ room, onBack }: { room: SpaceRoom; onBack: () => void }) {
       {failed && (
         <div style={sx("position:absolute; left:20px; right:20px; bottom:40px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.92); color:#2d5c6e; font-size:13px; line-height:1.5; text-align:center")}>영상을 불러오지 못했어요. 잠시 뒤 다시 들어와 주세요.</div>
       )}
+      {/* 함께 머무는 사람(2026-11-20) — 머리줄 아래 알약 + 대화 시트. 이 화면이 사라지면 연결도 끊긴다(TogetherLayer). */}
+      {together && <TogetherLayer who={together.who} room={room.id} avatar={together.avatar} onPickAvatar={together.onPickAvatar} />}
     </div>
   );
 }
