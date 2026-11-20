@@ -10,7 +10,13 @@
 import type { SpaceId } from "./space";
 
 export interface SeatPoint { x: number; y: number; s: number }
-export interface RoomLayout { seats: readonly SeatPoint[]; door: SeatPoint }
+/**
+ * 앉았을 때 바라보는 쪽(2026-11-20 사용자 지시) —
+ *   forward = 불당·교회·성당: 앞(불상·십자가)을 본다 → 화면에선 **뒷모습**.
+ *   center  = 명상룸: 서로 **마주 본다** → 방 가운데(x .5)를 향한 옆모습.
+ */
+export type SeatFace = "forward" | "center";
+export interface RoomLayout { seats: readonly SeatPoint[]; door: SeatPoint; face: SeatFace }
 
 export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
   meditation: {
@@ -20,6 +26,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.28, y: 0.592, s: 0.82 }, { x: 0.12, y: 0.572, s: 0.74 },
     ],
     door: { x: -0.06, y: 0.68, s: 1.0 },
+    face: "center",
   },
   temple: {
     seats: [
@@ -27,6 +34,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.43, y: 0.603, s: 0.86 }, { x: 0.62, y: 0.603, s: 0.86 }, { x: 0.24, y: 0.603, s: 0.86 }, { x: 0.8, y: 0.603, s: 0.86 },
     ],
     door: { x: 0.5, y: 1.04, s: 1.25 },
+    face: "forward",
   },
   church: {
     seats: [
@@ -35,6 +43,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.3, y: 0.76, s: 1.08 },
     ],
     door: { x: 0.61, y: 1.04, s: 1.25 },
+    face: "forward",
   },
   cathedral: {
     seats: [
@@ -43,6 +52,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
       { x: 0.25, y: 0.81, s: 1.08 }, { x: 0.7, y: 0.81, s: 1.08 },
     ],
     door: { x: 0.49, y: 1.04, s: 1.25 },
+    face: "forward",
   },
 };
 
@@ -104,4 +114,23 @@ export function bubbleShift(centerX: number, text: string, boxW: number, pad = 6
   if (centerX + half > boxW - pad) return Math.round(boxW - pad - half - centerX);
   if (centerX - half < pad) return Math.round(pad + half - centerX);
   return 0;
+}
+
+// ── 바라보는 쪽(2026-11-20 사용자 지시 "불당·교회·성당은 앞을 보고, 명상룸은 마주 보고") ──────────────
+/** 그림의 방향 — front 앞모습(화면 쪽) · back 뒷모습(안쪽) · side 옆모습(기본은 오른쪽을 봄, flip 이면 왼쪽) */
+export type Facing = "front" | "back" | "side";
+export interface Heading { face: Facing; flip: boolean }
+
+/** 앉은 자리에서 바라보는 쪽 */
+export function seatHeading(layout: RoomLayout, i: number): Heading {
+  const seat = layout.seats[i];
+  if (layout.face === "forward" || !seat) return { face: "back", flip: false };
+  return { face: "side", flip: seat.x > 0.5 };
+}
+
+/** 걸어가는 쪽 — 옆으로 많이 가면 옆모습, 안쪽(위)으로 가면 뒷모습, 화면 쪽(아래)으로 오면 앞모습 */
+export function walkHeading(from: { x: number; y: number }, to: { x: number; y: number }): Heading {
+  const dx = to.x - from.x, dy = to.y - from.y;
+  if (Math.abs(dx) >= Math.abs(dy) * 0.8) return { face: "side", flip: dx < 0 };
+  return { face: dy < 0 ? "back" : "front", flip: false };
 }

@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { AVATARS, avatarOf, avatarSrc, figureSrc, FIGURE_VIEW, type AvatarId } from "./space-avatars";
-import { BUBBLE_MS, bubbleShift, bubbleText, figureHeight, resolveSeats, ROOM_LAYOUT, toScreen, walkMs, type Rect, type RoomLayout } from "./space-seats";
+import { BUBBLE_MS, bubbleShift, bubbleText, figureHeight, resolveSeats, ROOM_LAYOUT, seatHeading, toScreen, walkHeading, walkMs, type Heading, type Rect, type RoomLayout } from "./space-seats";
 import { CHAT_NOTICE, checkOutgoing, createRateLimiter, displayName, MAX_MESSAGE, REPORT_REASONS, type ChatMessage, type Presence, type ReportReason } from "./space-together";
 import { joinRoom, type RoomSession, type RoomStatus, type SpaceWho } from "./space-realtime";
 import { RISK_REPLY } from "./risk";
@@ -326,7 +326,8 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
 
 // ── 장면 속 캐릭터(2026-11-20 사용자 지시 "들어오는 게 보이고 퇴장할 때는 나가는 것처럼") ──────────────
 type Loc = { kind: "seat"; i: number } | { kind: "door" };
-interface Actor { uid: string; avatar: AvatarId; loc: Loc; moving: boolean; ms: number; leaving: boolean; pendingSeat: number | null }
+/** head = 걸을 때 바라보는 쪽(가는 쪽). 앉아 있을 땐 방·자리로 정한다(seatHeading). */
+interface Actor { uid: string; avatar: AvatarId; loc: Loc; moving: boolean; ms: number; leaving: boolean; pendingSeat: number | null; head: Heading }
 
 const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
 
@@ -386,7 +387,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         const cur = next[p.uid];
         if (!cur || cur.leaving) {
           const walkIn = !still && (p.uid === me || p.since > myJoin + 1500);
-          next[p.uid] = { uid: p.uid, avatar: p.avatar, loc: walkIn ? { kind: "door" } : { kind: "seat", i: seat }, moving: false, ms: 0, leaving: false, pendingSeat: walkIn ? seat : null };
+          const head = walkIn ? walkHeading(px({ kind: "door" }), px({ kind: "seat", i: seat })) : seatHeading(layout, seat);
+          next[p.uid] = { uid: p.uid, avatar: p.avatar, loc: walkIn ? { kind: "door" } : { kind: "seat", i: seat }, moving: false, ms: 0, leaving: false, pendingSeat: walkIn ? seat : null, head };
           changed = true;
           continue;
         }
@@ -395,7 +397,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         if (target !== seat) {
           const from = px(cur.loc), to = px({ kind: "seat", i: seat });
           const ms = still ? 0 : walkMs(from, to);
-          next[p.uid] = { ...next[p.uid], loc: { kind: "seat", i: seat }, moving: ms > 0, ms, pendingSeat: null };
+          next[p.uid] = { ...next[p.uid], loc: { kind: "seat", i: seat }, moving: ms > 0, ms, pendingSeat: null, head: walkHeading(from, to) };
           changed = true;
           if (ms > 0) arriveLater(p.uid, ms, false);
         }
@@ -403,8 +405,9 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
       for (const uid of Object.keys(next)) {
         const a = next[uid];
         if (present.has(uid) || a.leaving) continue;
-        const ms = still ? 0 : walkMs(px(a.loc), px({ kind: "door" }));
-        next[uid] = { ...a, loc: { kind: "door" }, moving: ms > 0, ms, leaving: true, pendingSeat: null };
+        const from = px(a.loc), to = px({ kind: "door" });
+        const ms = still ? 0 : walkMs(from, to);
+        next[uid] = { ...a, loc: { kind: "door" }, moving: ms > 0, ms, leaving: true, pendingSeat: null, head: walkHeading(from, to) };
         changed = true;
         arriveLater(uid, ms, true);
       }
@@ -457,6 +460,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         const p = a.loc.kind === "seat" ? layout.seats[a.loc.i] : layout.door;
         const pt = toScreen(rect, p);
         const pose = a.moving || a.pendingSeat !== null ? "walk" : "sit";
+        // 앉으면 방에 맞게(불당·교회·성당 = 앞을 봄 → 뒷모습 · 명상룸 = 마주 봄 → 옆모습), 걸을 땐 가는 쪽
+        const heading = pose === "walk" || a.loc.kind !== "seat" ? a.head : seatHeading(layout, a.loc.i);
         const base = figureHeight(rect, p.s);
         const h = Math.round(base * FIGURE_VIEW[pose].h / FIGURE_VIEW.sit.h);
         const w = Math.round(base * FIGURE_VIEW.sit.w / FIGURE_VIEW.sit.h);
@@ -464,6 +469,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         const mine = a.uid === me;
         const bubble = bubbles[a.uid];
         const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
+        // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
+        const headGap = Math.round(h * (pose === "walk" ? 0.12 : 0.14));
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
@@ -475,16 +482,17 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
               pointerEvents: mine || a.leaving ? "none" : "auto", cursor: mine ? "default" : "pointer",
             }}>
             {bubble && !a.leaving && (
-              <div data-space-bubble style={{ ...sx("position:absolute; bottom:100%; margin-bottom:4px; left:50%; max-width:150px; width:max-content; padding:5px 9px; border-radius:12px; background:rgba(255,255,255,0.95); color:#3a4a72; font-size:11.5px; font-weight:600; line-height:1.4; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; text-align:center"), transform: `translateX(calc(-50% + ${shift}px))` }}>
+              <div data-space-bubble style={{ ...sx("position:absolute; left:50%; max-width:150px; width:max-content; padding:5px 9px; border-radius:12px; background:rgba(255,255,255,0.95); color:#3a4a72; font-size:11.5px; font-weight:600; line-height:1.4; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; text-align:center"), bottom: `calc(100% - ${headGap}px + 17px)`, transform: `translateX(calc(-50% + ${shift}px))` }}>
                 {bubble.text}
               </div>
             )}
             <div style={{ ...sx("position:absolute; left:15%; right:15%; bottom:-3px; height:7px; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))") }} />
             <div style={{ ...sx("width:100%; height:100%"), animation: pose === "walk" ? "wcBob 0.42s ease-in-out infinite" : "wcBreath 4.5s ease-in-out infinite", transformOrigin: "50% 100%" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={figureSrc(a.avatar, pose)} alt="" draggable={false} style={{ ...sx("display:block; width:100%; height:100%"), filter: mine ? "drop-shadow(0 0 3px rgba(201,189,245,0.95))" : "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" }} />
+              <img src={figureSrc(a.avatar, pose, heading.face)} alt="" draggable={false} data-space-facing={heading.face + (heading.flip ? "-left" : "")}
+                style={{ ...sx("display:block; width:100%; height:100%"), transform: heading.flip ? "scaleX(-1)" : undefined, filter: mine ? "drop-shadow(0 0 3px rgba(201,189,245,0.95))" : "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" }} />
             </div>
-            <div style={{ ...sx("position:absolute; top:100%; margin-top:3px; padding:1px 6px; border-radius:999px; font-size:9.5px; font-weight:700; white-space:nowrap; color:#fff"), background: mine ? "rgba(122,107,196,0.92)" : "rgba(14,22,30,0.55)" }}>
+            <div data-space-name style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:1px 6px; border-radius:999px; font-size:9.5px; font-weight:700; line-height:1.25; white-space:nowrap; color:#fff"), bottom: `calc(100% - ${headGap}px + 1px)`, background: mine ? "rgba(122,107,196,0.92)" : "rgba(14,22,30,0.55)" }}>
               {mine ? "나" : displayName(a.avatar, a.uid)}
             </div>
           </div>

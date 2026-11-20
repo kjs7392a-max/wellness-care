@@ -100,3 +100,19 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(ui).toMatch(/const openPeer = \(uid: string\) => \{ openSheet\(\); setPeerMenu\(uid\); \}/);
   });
 });
+
+describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
+  const scene = ui.slice(ui.indexOf("function SpaceScene"), ui.indexOf("function Notice"));
+  it("앉으면 방에 맞는 방향, 걸을 땐 가는 쪽 · 왼쪽은 좌우 뒤집기", () => {
+    expect(scene).toMatch(/const heading = pose === "walk" \|\| a\.loc\.kind !== "seat" \? a\.head : seatHeading\(layout, a\.loc\.i\)/);
+    expect(scene).toMatch(/figureSrc\(a\.avatar, pose, heading\.face\)/);
+    expect(scene).toMatch(/transform: heading\.flip \? "scaleX\(-1\)" : undefined/);
+    expect(scene.match(/walkHeading\(/g)?.length).toBeGreaterThanOrEqual(3); // 들어오기·옮기기·나가기
+  });
+  it("이름표는 머리 위, 말풍선은 그 위", () => {
+    const name = scene.slice(scene.indexOf("data-space-name"), scene.indexOf("data-space-name") + 400);
+    expect(name).toMatch(/bottom: `calc\(100% - \$\{headGap\}px \+ 1px\)`/);
+    expect(name).not.toMatch(/top:100%/);
+    expect(scene).toMatch(/bottom: `calc\(100% - \$\{headGap\}px \+ 17px\)`/);
+  });
+});

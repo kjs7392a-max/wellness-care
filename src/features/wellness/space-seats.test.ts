@@ -95,3 +95,36 @@ describe("말풍선 가장자리 밀기(bubbleShift)", () => {
     expect(395 + sh + 75).toBeLessThanOrEqual(394); // 최대 폭 150 — 오른쪽 6px 안쪽
   });
 });
+
+describe("바라보는 쪽(2026-11-20 — 불당·교회·성당은 앞, 명상룸은 마주 보기)", () => {
+  it("불당·교회·성당은 앉으면 뒷모습(앞을 봄), 명상룸은 가운데를 향한 옆모습", async () => {
+    const { seatHeading } = await import("./space-seats");
+    for (const room of ["temple", "church", "cathedral"] as const) {
+      expect(ROOM_LAYOUT[room].face).toBe("forward");
+      ROOM_LAYOUT[room].seats.forEach((_, i) => expect(seatHeading(ROOM_LAYOUT[room], i)).toEqual({ face: "back", flip: false }));
+    }
+    const m = ROOM_LAYOUT.meditation;
+    expect(m.face).toBe("center");
+    m.seats.forEach((seat, i) => expect(seatHeading(m, i)).toEqual({ face: "side", flip: seat.x > 0.5 }));
+    // 왼쪽 자리와 오른쪽 자리가 서로 마주 본다
+    expect(m.seats.some((s) => s.x < 0.5) && m.seats.some((s) => s.x > 0.5)).toBe(true);
+  });
+  it("걸을 땐 가는 쪽 — 옆으로는 옆모습(왼쪽이면 뒤집기), 안쪽으로는 뒷모습, 화면 쪽으로는 앞모습", async () => {
+    const { walkHeading } = await import("./space-seats");
+    expect(walkHeading({ x: 0, y: 100 }, { x: 200, y: 90 })).toEqual({ face: "side", flip: false });
+    expect(walkHeading({ x: 200, y: 100 }, { x: 0, y: 110 })).toEqual({ face: "side", flip: true });
+    expect(walkHeading({ x: 100, y: 400 }, { x: 90, y: 200 })).toEqual({ face: "back", flip: false }); // 문(아래) → 자리: 들어간다
+    expect(walkHeading({ x: 90, y: 200 }, { x: 100, y: 400 })).toEqual({ face: "front", flip: false }); // 자리 → 문: 나온다
+  });
+  it("그림 — 앞모습은 눈 둘, 옆모습은 눈 하나, 뒷모습은 얼굴 없음(8명 × 앉음·걸음)", async () => {
+    const { AVATARS, figureSvg } = await import("./space-avatars");
+    const eyes = (svg: string) => (svg.match(/fill="#3a3340"/g) ?? []).length;
+    for (const a of AVATARS) for (const pose of ["sit", "walk"] as const) {
+      expect(eyes(figureSvg(a.id, pose, "front"))).toBe(2);
+      expect(eyes(figureSvg(a.id, pose, "side"))).toBe(1);
+      expect(eyes(figureSvg(a.id, pose, "back"))).toBe(0);
+      expect(figureSvg(a.id, pose, "back")).not.toMatch(/#b5655a/); // 입도 없다
+      expect(/@keyframes/.test(figureSvg(a.id, pose, "side"))).toBe(pose === "walk");
+    }
+  });
+});
