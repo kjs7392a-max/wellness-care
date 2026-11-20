@@ -159,7 +159,7 @@ describe("교회·성당 자리 — 통로·영상 속 사람·화면 가장자�
   it("성당 오른쪽 기도하는 사람 자리(x .74~.9 · y .55~.68)는 비운다 · 모든 자리는 화면 안쪽(x .12~.88)", () => {
     for (const s of ROOM_LAYOUT.cathedral.seats) expect(s.x > 0.72 && s.y > 0.55 && s.y < 0.7).toBe(false);
     for (const room of ["church", "cathedral"] as const) for (const s of ROOM_LAYOUT[room].seats) {
-      expect(s.x).toBeGreaterThanOrEqual(0.12);
+      expect(s.x).toBeGreaterThanOrEqual(0.15); // 좁은 화면에선 영상 양옆이 잘린다
       expect(s.x).toBeLessThanOrEqual(0.88);
     }
   });
