@@ -68,3 +68,35 @@ describe("함께 머무는 사람 — 안전", () => {
     expect(roomView).toMatch(/<TogetherLayer /);
   });
 });
+
+describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
+  const scene = ui.slice(ui.indexOf("function SpaceScene"), ui.indexOf("function Notice"));
+  it("공간 화면이 영상 자리(rect)를 넘긴다", () => {
+    expect(sheet).toMatch(/<TogetherLayer [^\n]*rect=\{rect\}/);
+  });
+  it("자리는 모두(나·차단 포함)로 계산해 기기마다 같은 답 · 장면과 목록엔 차단한 사람이 없다", () => {
+    expect(ui).toMatch(/resolveSeats\(people, layout\.seats\.length\)/);
+    expect(ui).toMatch(/scenePeople = useMemo\(\(\) => people\.filter\(\(p\) => !blocked\.has\(p\.uid\)\)/);
+    expect(ui).toMatch(/peopleShown = people\.filter\(\(p\) => p\.uid !== me && !blocked\.has\(p\.uid\)\)/);
+  });
+  it("들어오면 문에서 걸어 들어오고, 나가면 문으로 걸어 나가며 사라진다", () => {
+    expect(scene).toMatch(/loc: walkIn \? \{ kind: "door" \}/);
+    expect(scene).toMatch(/loc: \{ kind: "door" \}, moving: ms > 0, ms, leaving: true/);
+    expect(scene).toMatch(/opacity: a\.leaving \? 0 : 1/);
+  });
+  it("움직임 줄이기 설정을 따른다", () => {
+    expect(ui).toMatch(/matchMedia\("\(prefers-reduced-motion: reduce\)"\)/);
+    expect(scene).toMatch(/const walkIn = !still &&/);
+  });
+  it("말풍선은 단체 대화만 · 가려진 메시지는 말풍선도 없다 · 짧게 자른다", () => {
+    expect(ui.match(/showBubble\(/g)).toHaveLength(2);
+    expect(ui).toMatch(/if \(!m\.hidden\) showBubble\(m\.from, m\.text, m\.id\)/);
+    expect(ui).toMatch(/if \(tab === "room"\) showBubble\(me, m\.text, m\.id\)/);
+    expect(ui).toMatch(/text: bubbleText\(text\)/);
+  });
+  it("빈자리를 누르면 옮겨 앉고, 다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
+    expect(scene).toMatch(/onClick=\{\(\) => onSeatTap\(i\)\}/);
+    expect(scene).toMatch(/mine \|\| a\.leaving \? undefined : \(\) => onPersonTap\(a\.uid\)/);
+    expect(ui).toMatch(/const openPeer = \(uid: string\) => \{ openSheet\(\); setPeerMenu\(uid\); \}/);
+  });
+});

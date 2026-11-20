@@ -501,7 +501,7 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
         <div style={sx("position:absolute; left:20px; right:20px; bottom:40px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.92); color:#2d5c6e; font-size:13px; line-height:1.5; text-align:center")}>영상을 불러오지 못했어요. 잠시 뒤 다시 들어와 주세요.</div>
       )}
       {/* 함께 머무는 사람(2026-11-20) — 머리줄 아래 알약 + 대화 시트. 이 화면이 사라지면 연결도 끊긴다(TogetherLayer). */}
-      {together && <TogetherLayer who={together.who} room={room.id} avatar={together.avatar} onPickAvatar={together.onPickAvatar} />}
+      {together && <TogetherLayer who={together.who} room={room.id} avatar={together.avatar} onPickAvatar={together.onPickAvatar} rect={rect} />}
     </div>
   );
 }

@@ -11,7 +11,7 @@
  */
 import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
 import { SPACE_SUPABASE_KEY, SPACE_SUPABASE_URL } from "./space-config";
-import { acceptIncoming, dmTopic, peopleFromPresence, roomTopic, type ChatMessage, type Presence, type ReportReason } from "./space-together";
+import { acceptIncoming, dmTopic, presenceList, roomTopic, type ChatMessage, type Presence, type ReportReason } from "./space-together";
 import type { AvatarId } from "./space-avatars";
 import type { SpaceId } from "./space";
 
@@ -45,6 +45,7 @@ export type RoomStatus = "connecting" | "live" | "error";
 
 export interface RoomHandlers {
   onStatus: (s: RoomStatus) => void;
+  /** 이 방에 있는 사람 전부(나 · 차단한 사람 포함 — 자리 계산용). 화면이 거른다. */
   onPeople: (people: Presence[]) => void;
   onRoomMessage: (m: ChatMessage & { hidden: boolean }) => void;
   onDmMessage: (peer: string, m: ChatMessage & { hidden: boolean }) => void;
@@ -54,6 +55,10 @@ export interface RoomHandlers {
 
 export interface RoomSession {
   readonly uid: string;
+  /** 내가 이 방에 들어온 시각(ms) */
+  readonly since: number;
+  /** 앉고 싶은 자리를 알린다(presence) — 모두가 resolveSeats 로 같은 자리를 계산한다 */
+  moveTo(seat: number | null): void;
   sendRoom(text: string): ChatMessage | null;
   openDm(peer: string): void;
   sendDm(peer: string, text: string): ChatMessage | null;
@@ -76,9 +81,11 @@ export async function joinRoom(who: SpaceWho, room: SpaceId, avatar: AvatarId, h
   const dms = new Map<string, RealtimeChannel>();
 
   const ch = sb.channel(roomTopic(room), { config: { private: true, presence: { key: uid, enabled: true }, broadcast: { self: false } } });
+  let seat: number | null = null;
+  const presence = () => ({ uid, avatar, since, seat });
   ch.on("presence", { event: "sync" }, () => {
     if (left) return;
-    h.onPeople(peopleFromPresence(ch.presenceState() as Record<string, unknown[]>, uid, blocked));
+    h.onPeople(presenceList(ch.presenceState() as Record<string, unknown[]>));
   });
   ch.on("broadcast", { event: "msg" }, ({ payload }) => {
     const m = acceptIncoming(payload);
@@ -93,7 +100,7 @@ export async function joinRoom(who: SpaceWho, room: SpaceId, avatar: AvatarId, h
   ch.subscribe((status) => {
     if (left) return;
     if (status === "SUBSCRIBED") {
-      void ch.track({ uid, avatar, since });
+      void ch.track(presence());
       h.onStatus("live");
     } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") h.onStatus("error");
   });
@@ -116,6 +123,12 @@ export async function joinRoom(who: SpaceWho, room: SpaceId, avatar: AvatarId, h
 
   return {
     uid,
+    since,
+    moveTo(next) {
+      if (left || next === seat) return;
+      seat = next;
+      void ch.track(presence());
+    },
     sendRoom(text) {
       if (left) return null;
       const m = make(text);
@@ -141,7 +154,7 @@ export async function joinRoom(who: SpaceWho, room: SpaceId, avatar: AvatarId, h
         const d = dms.get(peer);
         if (d) { void sb.removeChannel(d); dms.delete(peer); }
       }
-      h.onPeople(peopleFromPresence(ch.presenceState() as Record<string, unknown[]>, uid, blocked));
+      h.onPeople(presenceList(ch.presenceState() as Record<string, unknown[]>));
     },
     async report(peer, reason, excerpt) {
       const { error } = await sb.from("space_reports").insert({ reported: peer, room, reason, excerpt: excerpt.slice(0, 300) });

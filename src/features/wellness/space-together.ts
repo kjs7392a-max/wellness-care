@@ -123,25 +123,33 @@ export function createRateLimiter(opts: { now?: () => number; perMinute?: number
 export interface Presence {
   uid: string;
   avatar: AvatarId;
-  /** 들어온 시각(ms) — 줄 세우기 */
+  /** 들어온 시각(ms) — 줄 세우기 · 자리 먼저 차지하기 */
   since: number;
+  /** 앉고 싶은 자리(장면 · space-seats) — 없으면 null */
+  seat: number | null;
 }
 
-/** presence 상태(채널이 주는 모양) → 사람 목록. 나 · 차단한 사람 · 모양이 틀린 것은 뺀다. 먼저 온 사람부터. */
-export function peopleFromPresence(state: Record<string, unknown[]>, me: string, blocked: ReadonlySet<string>): Presence[] {
+/** presence 상태(채널이 주는 모양) → 사람 목록 **전부**(나·차단한 사람 포함 — 자리 계산은 모두가 같은 목록으로). 모양이 틀린 것만 뺀다. 먼저 온 사람부터. */
+export function presenceList(state: Record<string, unknown[]>): Presence[] {
   const out = new Map<string, Presence>();
   for (const metas of Object.values(state)) {
     for (const raw of metas ?? []) {
       if (!raw || typeof raw !== "object") continue;
       const p = raw as Record<string, unknown>;
-      if (typeof p.uid !== "string" || typeof p.avatar !== "string" || !AVATAR_IDS.has(p.avatar)) continue;
-      if (p.uid === me || blocked.has(p.uid)) continue;
-      const since = typeof p.since === "number" ? p.since : 0;
+      if (typeof p.uid !== "string" || p.uid.length > 64 || typeof p.avatar !== "string" || !AVATAR_IDS.has(p.avatar)) continue;
+      const since = typeof p.since === "number" && Number.isFinite(p.since) ? p.since : 0;
+      const seat = typeof p.seat === "number" && Number.isInteger(p.seat) && p.seat >= 0 && p.seat < 16 ? p.seat : null;
       const prev = out.get(p.uid);
-      if (!prev || since < prev.since) out.set(p.uid, { uid: p.uid, avatar: p.avatar as AvatarId, since });
+      // 같은 사람이 탭 여럿이면 먼저 들어온 쪽 하나로
+      if (!prev || since < prev.since) out.set(p.uid, { uid: p.uid, avatar: p.avatar as AvatarId, since, seat });
     }
   }
   return [...out.values()].sort((a, b) => a.since - b.since || a.uid.localeCompare(b.uid));
+}
+
+/** 나 · 차단한 사람을 뺀 사람 목록 */
+export function peopleFromPresence(state: Record<string, unknown[]>, me: string, blocked: ReadonlySet<string>): Presence[] {
+  return presenceList(state).filter((p) => p.uid !== me && !blocked.has(p.uid));
 }
 
 export const REPORT_REASONS = ["불쾌한 말", "개인정보 요구", "광고·도배", "그 밖의 문제"] as const;

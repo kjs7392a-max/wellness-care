@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptIncoming, checkOutgoing, createRateLimiter, displayName, dmTopic, maskContacts, MAX_MESSAGE, peopleFromPresence, PII_MASK, roomTopic, shortTag, SPACE_IDS } from "./space-together";
+import { acceptIncoming, checkOutgoing, createRateLimiter, displayName, dmTopic, maskContacts, MAX_MESSAGE, peopleFromPresence, PII_MASK, presenceList, roomTopic, shortTag, SPACE_IDS } from "./space-together";
 import { AVATARS } from "./space-avatars";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -95,3 +95,13 @@ describe("함께 있는 사람", () => {
     expect(ppl[1].since).toBe(3);
   });
 });
+
+describe("자리(seat) — presence 에 실린 원하는 자리", () => {
+  it("정수 0~15 만 · 그 밖은 null · presenceList 는 나·차단도 포함", () => {
+    const state = { a: [{ uid: "me", avatar: "haneul", since: 1, seat: 2 }], b: [{ uid: "u2", avatar: "bada", since: 2, seat: 99 }], c: [{ uid: "u3", avatar: "sol", since: 3, seat: 1.5 }] };
+    const all = presenceList(state);
+    expect(all.map((p) => [p.uid, p.seat])).toEqual([["me", 2], ["u2", null], ["u3", null]]);
+    expect(peopleFromPresence(state, "me", new Set(["u3"])).map((p) => p.uid)).toEqual(["u2"]);
+  });
+});
+
