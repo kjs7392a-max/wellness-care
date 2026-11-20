@@ -8,7 +8,7 @@
  *   - 위험한 표현(risk.ts L2)은 **다른 사람에게 보내지 않고** 보낸 사람에게 상담 안내(109)를 보여 준다. 받은 쪽에서도 한 번 더 걸러 가린다.
  *   - 전화번호·이메일·링크·메신저 아이디는 가린 뒤 보낸다(개인정보 · 외부로 끌어내기 방지).
  *   - 글자 수 제한 · 연속 전송 제한 · 차단 · 신고.
- *   - 실명 대신 캐릭터 이름 + 짧은 번호만 보인다.
+ *   - 실명 대신 내가 지은 이름(모두 통틀어 하나뿐 · checkNickname)만 보인다. 이름을 아직 못 읽었으면 캐릭터 이름 + 짧은 번호.
  */
 import { riskLevel } from "./risk";
 import { AVATARS, type AvatarId } from "./space-avatars";
@@ -23,6 +23,34 @@ export const roomTopic = (room: SpaceId) => `space:${room}`;
 export function dmTopic(room: SpaceId, a: string, b: string): string {
   const [x, y] = a < b ? [a, b] : [b, a];
   return `dm:${room}:${x}:${y}`;
+}
+
+// ── 내가 지은 이름(2026-11-20 사용자 "캐릭터 이름을 지을 수 있게 해서 계속 고유 캐릭터와 아이디를") ──────────
+// 서버(docs/space-profiles-setup.sql)가 모두 통틀어 하나뿐인 이름으로 지킨다 · 여기 규칙은 그 표의 check 와 같다.
+export const NICK_MIN = 2;
+export const NICK_MAX = 10;
+export type NickProblem = "short" | "long" | "chars" | "reserved" | "unsafe";
+export const NICK_PROBLEM_TEXT: Record<NickProblem, string> = {
+  short: `이름은 ${NICK_MIN}자 넘게 지어 주세요.`,
+  long: `이름은 ${NICK_MAX}자까지예요.`,
+  chars: "한글·영문·숫자만 쓸 수 있어요(띄어쓰기·기호 없이).",
+  reserved: "운영자처럼 보이는 이름은 쓸 수 없어요.",
+  unsafe: "쓸 수 없는 말이 들어 있어요. 다른 이름을 지어 주세요.",
+};
+/** 운영자·상담사·회사로 오해할 이름(소문자로 견줌) */
+const RESERVED_NICKS = ["관리자", "운영자", "운영진", "운영팀", "상담사", "상담원", "상담선생", "의사", "admin", "administrator", "manager", "moderator", "staff", "official", "닥터포레스트", "dr4rest", "drforest", "웰니스케어", "시스템", "공지", "system", "notice"];
+/** 욕설·성적 표현(짧게) — 위험한 말은 risk.ts 가 따로 본다 */
+const BAD_NICK = ["씨발", "시발", "씨팔", "병신", "븅신", "좆", "개새", "새끼", "니미", "지랄", "섹스", "sex", "fuck", "shit", "bitch", "자살", "자해"];
+export function checkNickname(raw: string): { ok: true; nickname: string } | { ok: false; reason: NickProblem } {
+  const nickname = (raw ?? "").normalize("NFC").trim();
+  if ([...nickname].length < NICK_MIN) return { ok: false, reason: "short" };
+  if ([...nickname].length > NICK_MAX) return { ok: false, reason: "long" };
+  if (!/^[가-힣A-Za-z0-9]+$/.test(nickname)) return { ok: false, reason: "chars" };
+  const low = nickname.toLowerCase();
+  if (RESERVED_NICKS.some((w) => low.includes(w))) return { ok: false, reason: "reserved" };
+  if (BAD_NICK.some((w) => low.includes(w)) || riskLevel(nickname) === 2) return { ok: false, reason: "unsafe" };
+  if (/\d{6,}/.test(nickname)) return { ok: false, reason: "unsafe" }; // 전화번호·계좌처럼 긴 숫자
+  return { ok: true, nickname };
 }
 
 /** 같은 캐릭터가 여럿이어도 갈리게 — 사용자 id 에서 두 자리 번호 */
@@ -123,6 +151,8 @@ export function createRateLimiter(opts: { now?: () => number; perMinute?: number
 export interface Presence {
   uid: string;
   avatar: AvatarId;
+  /** 내가 지은 이름을 바꾼 시각(ms) — 바뀌면 다른 사람들이 이름을 다시 읽어 온다(이름 자체는 서버 표에서 읽는다 · 사칭 방지) */
+  pv?: number;
   /** 들어온 시각(ms) — 줄 세우기 · 자리 먼저 차지하기 */
   since: number;
   /** 앉고 싶은 자리(장면 · space-seats) — 없으면 null */
@@ -145,7 +175,11 @@ export function presenceList(state: Record<string, unknown[]>): Presence[] {
       const seat = typeof p.seat === "number" && Number.isInteger(p.seat) && p.seat >= 0 && p.seat < 16 ? p.seat : null;
       const prev = out.get(p.uid);
       // 같은 사람이 탭 여럿이면 먼저 들어온 쪽 하나로
-      const extra = { ...(p.picking === true ? { picking: true } : {}), ...(typeof p.at === "number" && Number.isFinite(p.at) ? { at: p.at } : {}) };
+      const extra = {
+        ...(p.picking === true ? { picking: true } : {}),
+        ...(typeof p.at === "number" && Number.isFinite(p.at) ? { at: p.at } : {}),
+        ...(typeof p.pv === "number" && Number.isFinite(p.pv) ? { pv: p.pv } : {}),
+      };
       if (!prev || since < prev.since) out.set(p.uid, { uid: p.uid, avatar: p.avatar as AvatarId, since, seat, ...extra });
     }
   }

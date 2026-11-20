@@ -8,30 +8,29 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { sx } from "./sx";
 import { AVATARS, avatarOf, avatarSrc, figureSrc, FIGURE_VIEW, type AvatarId, type FigurePose } from "./space-avatars";
 import { BUBBLE_MS, bubbleShift, bubbleText, doorPoint, figureHeight, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, seatHeading, sitPoint, toScreen, walkHeading, walkMs, type Heading, type Rect, type RoomLayout, type ScenePt, type Way } from "./space-seats";
-import { CHAT_NOTICE, checkOutgoing, createRateLimiter, displayName, MAX_MESSAGE, REPORT_REASONS, type ChatMessage, type Presence, type ReportReason } from "./space-together";
-import { joinRoom, type RoomSession, type RoomStatus, type SpaceWho } from "./space-realtime";
+import { CHAT_NOTICE, checkNickname, checkOutgoing, createRateLimiter, displayName, MAX_MESSAGE, NICK_MAX, NICK_MIN, NICK_PROBLEM_TEXT, REPORT_REASONS, type ChatMessage, type Presence, type ReportReason } from "./space-together";
+import { fetchProfiles, joinRoom, saveMyProfile, type RoomSession, type RoomStatus, type SpaceProfile, type SpaceWho } from "./space-realtime";
 import { RISK_REPLY } from "./risk";
 import type { SpaceId } from "./space";
 
-// ---- 고른 캐릭터(계정 = 기기에 아이디별 · 둘러보기 = 이 탭 동안만) ----
-const AVATAR_KEY = "wellness-care:space-avatar:v1";
-function storeFor(who: SpaceWho): Storage | null {
-  try { return who.guest ? window.sessionStorage : window.localStorage; } catch { return null; }
-}
+// ---- 내 이름·캐릭터(2026-11-20 "계속 고유 캐릭터와 아이디를") — 진짜는 서버(space_profiles) · 기기엔 빨리 보여 줄 사본만 ----
+// 계정 = 기기에 아이디별로 · 둘러보기 = 그 기기(브라우저)에 하나. 🚫 메시지는 저장하지 않는다(이 사본만 쓴다).
+const PROFILE_KEY = "wellness-care:space-profile:v1";
 const whoKey = (who: SpaceWho) => (who.guest ? "guest" : who.loginId.trim().toLowerCase());
-export function loadAvatar(who: SpaceWho): AvatarId | null {
-  try {
-    const o = JSON.parse(storeFor(who)?.getItem(AVATAR_KEY) ?? "{}") as Record<string, unknown>;
-    const v = o[whoKey(who)];
-    return typeof v === "string" && avatarOf(v) ? (v as AvatarId) : null;
-  } catch { return null; }
+function readProfiles(): Record<string, unknown> {
+  try { return JSON.parse(window.localStorage.getItem(PROFILE_KEY) ?? "{}") as Record<string, unknown>; } catch { return {}; }
 }
-export function saveAvatar(who: SpaceWho, id: AvatarId) {
+export function loadProfileLocal(who: SpaceWho): SpaceProfile | null {
+  const v = readProfiles()[whoKey(who)] as Partial<SpaceProfile> | undefined;
+  if (!v || typeof v.uid !== "string" || typeof v.nickname !== "string" || !avatarOf(v.avatar)) return null;
+  return { uid: v.uid, nickname: v.nickname, avatar: v.avatar as AvatarId, updatedAt: typeof v.updatedAt === "number" ? v.updatedAt : 0 };
+}
+export function saveProfileLocal(who: SpaceWho, p: SpaceProfile | null) {
   try {
-    const st = storeFor(who);
-    const o = JSON.parse(st?.getItem(AVATAR_KEY) ?? "{}") as Record<string, unknown>;
-    st?.setItem(AVATAR_KEY, JSON.stringify({ ...o, [whoKey(who)]: id }));
-  } catch { /* 못 저장해도 이번엔 그대로 */ }
+    const o = readProfiles();
+    if (p) o[whoKey(who)] = p; else delete o[whoKey(who)];
+    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(o));
+  } catch { /* 못 저장해도 서버에 있으니 다음에 다시 읽는다 */ }
 }
 
 export function AvatarImg({ id, size, ring }: { id: AvatarId; size: number; ring?: string }) {
@@ -58,13 +57,60 @@ export function AvatarPicker({ value, onPick }: { value: AvatarId | null; onPick
   );
 }
 
+/**
+ * 캐릭터 고르기 + 이름 짓기(2026-11-20) — 이름은 모두 통틀어 하나뿐이라 서버에 맞춰 본다(이미 있으면 다시).
+ * 한 번 지으면 다음에 들어와도 그 이름·캐릭터 그대로(같은 기기 · 계정은 아이디별).
+ */
+export function ProfileEditor({ who, initial, onSaved, onCancel }: { who: SpaceWho; initial: SpaceProfile | null; onSaved: (p: SpaceProfile) => void; onCancel?: () => void }) {
+  const [avatar, setAvatar] = useState<AvatarId | null>(initial?.avatar ?? null);
+  const [name, setName] = useState(initial?.nickname ?? "");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (busy) return;
+    if (!avatar) { setProblem("캐릭터를 먼저 골라 주세요."); return; }
+    const c = checkNickname(name);
+    if (!c.ok) { setProblem(NICK_PROBLEM_TEXT[c.reason]); return; }
+    setBusy(true); setProblem(null);
+    const r = await saveMyProfile(who, c.nickname, avatar);
+    setBusy(false);
+    if (!r.ok) {
+      setProblem(r.reason === "taken" ? "이미 누가 쓰고 있는 이름이에요. 다른 이름을 지어 주세요." : r.reason === "invalid" ? NICK_PROBLEM_TEXT.chars : "저장하지 못했어요. 잠시 뒤 다시 해 주세요.");
+      return;
+    }
+    saveProfileLocal(who, r.profile);
+    onSaved(r.profile);
+  };
+  return (
+    <div data-space-profile-editor style={sx("display:flex; flex-direction:column; gap:12px")}>
+      <AvatarPicker value={avatar} onPick={(id) => { setAvatar(id); setProblem(null); }} />
+      <div style={sx("display:flex; flex-direction:column; gap:6px")}>
+        <div style={sx("font-size:13px; font-weight:800; color:#4a3f80")}>이름 짓기</div>
+        <div style={sx("display:flex; gap:8px")}>
+          <input value={name} onChange={(e) => { setName(e.target.value); setProblem(null); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) void save(); }}
+            maxLength={NICK_MAX} placeholder={`${NICK_MIN}~${NICK_MAX}자 · 한글·영문·숫자`} aria-label="내 이름" data-space-nickname
+            style={sx("flex:1; min-width:0; padding:11px 13px; border-radius:12px; border:1.5px solid #d9d2ec; font-size:14px; outline:none; background:#fff; color:#2d3a4a")} />
+          <button type="button" onClick={() => void save()} disabled={busy} data-space-profile-save
+            style={{ ...sx("flex:none; cursor:pointer; padding:11px 14px; border-radius:12px; border:none; font-size:13.5px; font-weight:800; color:#fff"), background: busy ? "#c9c2e4" : "#7a6bc4" }}>{busy ? "확인 중…" : initial ? "바꾸기" : "이렇게 할게요"}</button>
+        </div>
+        {problem ? <div role="alert" style={sx("font-size:12px; color:#c0563f; line-height:1.5")}>{problem}</div>
+          : <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.55")}>다른 사람과 겹치지 않는 나만의 이름이에요. 실명이나 연락처는 쓰지 말아 주세요. 다음에 들어와도 이 이름 그대로예요.</div>}
+        {onCancel && <button type="button" onClick={onCancel} style={sx("align-self:flex-start; cursor:pointer; padding:4px 0; border:none; background:transparent; color:#8a80b8; font-size:12px; font-weight:700")}>그대로 둘게요</button>}
+      </div>
+    </div>
+  );
+}
+
 interface Thread { avatar: AvatarId | null; messages: (ChatMessage & { hidden?: boolean })[]; unread: number }
 
 /**
  * 공간 안 — 머리줄 아래 「함께 있는 사람」 알약 + 대화 시트. 공간을 나가면(화면이 사라지면) 연결도 끊는다.
  * 대화 단추는 말풍선 그림만(글자 없음) · avatar 가 없으면 누르면 캐릭터 고르기 시트.
  */
-export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: SpaceWho; room: SpaceId; avatar: AvatarId | null; onPickAvatar: (id: AvatarId) => void; rect: Rect }) {
+export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: SpaceWho; room: SpaceId; profile: SpaceProfile | null; onProfile: (p: SpaceProfile) => void; rect: Rect }) {
+  // 이름을 지어야 함께할 수 있다(이름 = 모두 통틀어 하나뿐인 나)
+  const avatar = profile?.avatar ?? null;
+  const pv = profile?.updatedAt ?? 0;
   const [status, setStatus] = useState<RoomStatus>("connecting");
   const [people, setPeople] = useState<Presence[]>([]);
   const [roomMsgs, setRoomMsgs] = useState<(ChatMessage & { hidden?: boolean })[]>([]);
@@ -122,7 +168,7 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
         if (cancelled) return;
         setThreads((t) => (t[peer] ? t : { ...t, [peer]: { avatar: av, messages: [], unread: 0 } }));
       },
-    }).then((s) => {
+    }, pv).then((s) => {
       if (cancelled) { s.leave(); return; }
       session = s;
       sessionRef.current = s;
@@ -138,12 +184,34 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
       setPeople([]); setRoomMsgs([]); setThreads({}); setRoomUnread(0); setMeUid(""); setBubbles({});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avatar, room, who.guest, who.loginId]);
+  }, [avatar, pv, room, who.guest, who.loginId]);
 
   useEffect(() => { sessionRef.current?.setBlocked(blocked); }, [blocked]);
   useEffect(() => { listRef.current?.scrollTo({ top: 1e6 }); }, [roomMsgs, threads, tab, open]);
 
   const me = meUid;
+  // 사람들 이름 — 서버 표(space_profiles)에서 uid 로 읽는다 · 이름을 바꾸면(pv) 다시 읽는다
+  const [names, setNames] = useState<Record<string, { nickname: string; pv: number }>>({});
+  const namesRef = useRef(names); namesRef.current = names;
+  useEffect(() => {
+    const need = people.filter((p) => p.uid !== me && (!namesRef.current[p.uid] || (p.pv ?? 0) !== namesRef.current[p.uid].pv)).map((p) => p.uid);
+    if (!need.length) return;
+    let off = false;
+    const pvOf = new Map(people.map((p) => [p.uid, p.pv ?? 0]));
+    void fetchProfiles(who, need).then((list) => {
+      if (off) return;
+      setNames((n) => {
+        const m = { ...n };
+        for (const uid of need) m[uid] = { nickname: m[uid]?.nickname ?? "", pv: pvOf.get(uid) ?? 0 }; // 못 읽어도 다시 묻지 않게
+        for (const pr of list) m[pr.uid] = { nickname: pr.nickname, pv: pvOf.get(pr.uid) ?? 0 };
+        return m;
+      });
+    });
+    return () => { off = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people, me]);
+  /** 보이는 이름 — 내가 지은 이름 · 아직 못 읽었으면 캐릭터 이름 + 짧은 번호 */
+  const label = (uid: string, av: AvatarId) => (uid === me && profile ? profile.nickname : names[uid]?.nickname) || displayName(av, uid);
   // people = 이 방 사람 전부(나·차단 포함). 목록에 보이는 건 나·차단 뺀 사람.
   const peopleShown = people.filter((p) => p.uid !== me && !blocked.has(p.uid));
   const layout = ROOM_LAYOUT[room];
@@ -186,7 +254,7 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
   }, [seats, me]);
   const openPeer = (uid: string) => { openSheet(); setPeerMenu(uid); };
   const avatarFor = (uid: string): AvatarId | null => peopleShown.find((p) => p.uid === uid)?.avatar ?? threads[uid]?.avatar ?? null;
-  const nameFor = (uid: string) => { const a = avatarFor(uid); return a ? displayName(a, uid) : "나간 사람"; };
+  const nameFor = (uid: string) => { const a = avatarFor(uid); return names[uid]?.nickname || (a ? displayName(a, uid) : "나간 사람"); };
   const dmUnread = Object.values(threads).reduce((n, t) => n + t.unread, 0);
   const unread = roomUnread + dmUnread;
 
@@ -251,14 +319,14 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
       {avatar && status === "live" && rect.width > 0 && (
         <SpaceScene layout={layout} rect={rect} me={me} myJoin={myJoin}
           people={scenePeople} seats={seats} bubbles={bubbles}
-          choices={choosing ? freeSeats : null} onChoose={chooseSeat}
+          choices={choosing ? freeSeats : null} onChoose={chooseSeat} label={label}
           onPersonTap={openPeer} />
       )}
       {pill}
       {picking && (
         <Sheet onClose={() => setPicking(false)} title="함께 머물 캐릭터">
           <div style={sx("padding:4px 18px 8px; font-size:12.5px; color:#6b8c9a; line-height:1.6")}>같은 공간에 있는 사람들끼리 캐릭터가 보이고 대화할 수 있어요. 실명 대신 캐릭터 이름만 보여요.</div>
-          <div style={sx("padding:6px 12px 18px")}><AvatarPicker value={avatar} onPick={(id) => { onPickAvatar(id); setPicking(false); }} /></div>
+          <div style={sx("padding:6px 14px 18px")}><ProfileEditor who={who} initial={profile} onSaved={(p) => { onProfile(p); setPicking(false); }} /></div>
         </Sheet>
       )}
       {open && avatar && (
@@ -268,14 +336,14 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
             <div style={sx("flex:none; display:flex; flex-direction:column; align-items:center; gap:3px; width:56px")}>
               <AvatarImg id={avatar} size={40} ring="#7a6bc4" />
               {/* 내 캐릭터 이름(다른 사람에게 보이는 그대로) + (나) — 2026-11-20 사용자 "캐릭터 이름은 나오게" */}
-              <span data-space-my-name style={sx("font-size:11px; font-weight:800; color:#4a3f80; white-space:nowrap")}>{me ? displayName(avatar, me) : avatarOf(avatar)?.name}</span>
+              <span data-space-my-name style={sx("font-size:11px; font-weight:800; color:#4a3f80; white-space:nowrap")}>{profile?.nickname ?? (me ? displayName(avatar, me) : avatarOf(avatar)?.name)}</span>
               <span style={sx("font-size:10px; font-weight:700; color:#8a80b8; margin-top:-3px")}>나</span>
             </div>
             {peopleShown.map((p) => (
               <button key={p.uid} type="button" data-space-person onClick={() => setPeerMenu((m) => (m === p.uid ? null : p.uid))}
                 style={sx("flex:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; width:60px; padding:0; border:none; background:transparent")}>
                 <AvatarImg id={p.avatar} size={40} ring={peerMenu === p.uid ? "#7a6bc4" : undefined} />
-                <span style={sx("font-size:11px; font-weight:700; color:#4a5f6a; white-space:nowrap")}>{displayName(p.avatar, p.uid)}</span>
+                <span style={sx("font-size:11px; font-weight:700; color:#4a5f6a; white-space:nowrap")}>{label(p.uid, p.avatar)}</span>
               </button>
             ))}
             {peopleShown.length === 0 && <div style={sx("align-self:center; font-size:12px; color:#8ba8b3")}>아직 아무도 없어요. 누가 들어오면 여기 보여요.</div>}
@@ -314,7 +382,7 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
                 <div key={m.id} style={{ ...sx("display:flex; gap:7px; align-items:flex-end"), flexDirection: mine ? "row-reverse" : "row" }}>
                   {!mine && <AvatarImg id={m.avatar} size={28} />}
                   <div style={{ ...sx("max-width:76%; display:flex; flex-direction:column; gap:2px"), alignItems: mine ? "flex-end" : "flex-start" }}>
-                    {!mine && <span style={sx("font-size:10.5px; color:#8ba8b3; padding:0 4px")}>{displayName(m.avatar, m.from)}</span>}
+                    {!mine && <span style={sx("font-size:10.5px; color:#8ba8b3; padding:0 4px")}>{label(m.from, m.avatar)}</span>}
                     <div style={{ ...sx("padding:8px 11px; border-radius:14px; font-size:13.5px; line-height:1.5; word-break:break-word; white-space:pre-wrap"), background: mine ? "#7a6bc4" : "#f2edfa", color: mine ? "#fff" : "#3a4a72", fontStyle: m.hidden ? "italic" : "normal" }}>
                       {m.hidden ? "안전을 위해 가려진 메시지예요." : m.text}
                     </div>
@@ -376,11 +444,13 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
  *   같은 자리를 동시에 고르면 먼저 온 사람이 앉고, 밀린 사람은 통로를 거쳐 다른 빈자리로 걸어간다.
  * - 다른 사람을 누르면 대화 시트(1:1·차단·신고).
  */
-function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices, onChoose, onPersonTap }: {
+function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices, onChoose, label, onPersonTap }: {
   layout: RoomLayout; rect: Rect; me: string; myJoin: number;
   people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, { text: string; id: string }>;
   /** 들어와서 자리를 고르는 동안만 — 빈자리 번호들(원으로 보인다) · 그 밖엔 null */
   choices: number[] | null; onChoose: (i: number) => void;
+  /** 보이는 이름(내가 지은 이름) */
+  label: (uid: string, avatar: AvatarId) => string;
   onPersonTap: (uid: string) => void;
 }) {
   const actorsRef = useRef<Record<string, Actor>>({});
@@ -557,7 +627,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"} data-space-walking={a.walking ? "1" : "0"}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
-            role={mine ? undefined : "button"} aria-label={mine ? undefined : `${displayName(a.avatar, a.uid)} 님 메뉴`}
+            role={mine ? undefined : "button"} aria-label={mine ? undefined : `${label(a.uid, a.avatar)} 님 메뉴`}
             style={{
               ...sx("position:absolute"),
               left: pt.x - w / 2, top: pt.y - h, width: w, height: h, zIndex: Math.round(pt.y),
@@ -578,7 +648,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
               </div>
             </div>
             <div data-space-name style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:1px 6px; border-radius:999px; font-size:9.5px; font-weight:700; line-height:1.25; white-space:nowrap; color:#fff"), bottom: `calc(100% - ${headGap}px + 1px)`, background: mine ? "rgba(122,107,196,0.92)" : "rgba(14,22,30,0.55)" }}>
-              {displayName(a.avatar, a.uid)}
+              {label(a.uid, a.avatar)}
             </div>
           </div>
         );

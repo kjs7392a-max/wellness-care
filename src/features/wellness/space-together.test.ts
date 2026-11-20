@@ -122,3 +122,31 @@ describe("자리 고르는 중(2026-11-20)", () => {
     expect(ps.find((p) => p.uid === "c")?.at).toBeUndefined();
   });
 });
+
+describe("이름 짓기 규칙(checkNickname)", () => {
+  it("한글·영문·숫자 2~10자 · 앞뒤 공백은 지운다", async () => {
+    const { checkNickname } = await import("./space-together");
+    expect(checkNickname(" 바다빛 ")).toEqual({ ok: true, nickname: "바다빛" });
+    expect(checkNickname("Sky7")).toEqual({ ok: true, nickname: "Sky7" });
+    expect(checkNickname("가")).toEqual({ ok: false, reason: "short" });
+    expect(checkNickname("가".repeat(11))).toEqual({ ok: false, reason: "long" });
+    expect(checkNickname("바다 빛")).toEqual({ ok: false, reason: "chars" });
+    expect(checkNickname("하늘!")).toEqual({ ok: false, reason: "chars" });
+    expect(checkNickname("ㅋㅋㅋ")).toEqual({ ok: false, reason: "chars" });
+  });
+  it("운영자처럼 보이는 이름 · 욕설 · 위험한 말 · 긴 숫자는 안 된다", async () => {
+    const { checkNickname } = await import("./space-together");
+    expect(checkNickname("관리자1")).toEqual({ ok: false, reason: "reserved" });
+    expect(checkNickname("Admin")).toEqual({ ok: false, reason: "reserved" });
+    expect(checkNickname("닥터포레스트")).toEqual({ ok: false, reason: "reserved" });
+    expect(checkNickname("시발")).toEqual({ ok: false, reason: "unsafe" });
+    expect(checkNickname("죽고싶어")).toEqual({ ok: false, reason: "unsafe" });
+    expect(checkNickname("01012345678")).toEqual({ ok: false, reason: "long" });
+    expect(checkNickname("a1234567")).toEqual({ ok: false, reason: "unsafe" });
+  });
+  it("presence 의 pv(이름 바꾼 시각)를 읽는다", async () => {
+    const { presenceList } = await import("./space-together");
+    const [p] = presenceList({ a: [{ uid: "a", avatar: "sol", since: 1, seat: null, pv: 1700 }] });
+    expect(p.pv).toBe(1700);
+  });
+});

@@ -7,7 +7,8 @@ import { createRoomPlayback, createRoomPlaylist, type RoomPlayback, type RoomPla
 import { createMeditationGuide, pickKoreanVoice, type MeditationGuide } from "./meditation-voice";
 import { spaceRealtimeReady } from "./space-config";
 import type { SpaceWho } from "./space-realtime";
-import { AvatarImg, AvatarPicker, loadAvatar, saveAvatar, TogetherLayer } from "./SpaceTogether";
+import { AvatarImg, loadProfileLocal, ProfileEditor, saveProfileLocal, TogetherLayer } from "./SpaceTogether";
+import { loadMyProfile, type SpaceProfile } from "./space-realtime";
 import { avatarOf, type AvatarId } from "./space-avatars";
 
 /**
@@ -147,12 +148,23 @@ const GUEST: SpaceWho = { guest: true, loginId: "" };
 export function SpaceSheet({ onClose, who = GUEST }: { onClose: () => void; who?: SpaceWho }) {
   const [roomId, setRoomId] = useState<SpaceId | null>(null);
   const together = spaceRealtimeReady();
-  // 함께 머물 캐릭터 — 계정은 기기에 아이디별로 · 둘러보기는 이 탭 동안만(SpaceTogether loadAvatar)
-  const [avatar, setAvatar] = useState<AvatarId | null>(() => (together && typeof window !== "undefined" ? loadAvatar(who) : null));
+  // 함께 머물 나(캐릭터 + 내가 지은 이름 · 2026-11-20) — 진짜는 서버(space_profiles), 기기 사본으로 먼저 보여 주고 서버로 맞춘다
+  const [profile, setProfile] = useState<SpaceProfile | null>(() => (together && typeof window !== "undefined" ? loadProfileLocal(who) : null));
   const [changing, setChanging] = useState(false);
-  const pick = (id: AvatarId) => { setAvatar(id); saveAvatar(who, id); setChanging(false); };
-  if (roomId) return <RoomView key={roomId} room={spaceRoom(roomId)} onBack={() => setRoomId(null)} together={together ? { who, avatar, onPickAvatar: pick } : null} />;
-  const mine = avatarOf(avatar);
+  useEffect(() => {
+    if (!together) return;
+    let off = false;
+    loadMyProfile(who).then((p) => {
+      if (off) return;
+      setProfile(p); // 서버에 없으면(처음 · 지운 뒤) 다시 짓게
+      saveProfileLocal(who, p);
+    }).catch(() => { /* 연결이 안 되면 기기 사본 그대로 */ });
+    return () => { off = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [together, who.guest, who.loginId]);
+  const saved = (p: SpaceProfile) => { setProfile(p); setChanging(false); };
+  if (roomId) return <RoomView key={roomId} room={spaceRoom(roomId)} onBack={() => setRoomId(null)} together={together ? { who, profile, onProfile: saved } : null} />;
+  const mine = avatarOf(profile?.avatar);
 
   const enter = (r: SpaceRoom) => {
     if (r.sound) primeAudio();
@@ -176,16 +188,16 @@ export function SpaceSheet({ onClose, who = GUEST }: { onClose: () => void; who?
               <div style={sx("display:flex; align-items:center; gap:12px")}>
                 <AvatarImg id={mine.id} size={44} />
                 <div style={sx("flex:1; min-width:0; display:flex; flex-direction:column; gap:2px")}>
-                  <div style={sx("font-size:14px; font-weight:800; color:#4a3f80")}>{mine.name}(으)로 함께 머물러요</div>
+                  <div data-space-my-profile style={sx("font-size:14px; font-weight:800; color:#4a3f80")}>{profile?.nickname}(으)로 함께 머물러요</div>
                   <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.5")}>같은 공간에 있는 사람들이 서로 보이고 대화할 수 있어요.</div>
                 </div>
                 <button type="button" onClick={() => setChanging(true)} style={sx("flex:none; cursor:pointer; padding:7px 12px; border-radius:999px; border:1.5px solid #cfc5ea; background:#fff; color:#4a3f80; font-size:12px; font-weight:700")}>바꾸기</button>
               </div>
             ) : (
               <>
-                <div style={sx("font-size:14px; font-weight:800; color:#4a3f80")}>함께 머물 캐릭터를 골라 주세요</div>
-                <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.55")}>같은 공간에 들어온 사람끼리 캐릭터가 보이고 대화할 수 있어요. 실명 대신 캐릭터 이름만 보여요.</div>
-                <AvatarPicker value={avatar} onPick={pick} />
+                <div style={sx("font-size:14px; font-weight:800; color:#4a3f80")}>{profile ? "캐릭터와 이름 바꾸기" : "함께 머물 캐릭터를 고르고 이름을 지어 주세요"}</div>
+                <div style={sx("font-size:11.5px; color:#8ba8b3; line-height:1.55")}>같은 공간에 들어온 사람끼리 캐릭터가 보이고 대화할 수 있어요. 실명 대신 내가 지은 이름만 보여요.</div>
+                <ProfileEditor who={who} initial={profile} onSaved={saved} onCancel={profile ? () => setChanging(false) : undefined} />
               </>
             )}
           </div>
@@ -208,7 +220,7 @@ export function SpaceSheet({ onClose, who = GUEST }: { onClose: () => void; who?
   );
 }
 
-function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => void; together: { who: SpaceWho; avatar: AvatarId | null; onPickAvatar: (id: AvatarId) => void } | null }) {
+function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => void; together: { who: SpaceWho; profile: SpaceProfile | null; onProfile: (p: SpaceProfile) => void } | null }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const ref = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -501,7 +513,7 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
         <div style={sx("position:absolute; left:20px; right:20px; bottom:40px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.92); color:#2d5c6e; font-size:13px; line-height:1.5; text-align:center")}>영상을 불러오지 못했어요. 잠시 뒤 다시 들어와 주세요.</div>
       )}
       {/* 함께 머무는 사람(2026-11-20) — 머리줄 아래 알약 + 대화 시트. 이 화면이 사라지면 연결도 끊긴다(TogetherLayer). */}
-      {together && <TogetherLayer who={together.who} room={room.id} avatar={together.avatar} onPickAvatar={together.onPickAvatar} rect={rect} />}
+      {together && <TogetherLayer who={together.who} room={room.id} profile={together.profile} onProfile={together.onProfile} rect={rect} />}
     </div>
   );
 }

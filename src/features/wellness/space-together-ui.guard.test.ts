@@ -13,19 +13,20 @@ const cfg = strip(readFileSync(join(__dirname, "space-config.ts"), "utf8"));
 describe("함께 머무는 사람 — 연결", () => {
   it("연결 정보가 없으면 기능이 안 나온다(spaceRealtimeReady)", () => {
     expect(sheet).toMatch(/const together = spaceRealtimeReady\(\)/);
-    expect(sheet).toMatch(/together \? \{ who, avatar, onPickAvatar: pick \} : null/);
+    expect(sheet).toMatch(/together \? \{ who, profile, onProfile: saved \} : null/);
     expect(sheet).toMatch(/\{together && \(/);
   });
   it("앱이 계정/둘러보기를 넘긴다", () => {
     const line = app.split("\n").find((l) => l.includes("<SpaceSheet onClose=")) ?? "";
     expect(line).toContain("who={{ guest: s.guest, loginId: s.loginId }}");
   });
-  it("모든 채널은 비공개(private) · 익명 로그인 · 둘러보기 세션은 이 탭 동안만", () => {
+  it("모든 채널은 비공개(private) · 익명 로그인 · 둘러보기도 기기에 남아 다음에도 같은 사람(2026-11-20)", () => {
     const channels = rt.match(/sb\.channel\([^\n]*/g) ?? [];
     expect(channels.length).toBeGreaterThanOrEqual(2);
     for (const c of channels) expect(c).toMatch(/private: true/);
     expect(rt).toMatch(/signInAnonymously\(\)/);
-    expect(rt).toMatch(/who\.guest \? window\.sessionStorage : window\.localStorage/);
+    expect(rt).toMatch(/const storage = typeof window === "undefined" \? undefined : window\.localStorage;/);
+    expect(rt).not.toMatch(/sessionStorage/);
   });
   it("🚫 secret·service_role 키를 코드에 두지 않는다", () => {
     expect(cfg + rt).not.toMatch(/service_role|sb_secret_/);
@@ -54,7 +55,7 @@ describe("함께 머무는 사람 — 안전", () => {
   it("🚫 메시지를 기기에 저장하지 않는다 — 저장소에 쓰는 건 고른 캐릭터뿐", () => {
     const writes = ui.match(/setItem\([^)]*\)/g) ?? [];
     expect(writes).toHaveLength(1);
-    expect(writes[0]).toMatch(/AVATAR_KEY/);
+    expect(writes[0]).toMatch(/PROFILE_KEY/); // 내 이름·캐릭터 사본뿐
     expect(rt).not.toMatch(/localStorage\.setItem|sessionStorage\.setItem/);
   });
   it("차단·신고가 있다 · 신고하면 차단도", () => {
@@ -164,9 +165,37 @@ describe("대화 단추(2026-11-20 — 말풍선만)", () => {
 describe("캐릭터 이름(2026-11-20 — 「나」 대신 이름)", () => {
   it("장면 이름표는 나도 남도 캐릭터 이름(다른 사람에게 보이는 그대로) · 내 것만 보라색으로 구분", () => {
     const name = ui.slice(ui.indexOf("data-space-name"), ui.indexOf("data-space-name") + 500);
-    expect(name).toMatch(/\{displayName\(a\.avatar, a\.uid\)\}/);
+    expect(name).toMatch(/\{label\(a\.uid, a\.avatar\)\}/);
     expect(name).not.toMatch(/mine \? "나"/);
     expect(name).toMatch(/background: mine \?/);
-    expect(ui).toMatch(/data-space-my-name[^\n]*displayName\(avatar, me\)/);
+    expect(ui).toMatch(/data-space-my-name[^\n]*profile\?\.nickname/);
+  });
+});
+
+describe("내가 지은 이름(2026-11-20 — 고유한 이름 · 다음에도 그대로)", () => {
+  const sql = readFileSync(join(__dirname, "../../../docs/space-profiles-setup.sql"), "utf8");
+  it("서버 표: 이름은 모두 통틀어 하나뿐(대소문자 무시) · 모양 검사 · 내 것만 만들고 바꾼다 · 읽기는 로그인한 사람", () => {
+    expect(sql).toMatch(/create unique index if not exists space_profiles_nickname_unique on public\.space_profiles \(lower\(nickname\)\)/);
+    expect(sql).toMatch(/check \(nickname ~ '\^\[가-힣A-Za-z0-9\]\{2,10\}\$'\)/);
+    expect(sql).toMatch(/for insert to authenticated\s+with check \(uid = \(select auth\.uid\(\)\)\)/);
+    expect(sql).toMatch(/for update to authenticated\s+using \(uid = \(select auth\.uid\(\)\)\)\s+with check \(uid = \(select auth\.uid\(\)\)\)/);
+    expect(sql).toMatch(/revoke all on public\.space_profiles from anon, authenticated;/);
+    expect(sql).not.toMatch(/for delete/);
+  });
+  it("짓기 전에 앱 규칙(checkNickname)으로 먼저 거르고, 이미 있는 이름이면 다시 짓게", () => {
+    const ed = ui.slice(ui.indexOf("export function ProfileEditor"), ui.indexOf("interface Thread"));
+    expect(ed.indexOf("checkNickname(name)")).toBeLessThan(ed.indexOf("saveMyProfile("));
+    expect(ed).toMatch(/r\.reason === "taken" \? "이미 누가 쓰고 있는 이름이에요/);
+    expect(rt).toMatch(/error\.code === "23505" \? "taken"/);
+  });
+  it("다른 사람 이름은 presence 가 아니라 서버 표에서 uid 로 읽는다(남의 이름 흉내 막기)", () => {
+    expect(ui).toMatch(/void fetchProfiles\(who, need\)/);
+    expect(rt).toMatch(/const presence = \(\) => \(\{ uid, avatar, since, seat, picking, at, pv \}\)/);
+    expect(rt).not.toMatch(/nickname[^\n]*track|track\([^\n]*nickname/);
+  });
+  it("이름을 지어야 함께할 수 있다(캐릭터는 내 프로필에서)", () => {
+    expect(ui).toMatch(/const avatar = profile\?\.avatar \?\? null;/);
+    expect(ui).toMatch(/<ProfileEditor who=\{who\} initial=\{profile\}/);
+    expect(sheet).toMatch(/loadMyProfile\(who\)/);
   });
 });
