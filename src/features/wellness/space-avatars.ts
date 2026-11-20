@@ -112,11 +112,12 @@ export function avatarSvg(id: AvatarId): string {
 }
 
 /** sit = 바닥에 책상다리(방석·좌복) · pew = 장의자에 앉은 윗몸(아래는 등받이에 가림) · walk = 걷기 */
-export type FigurePose = "sit" | "pew" | "walk";
+/** stand = 걷는 모습 그대로 멈춰 선 것(일어선 뒤·앉기 직전 잠깐) */
+export type FigurePose = "sit" | "pew" | "walk" | "stand";
 /** 그림 방향 — front 앞모습 · back 뒷모습 · side 옆모습(오른쪽을 봄 · 왼쪽은 화면에서 좌우 뒤집기) */
 export type FigureFacing = "front" | "back" | "side";
 /** 장면 속 전신 그림의 가로:세로 — 앉음 100×126 · 장의자 100×104(가슴께에서 잘림) · 걸음 100×150 (방향과 상관없이 같다) */
-export const FIGURE_VIEW: Record<FigurePose, { w: number; h: number }> = { sit: { w: 100, h: 126 }, pew: { w: 100, h: 104 }, walk: { w: 100, h: 150 } };
+export const FIGURE_VIEW: Record<FigurePose, { w: number; h: number }> = { sit: { w: 100, h: 126 }, pew: { w: 100, h: 104 }, walk: { w: 100, h: 150 }, stand: { w: 100, h: 150 } };
 
 const dotsSvg = (dots: readonly [number, number, number][], fill: string) => dots.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}"/>`).join("");
 
@@ -170,26 +171,26 @@ function headSide(a: AvatarDef): string {
 
 /**
  * 걷기 한 주기(2026-11-20 사용자 "귀신도 아니고 스르르 움직이지 말고 세밀하게 걷는 것처럼") — 그림 안 CSS.
- * 0.52초에 두 걸음. 0% = 이 다리 뒤꿈치가 닿는 순간 · 반대 다리는 반 주기 늦게.
+ * 1.1초에 두 걸음(같은 날 "너무 빨라 · 천천히 자연스럽게" → 0.52초에서 늦춤 · 조용한 공간의 느린 걸음). 0% = 이 다리 뒤꿈치가 닿는 순간 · 반대 다리는 반 주기 늦게.
  * - 옆모습: 허벅지(엉덩이 축)와 정강이(무릎 축)를 따로 돌린다 — 디딜 땐 펴고, 뒤로 차올린 뒤 무릎을 접어 앞으로 내딛는다.
  * - 앞·뒷모습: 내딛는 다리는 길어 보이고(가까움), 들어 올리는 다리는 짧아진다(무릎이 앞으로) · 몸이 디딘 발 쪽으로 살짝 실린다.
  * - 팔은 반대쪽 다리와 함께 · 몸은 발이 닿을 때 내려가고 한 발로 설 때 올라간다(두 걸음에 두 번).
  * 화면의 이동 빠르기(space-seats WALK_SPEED_H)를 이 주기에 맞춰 발이 미끄러져 보이지 않게 했다.
  */
-export const WALK_CYCLE_S = 0.52;
+export const WALK_CYCLE_S = 1.1;
 function walkStyle(facing: FigureFacing): string {
   const T = `${WALK_CYCLE_S}s`, half = `-${WALK_CYCLE_S / 2}s`;
   const run = (name: string, ease = "linear") => `animation:${name} ${T} ${ease} infinite`;
   const common = [
-    `@keyframes bob{0%,50%,100%{transform:translateY(${facing === "side" ? 3 : 2}px)}25%,75%{transform:translateY(0)}}`,
+    `@keyframes bob{0%,50%,100%{transform:translateY(${facing === "side" ? 2.2 : 1.6}px)}25%,75%{transform:translateY(0)}}`,
     `.w{${run("bob", "ease-in-out")}}`,
   ];
   const side = [
     // 허벅지: 앞(-) ↔ 뒤(+) · 정강이: 무릎 굽힘(+)
-    `@keyframes th{0%{transform:rotate(-24deg)}15%{transform:rotate(-17deg)}50%{transform:rotate(21deg)}62%{transform:rotate(13deg)}82%{transform:rotate(-16deg)}100%{transform:rotate(-24deg)}}`,
-    `@keyframes kn{0%{transform:rotate(0)}12%{transform:rotate(12deg)}35%{transform:rotate(3deg)}50%{transform:rotate(16deg)}64%{transform:rotate(60deg)}80%{transform:rotate(32deg)}94%{transform:rotate(3deg)}100%{transform:rotate(0)}}`,
-    `@keyframes ar{0%{transform:rotate(24deg)}50%{transform:rotate(-24deg)}100%{transform:rotate(24deg)}}`,
-    `@keyframes fa{0%{transform:rotate(-6deg)}50%{transform:rotate(-30deg)}100%{transform:rotate(-6deg)}}`,
+    `@keyframes th{0%{transform:rotate(-20deg)}15%{transform:rotate(-15deg)}50%{transform:rotate(18deg)}62%{transform:rotate(11deg)}82%{transform:rotate(-13deg)}100%{transform:rotate(-20deg)}}`,
+    `@keyframes kn{0%{transform:rotate(0)}12%{transform:rotate(9deg)}35%{transform:rotate(2deg)}50%{transform:rotate(12deg)}64%{transform:rotate(48deg)}80%{transform:rotate(26deg)}94%{transform:rotate(2deg)}100%{transform:rotate(0)}}`,
+    `@keyframes ar{0%{transform:rotate(15deg)}50%{transform:rotate(-15deg)}100%{transform:rotate(15deg)}}`,
+    `@keyframes fa{0%{transform:rotate(-5deg)}50%{transform:rotate(-20deg)}100%{transform:rotate(-5deg)}}`,
     `.tn,.tf{transform-origin:50.5px 102px;${run("th")}}`,
     `.sn,.sf{transform-origin:50.5px 121px;${run("kn")}}`,
     `.an,.af{transform-origin:50.5px 74px;${run("ar", "ease-in-out")}}`,
@@ -204,7 +205,7 @@ function walkStyle(facing: FigureFacing): string {
     : `@keyframes am{0%{transform:scaleY(.86)}50%{transform:scaleY(1.02)}100%{transform:scaleY(.86)}}`;
   const frontBack = [
     lift, armK,
-    `@keyframes sw{0%,50%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-1.4px) rotate(-1.3deg)}75%{transform:translateX(1.4px) rotate(1.3deg)}}`,
+    `@keyframes sw{0%,50%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-1px) rotate(-.9deg)}75%{transform:translateX(1px) rotate(.9deg)}}`,
     `.sw{transform-origin:50px 145px;${run("sw", "ease-in-out")}}`,
     `.ll{transform-origin:43.5px 102px;${run("lg")}}`,
     `.lr{transform-origin:56.5px 102px;${run("lg")};animation-delay:${half}}`,
@@ -226,8 +227,9 @@ export function figureSvg(id: AvatarId, pose: FigurePose, facing: FigureFacing =
   const sleeve = shade(a.shirt, 0.92);
   const shoe = "#3a3236";
   const v = FIGURE_VIEW[pose];
+  const upright = pose === "walk" || pose === "stand";
   const collar = `<path d="M43 68.5L50 75L57 68.5" fill="none" stroke="${shade(a.shirt, 0.82)}" stroke-width="2" stroke-linejoin="round"/>`;
-  const torso = `<path d="M33 76Q33 68 42 68H58Q67 68 67 76L${pose === "walk" ? "69 106H31" : "68 103H32"}Z" fill="${a.shirt}"/>`;
+  const torso = `<path d="M33 76Q33 68 42 68H58Q67 68 67 76L${upright ? "69 106H31" : "68 103H32"}Z" fill="${a.shirt}"/>`;
   const neckRect = `<rect x="43" y="57" width="14" height="14" rx="5" fill="${neck}"/>`;
   let parts: string[];
   if (pose === "pew") {
@@ -250,7 +252,7 @@ export function figureSvg(id: AvatarId, pose: FigurePose, facing: FigureFacing =
     }
   } else if (facing === "side") {
     const sideNeck = `<rect x="45" y="57" width="11" height="14" rx="5" fill="${neck}"/>`;
-    if (pose === "walk") {
+    if (upright) {
       const backPants = shade(a.pants, 0.8), backSleeve = shade(a.shirt, 0.8), backSkin = shade(a.skin, 0.92);
       // 다리 = 허벅지(엉덩이 50.5,102) + 정강이(무릎 50.5,121) + 발(앞쪽으로) · 팔 = 위팔(어깨 50.5,74) + 아래팔(팔꿈치 50.5,89)
       const leg = (t: string, k: string, fill: string) =>
@@ -258,7 +260,7 @@ export function figureSvg(id: AvatarId, pose: FigurePose, facing: FigureFacing =
       const arm = (u: string, l: string, fill: string, hand: string) =>
         `<g class="${u}"><rect x="46" y="71" width="9" height="20" rx="4.5" fill="${fill}"/><g class="${l}"><rect x="46.4" y="86" width="8.2" height="18" rx="4.1" fill="${fill}"/><circle cx="50.5" cy="105.5" r="4.4" fill="${hand}"/></g></g>`;
       parts = [
-        walkStyle("side"),
+        pose === "walk" ? walkStyle("side") : "",
         `<g class="w">`,
         leg("tf", "sf", backPants),
         arm("af", "ef", backSleeve, backSkin),
@@ -279,12 +281,12 @@ export function figureSvg(id: AvatarId, pose: FigurePose, facing: FigureFacing =
         headSide(a),
       ];
     }
-  } else if (pose === "walk") {
+  } else if (upright) {
     // 다리 = 엉덩이(43.5|56.5, 102)에서 내려온 다리 + 발 · 팔 = 어깨에서 · 앞·뒤 흔들림은 길이(원근)로
     const leg = (c: string, x: number, cx: number) =>
       `<g class="${c}"><rect x="${x}" y="100" width="11" height="40" rx="5" fill="${a.pants}"/><path d="M${x + 1} 128H${x + 10}" stroke="${shade(a.pants, 0.82)}" stroke-width="1.2"/><ellipse cx="${cx}" cy="141" rx="7" ry="4" fill="${shoe}"/></g>`;
     parts = [
-      walkStyle(facing),
+      pose === "walk" ? walkStyle(facing) : "",
       `<g class="w"><g class="sw">`,
       facing === "front" ? hairBack(a) : "",
       leg("ll", 38, 43.5), leg("lr", 51, 56.5),

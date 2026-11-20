@@ -325,6 +325,8 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
 interface Actor {
   uid: string; avatar: AvatarId;
   pos: ScenePt; ms: number; head: Heading;
+  /** 이번 구간의 빠르기 곡선 — 처음은 천천히 출발, 마지막은 천천히 멈춘다 */
+  ease: string;
   /** 장의자 줄 안 — 아랫몸이 등받이에 가린다 */
   clip: boolean;
   walking: boolean;
@@ -332,6 +334,14 @@ interface Actor {
   seat: number;
   leaving: boolean;
 }
+
+/** 걷기 빠르기 곡선(2026-11-20 "자연스럽게") — 출발은 천천히, 멈출 땐 천천히. 이어지는 쪽 끝은 기울기 1(직선 구간과 매끄럽게). */
+const EASE_START = "cubic-bezier(.45,0,.75,.75)";
+const EASE_STOP = "cubic-bezier(.25,.25,.55,1)";
+const EASE_BOTH = "cubic-bezier(.42,0,.58,1)";
+/** 일어선 뒤 걷기 전 · 도착해서 앉기 전 잠깐 서 있는 시간 */
+const STAND_PAUSE_MS = 600;
+const SIT_PAUSE_MS = 450;
 
 const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
 
@@ -389,59 +399,78 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onPerson
   const drop = (uid: string) => { clearTimeout(timers.current[uid]); const n = { ...actorsRef.current }; delete n[uid]; actorsRef.current = n; redraw(); };
   const headTo = (from: ScenePt, to: ScenePt | undefined, fallback: Heading) => (to ? walkHeading(screenOf(from), screenOf(to)) : fallback);
 
-  /** 길(ways)을 구간마다 걷는다 — 가는 쪽을 보고, 키에 맞는 빠르기로. 시작 모습이 한 번 그려진 뒤 출발(transition 이 걸리게). */
-  const walk = (uid: string, ways: Way[], end: () => void) => {
+  /**
+   * 길(ways)을 구간마다 걷는다 — 가는 쪽을 보고, 키에 맞는 빠르기로(2026-11-20 "천천히 자연스럽게").
+   * 처음 구간은 천천히 출발하고 마지막 구간은 천천히 멈춘다(곡선만큼 조금 더 오래) · 멈춰 선 동안은 서 있는 모습(stand).
+   * pauseMs = 출발 전에 서 있는 시간(일어선 뒤 잠깐) · 시작 모습이 한 번 그려진 뒤 출발해야 transition 이 걸린다.
+   */
+  const walk = (uid: string, ways: Way[], end: () => void, pauseMs = 60) => {
     clearTimeout(timers.current[uid]);
     let k = 0;
     const next = () => {
       const cur = actorsRef.current[uid];
       if (!cur) return;
-      if (k >= ways.length) { end(); return; }
+      if (k >= ways.length) { patch(uid, { ms: 0 }); end(); return; }
+      const first = k === 0, last = k === ways.length - 1;
       const w = ways[k++];
       const from = screenOf(cur.pos), to = screenOf(w.to);
-      const ms = still ? 0 : walkMs(from, to, (walkH(cur.pos.s) + walkH(w.to.s)) / 2);
-      patch(uid, { pos: w.to, ms, clip: w.clip, walking: true, head: ms > 0 ? walkHeading(from, to) : cur.head });
+      const base = still ? 0 : walkMs(from, to, (walkH(cur.pos.s) + walkH(w.to.s)) / 2);
+      const ease = first && last ? EASE_BOTH : first ? EASE_START : last ? EASE_STOP : "linear";
+      const ms = Math.round(base * (ease === "linear" ? 1 : ease === EASE_BOTH ? 1.2 : 1.1));
+      patch(uid, { pos: w.to, ms, ease, clip: w.clip, walking: true, head: ms > 0 ? walkHeading(from, to) : cur.head });
       timers.current[uid] = setTimeout(next, ms);
     };
-    timers.current[uid] = setTimeout(next, still ? 0 : 60);
+    timers.current[uid] = setTimeout(next, still ? 0 : pauseMs);
   };
-  const sitDown = (uid: string, seat: number) => patch(uid, { pos: sitPoint(layout, seat), ms: 0, clip: false, walking: false, seat });
+  /** 도착하면 잠깐 섰다가 앉는다 */
+  const sitDown = (uid: string, seat: number) => {
+    clearTimeout(timers.current[uid]);
+    timers.current[uid] = setTimeout(() => patch(uid, { pos: sitPoint(layout, seat), ms: 0, clip: false, walking: false, seat }), still ? 0 : SIT_PAUSE_MS);
+  };
 
   const enter = (p: Presence, seat: number) => {
     clearTimeout(timers.current[p.uid]);
     const walkIn = !still && (p.uid === me || p.since > myJoin + 1500);
     if (!walkIn) {
-      put({ uid: p.uid, avatar: p.avatar, pos: sitPoint(layout, seat), ms: 0, head: seatHeading(layout, seat), clip: false, walking: false, seat, leaving: false });
+      put({ uid: p.uid, avatar: p.avatar, pos: sitPoint(layout, seat), ms: 0, ease: "linear", head: seatHeading(layout, seat), clip: false, walking: false, seat, leaving: false });
       return;
     }
     const ways = routeIn(layout, seat), door = doorPoint(layout);
-    put({ uid: p.uid, avatar: p.avatar, pos: door, ms: 0, head: headTo(door, ways[0]?.to, seatHeading(layout, seat)), clip: false, walking: true, seat, leaving: false });
+    put({ uid: p.uid, avatar: p.avatar, pos: door, ms: 0, ease: "linear", head: headTo(door, ways[0]?.to, seatHeading(layout, seat)), clip: false, walking: true, seat, leaving: false });
     walk(p.uid, ways, () => sitDown(p.uid, seat));
+  };
+  /** 걷던 사람이 지금 향하던 길목에서 통로까지 되짚는 길(입구는 빼고) */
+  const backToAisle = (a: Actor): Way[] => {
+    const inn = routeIn(layout, a.seat);
+    const j = inn.findIndex((w) => w.to.x === a.pos.x && w.to.y === a.pos.y && !a.pos.door);
+    const ways: Way[] = [];
+    for (let k = j - 1; k >= 0; k--) ways.push({ to: inn[k].to, clip: inn[k + 1].clip });
+    return ways;
   };
   const leave = (uid: string) => {
     const a = actorsRef.current[uid];
     if (!a || a.leaving) return;
     if (still) { drop(uid); return; }
-    if (a.walking) { // 걷던 중 — 그 자리에서 곧장 입구로
+    if (a.walking) { // 걷던 중 — 온 길을 되짚어(장의자를 가로지르지 않게) 입구로
       patch(uid, { leaving: true });
-      walk(uid, [{ to: doorPoint(layout), clip: false }], () => drop(uid));
+      walk(uid, [...backToAisle(a), { to: doorPoint(layout), clip: false }], () => drop(uid));
       return;
     }
     const out = routeOut(layout, a.seat); // 일어선다 → 들어온 길을 거꾸로
     patch(uid, { leaving: true, walking: true, ms: 0, pos: out.stand.to, clip: out.stand.clip, head: headTo(out.stand.to, out.ways[0]?.to, a.head) });
-    walk(uid, out.ways, () => drop(uid));
+    walk(uid, out.ways, () => drop(uid), STAND_PAUSE_MS);
   };
   const reseat = (uid: string, seat: number) => {
     const a = actorsRef.current[uid];
     if (!a) return;
-    if (a.walking) { // 걷던 중 — 새 자리로 들어가는 길 끝부분만
+    if (a.walking) { // 걷던 중 — 온 길을 되짚어 통로로 나온 뒤 새 자리로
       patch(uid, { seat });
-      walk(uid, routeIn(layout, seat).slice(-2), () => sitDown(uid, seat));
+      walk(uid, [...backToAisle(a), ...routeIn(layout, seat)], () => sitDown(uid, seat));
       return;
     }
     const mv = routeMove(layout, a.seat, seat);
     patch(uid, { seat, walking: true, ms: 0, pos: mv.stand.to, clip: mv.stand.clip, head: headTo(mv.stand.to, mv.ways[0]?.to, a.head) });
-    walk(uid, mv.ways, () => sitDown(uid, seat));
+    walk(uid, mv.ways, () => sitDown(uid, seat), STAND_PAUSE_MS);
   };
 
   // 사람 목록·자리가 바뀔 때 — 새로 온 사람 · 자리가 밀린 사람 · 나간 사람
@@ -465,21 +494,21 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onPerson
       <style>{`@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@media (prefers-reduced-motion:reduce){[data-space-actor] *{animation:none!important}}`}</style>
       {Object.values(actorsRef.current).map((a) => {
         // 걷기 · 앉으면 방석·좌복은 책상다리, 교회·성당 장의자는 윗몸만(등받이에 가림)
-        const pose: FigurePose = a.walking ? "walk" : layout.sitOn === "pew" ? "pew" : "sit";
+        const pose: FigurePose = a.walking ? (a.ms > 0 ? "walk" : "stand") : layout.sitOn === "pew" ? "pew" : "sit";
         // 앉으면 방에 맞게(불당·교회·성당 = 앞을 봄 → 뒷모습 · 명상룸 = 마주 봄 → 옆모습), 걸을 땐 가는 쪽
         const heading = a.walking ? a.head : seatHeading(layout, a.seat);
         const pt = screenOf(a.pos);
         const base = figureHeight(rect, a.pos.s);
         const h = Math.round((base * FIGURE_VIEW[pose].h) / FIGURE_VIEW.sit.h);
         const w = Math.round((base * FIGURE_VIEW.sit.w) / FIGURE_VIEW.sit.h);
-        const t = a.ms > 0 ? `${a.ms}ms linear` : "0s";
+        const t = a.ms > 0 ? `${a.ms}ms ${a.ease}` : "0s";
         // 장의자 줄 안에선 sink 만큼(발~정강이) 잘라 등받이에 가린 것처럼
         const cut = a.clip ? ((a.pos.sink ?? 0) * FIGURE_VIEW.sit.h) / FIGURE_VIEW[pose].h : 0;
         const mine = a.uid === me;
         const bubble = bubbles[a.uid];
         const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
         // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
-        const headGap = Math.round(h * (pose === "walk" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
+        const headGap = Math.round(h * (pose === "walk" || pose === "stand" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"} data-space-walking={a.walking ? "1" : "0"}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}

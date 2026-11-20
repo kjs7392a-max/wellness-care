@@ -83,12 +83,17 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(scene).toMatch(/const ways = routeIn\(layout, seat\), door = doorPoint\(layout\)/);
     expect(scene).toMatch(/walk\(p\.uid, ways, \(\) => sitDown\(p\.uid, seat\)\)/);
     expect(scene).toMatch(/const out = routeOut\(layout, a\.seat\)/);
-    expect(scene).toMatch(/walk\(uid, out\.ways, \(\) => drop\(uid\)\)/);
+    expect(scene).toMatch(/walk\(uid, out\.ways, \(\) => drop\(uid\), STAND_PAUSE_MS\)/);
+    expect(scene).toMatch(/walk\(uid, \[\.\.\.backToAisle\(a\), \{ to: doorPoint\(layout\), clip: false \}\]/); // 걷던 중에 나가도 통로로
     expect(scene).toMatch(/if \(p\.y >= 1\) y = Math\.max\(y, h \+ walkH\(p\.s\) \+ 8\)/); // 입구는 화면 밖
   });
   it("🚫 귀신처럼 흐려지며 사라지지 않는다 · 걸음 빠르기는 키에 맞춘다", () => {
     expect(scene).not.toMatch(/opacity/);
     expect(scene).toMatch(/walkMs\(from, to, \(walkH\(cur\.pos\.s\) \+ walkH\(w\.to\.s\)\) \/ 2\)/);
+    // 천천히 출발 · 천천히 멈춤 · 일어서서/도착해서 잠깐 서 있기
+    expect(scene).toMatch(/const ease = first && last \? EASE_BOTH : first \? EASE_START : last \? EASE_STOP : "linear"/);
+    expect(scene).toMatch(/const t = a\.ms > 0 \? `\$\{a\.ms\}ms \$\{a\.ease\}` : "0s"/);
+    expect(scene).toMatch(/a\.walking \? \(a\.ms > 0 \? "walk" : "stand"\)/);
     expect(scene).not.toMatch(/wcBob/); // 몸 오르내림은 그림 속 걸음과 같은 박자(space-avatars walkStyle)
   });
   it("움직임 줄이기 설정을 따른다", () => {
@@ -126,7 +131,7 @@ describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
 
 describe("함께 머무는 사람 — 교회·성당 장의자(2026-11-20)", () => {
   it("앉으면 방의 sitOn 대로(pew 면 윗몸만) · 장의자·줄 안에선 바닥 그림자 없음 · 줄 안을 걸을 땐 아랫몸을 자른다", () => {
-    expect(ui).toMatch(/const pose: FigurePose = a\.walking \? "walk" : layout\.sitOn === "pew" \? "pew" : "sit"/);
+    expect(ui).toMatch(/const pose: FigurePose = a\.walking \? \(a\.ms > 0 \? "walk" : "stand"\) : layout\.sitOn === "pew" \? "pew" : "sit"/);
     expect(ui).toMatch(/\{!a\.clip && pose !== "pew" && <div style=\{\{ \.\.\.sx\("position:absolute; left:15%; right:15%; bottom:-3px/);
     expect(ui).toMatch(/const cut = a\.clip \? \(\(a\.pos\.sink \?\? 0\) \* FIGURE_VIEW\.sit\.h\) \/ FIGURE_VIEW\[pose\]\.h : 0/);
   });
