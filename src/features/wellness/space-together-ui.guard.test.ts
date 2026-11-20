@@ -150,3 +150,13 @@ describe("함께 머무는 사람 — 교회·성당 장의자(2026-11-20)", () 
     expect(ui).toMatch(/const cut = a\.clip \? \(\(a\.pos\.sink \?\? 0\) \* FIGURE_VIEW\.sit\.h\) \/ FIGURE_VIEW\[pose\]\.h : 0/);
   });
 });
+
+describe("대화 단추(2026-11-20 — 말풍선만)", () => {
+  it("🚫 「아직 혼자예요」「n명과 함께」 같은 글을 화면에 쓰지 않는다 · 말풍선 그림 + 새 메시지 숫자 · 읽는 이름은 aria-label", () => {
+    const pill = ui.slice(ui.indexOf("const pill = ("), ui.indexOf("const pill = (") + 1400);
+    expect(ui).not.toMatch(/아직 혼자예요|명과 함께 · 대화|함께하기 · 캐릭터 고르기/);
+    expect(pill).toMatch(/<ChatBubbleIcon \/>/);
+    expect(pill).toMatch(/aria-label=\{pillLabel\}/);
+    expect(pill).toMatch(/unread > 0 &&/);
+  });
+});

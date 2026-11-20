@@ -62,7 +62,7 @@ interface Thread { avatar: AvatarId | null; messages: (ChatMessage & { hidden?: 
 
 /**
  * 공간 안 — 머리줄 아래 「함께 있는 사람」 알약 + 대화 시트. 공간을 나가면(화면이 사라지면) 연결도 끊는다.
- * avatar 가 없으면 알약이 「함께하기」 → 고르기 시트.
+ * 대화 단추는 말풍선 그림만(글자 없음) · avatar 가 없으면 누르면 캐릭터 고르기 시트.
  */
 export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: SpaceWho; room: SpaceId; avatar: AvatarId | null; onPickAvatar: (id: AvatarId) => void; rect: Rect }) {
   const [status, setStatus] = useState<RoomStatus>("connecting");
@@ -236,23 +236,13 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
   const dmPeers = Object.keys(threads).filter((p) => !blocked.has(p));
 
   // ── 알약(머리줄 아래) ──
+  // 대화 단추 — 말풍선 그림만(2026-11-20 사용자 "아직 혼자예요 같은 말은 필요 없어 · 말풍선만") · 새 메시지는 빨간 숫자
+  const pillLabel = !avatar ? "함께하기 — 캐릭터 고르기" : status === "error" ? "대화 — 연결하지 못했어요" : `대화${peopleShown.length ? ` — ${peopleShown.length}명과 함께` : ""}${unread ? ` · 새 메시지 ${unread}개` : ""}`;
   const pill = (
-    <button type="button" data-space-together-pill onClick={() => (avatar ? openSheet() : setPicking(true))}
-      style={sx("position:absolute; left:14px; top:100px; z-index:3; cursor:pointer; display:flex; align-items:center; gap:8px; padding:5px 12px 5px 6px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:rgba(14,22,30,0.42); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff")}>
-      {avatar ? (
-        <>
-          <span style={sx("display:flex; align-items:center")}>
-            <AvatarImg id={avatar} size={26} ring="#fff" />
-            {peopleShown.slice(0, 4).map((p) => <span key={p.uid} style={sx("margin-left:-8px; display:flex")}><AvatarImg id={p.avatar} size={26} ring="rgba(255,255,255,0.85)" /></span>)}
-          </span>
-          <span style={sx("font-size:12px; font-weight:700; white-space:nowrap")}>
-            {status === "connecting" ? "함께하기 연결 중…" : status === "error" ? "연결하지 못했어요" : peopleShown.length ? `${peopleShown.length}명과 함께 · 대화` : "아직 혼자예요 · 대화"}
-          </span>
-          {unread > 0 && <span aria-label={`새 메시지 ${unread}개`} style={sx("min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#ef7f6a; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center")}>{unread > 99 ? "99+" : unread}</span>}
-        </>
-      ) : (
-        <span style={sx("font-size:12px; font-weight:700; padding-left:6px")}>👥 함께하기 · 캐릭터 고르기</span>
-      )}
+    <button type="button" data-space-together-pill aria-label={pillLabel} title={pillLabel} onClick={() => (avatar ? openSheet() : setPicking(true))}
+      style={{ ...sx("position:absolute; left:14px; top:100px; z-index:3; cursor:pointer; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid rgba(255,255,255,0.4); background:rgba(14,22,30,0.42); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px)"), opacity: avatar && status !== "live" ? 0.55 : 1 }}>
+      <ChatBubbleIcon />
+      {unread > 0 && <span aria-hidden style={sx("position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#ef7f6a; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; border:1.5px solid #fff")}>{unread > 99 ? "99+" : unread}</span>}
     </button>
   );
 
@@ -592,6 +582,16 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
         );
       })}
     </div>
+  );
+}
+
+/** 말풍선 그림(대화 단추) */
+function ChatBubbleIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.5c-4.97 0-9 3.36-9 7.5 0 2.3 1.25 4.36 3.2 5.73-.12 1.13-.6 2.27-1.45 3.27 1.86-.1 3.37-.76 4.4-1.58.9.25 1.86.38 2.85.38 4.97 0 9-3.36 9-7.5s-4.03-7.8-9-7.8Z" fill="#fff" />
+      <circle cx="8.2" cy="11.2" r="1.15" fill="#4a5a72" /><circle cx="12" cy="11.2" r="1.15" fill="#4a5a72" /><circle cx="15.8" cy="11.2" r="1.15" fill="#4a5a72" />
+    </svg>
   );
 }
 
