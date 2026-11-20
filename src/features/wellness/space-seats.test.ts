@@ -83,3 +83,15 @@ describe("장면 속 캐릭터 그림(figureSrc)", () => {
     }
   });
 });
+
+describe("말풍선 가장자리 밀기(bubbleShift)", () => {
+  it("가운데면 그대로, 오른쪽 끝이면 왼쪽으로, 왼쪽 끝이면 오른쪽으로", async () => {
+    const { bubbleShift } = await import("./space-seats");
+    expect(bubbleShift(200, "안녕하세요", 400)).toBe(0);
+    expect(bubbleShift(390, "같이 명상해요 🙂", 400)).toBeLessThan(0);
+    expect(bubbleShift(10, "같이 명상해요 🙂", 400)).toBeGreaterThan(0);
+    expect(bubbleShift(390, "안녕", 0)).toBe(0); // 폭을 아직 모르면 안 민다
+    const t = "가".repeat(30), sh = bubbleShift(395, t, 400);
+    expect(395 + sh + 75).toBeLessThanOrEqual(394); // 최대 폭 150 — 오른쪽 6px 안쪽
+  });
+});

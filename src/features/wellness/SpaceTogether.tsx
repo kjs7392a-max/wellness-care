@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sx } from "./sx";
 import { AVATARS, avatarOf, avatarSrc, figureSrc, FIGURE_VIEW, type AvatarId } from "./space-avatars";
-import { BUBBLE_MS, bubbleText, figureHeight, resolveSeats, ROOM_LAYOUT, toScreen, walkMs, type Rect, type RoomLayout } from "./space-seats";
+import { BUBBLE_MS, bubbleShift, bubbleText, figureHeight, resolveSeats, ROOM_LAYOUT, toScreen, walkMs, type Rect, type RoomLayout } from "./space-seats";
 import { CHAT_NOTICE, checkOutgoing, createRateLimiter, displayName, MAX_MESSAGE, REPORT_REASONS, type ChatMessage, type Presence, type ReportReason } from "./space-together";
 import { joinRoom, type RoomSession, type RoomStatus, type SpaceWho } from "./space-realtime";
 import { RISK_REPLY } from "./risk";
@@ -346,6 +346,18 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
   const rectRef = useRef(rect); rectRef.current = rect;
   const still = useMemo(() => reducedMotion(), []);
   useEffect(() => () => { for (const t of Object.values(timers.current)) clearTimeout(t); }, []);
+  // 화면 폭 — 가장자리 자리의 말풍선이 잘리지 않게 안쪽으로 민다
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [boxW, setBoxW] = useState(0);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    setBoxW(el.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setBoxW(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const px = (loc: Loc) => toScreen(rectRef.current, loc.kind === "seat" ? layout.seats[loc.i] : layout.door);
   const arriveLater = (uid: string, ms: number, leaving: boolean) => {
@@ -428,7 +440,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
   const mySeated = !!me && seats.get(me) !== null && seats.get(me) !== undefined;
 
   return (
-    <div data-space-scene aria-hidden={false} style={sx("position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden")}>
+    <div ref={boxRef} data-space-scene style={sx("position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden")}>
       <style>{`@keyframes wcBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@media (prefers-reduced-motion:reduce){[data-space-actor] *{animation:none!important}}`}</style>
       {/* 빈자리 — 누르면 옮겨 앉는다(내가 앉아 있을 때만) */}
       {mySeated && layout.seats.map((seat, i) => {
@@ -451,6 +463,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
         const t = a.moving ? `${a.ms}ms linear` : "0s";
         const mine = a.uid === me;
         const bubble = bubbles[a.uid];
+        const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
@@ -462,7 +475,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
               pointerEvents: mine || a.leaving ? "none" : "auto", cursor: mine ? "default" : "pointer",
             }}>
             {bubble && !a.leaving && (
-              <div data-space-bubble style={sx("position:absolute; bottom:100%; margin-bottom:4px; left:50%; transform:translateX(-50%); max-width:150px; width:max-content; padding:5px 9px; border-radius:12px; background:rgba(255,255,255,0.95); color:#3a4a72; font-size:11.5px; font-weight:600; line-height:1.4; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; text-align:center")}>
+              <div data-space-bubble style={{ ...sx("position:absolute; bottom:100%; margin-bottom:4px; left:50%; max-width:150px; width:max-content; padding:5px 9px; border-radius:12px; background:rgba(255,255,255,0.95); color:#3a4a72; font-size:11.5px; font-weight:600; line-height:1.4; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; text-align:center"), transform: `translateX(calc(-50% + ${shift}px))` }}>
                 {bubble.text}
               </div>
             )}

@@ -96,3 +96,12 @@ export function bubbleText(text: string, max = 26): string {
   const chars = [...text];
   return chars.length > max ? `${chars.slice(0, max).join("")}…` : text;
 }
+
+/** 말풍선이 화면 밖으로 나가지 않게 가로로 밀 거리(px) — 폭은 글자 수로 어림 */
+export function bubbleShift(centerX: number, text: string, boxW: number, pad = 6): number {
+  if (!(boxW > 0)) return 0;
+  const half = Math.min(150, 18 + [...text].length * 11.5) / 2;
+  if (centerX + half > boxW - pad) return Math.round(boxW - pad - half - centerX);
+  if (centerX - half < pad) return Math.round(pad + half - centerX);
+  return 0;
+}
