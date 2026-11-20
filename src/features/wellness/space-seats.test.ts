@@ -57,10 +57,10 @@ describe("화면 계산", () => {
   it("영상 비율 → 화면 px", () => {
     expect(toScreen(rect, { x: 0.5, y: 0.5 })).toEqual({ x: 190, y: 410 });
   });
-  it("멀수록 작게 · 걸음 시간은 캐릭터 키에 맞춘다(키 0.33배/초 — 천천히)", () => {
+  it("멀수록 작게 · 걸음 시간은 캐릭터 키에 맞춘다(키 0.5배/초 — 천천히)", () => {
     expect(figureHeight(rect, 0.8)).toBeLessThan(figureHeight(rect, 1.1));
-    expect(walkMs({ x: 0, y: 0 }, { x: 33, y: 0 }, 100)).toBe(1000);
-    expect(walkMs({ x: 0, y: 0 }, { x: 33, y: 0 }, 50)).toBe(2000); // 멀리 있는(작은) 사람은 화면에서 천천히
+    expect(walkMs({ x: 0, y: 0 }, { x: 50, y: 0 }, 100)).toBe(1000);
+    expect(walkMs({ x: 0, y: 0 }, { x: 50, y: 0 }, 50)).toBe(2000); // 멀리 있는(작은) 사람은 화면에서 천천히
     expect(walkMs({ x: 0, y: 0 }, { x: 0.2, y: 0 }, 100)).toBe(0);
     expect(walkMs({ x: 0, y: 0 }, { x: 5, y: 0 }, 100)).toBe(300);
     expect(walkMs({ x: 0, y: 0 }, { x: 99999, y: 0 }, 100)).toBe(24000);
@@ -216,7 +216,7 @@ describe("걷는 그림(2026-11-20 — 스르르가 아니라 걸음)", () => {
     const side = figureSvg("bada", "walk", "side");
     for (const k of ["@keyframes th", "@keyframes kn", "@keyframes ar", "@keyframes bob", 'class="tn"', 'class="sn"', 'class="tf"', 'class="sf"', 'class="an"', 'class="af"', 'class="w"']) expect(side).toContain(k);
     expect(side).toContain(`animation-delay:-${WALK_CYCLE_S / 2}s`); // 반대쪽은 반 박자 늦게
-    expect(side).toMatch(/64%\{transform:rotate\(48deg\)\}/); // 차올릴 때 무릎을 접는다
+    expect(side).toMatch(/64%\{transform:rotate\(55deg\)\}/); // 차올릴 때 무릎을 접는다
     expect(WALK_CYCLE_S).toBeGreaterThanOrEqual(1); // 천천히(두 걸음에 1초 넘게)
   });
   it("앞·뒷모습은 다리 길이로 내딛기/들기 · 몸이 디딘 발 쪽으로 실림 · 앞과 뒤는 원근이 반대", async () => {
@@ -231,7 +231,7 @@ describe("걷는 그림(2026-11-20 — 스르르가 아니라 걸음)", () => {
     const { WALK_CYCLE_S } = await import("./space-avatars");
     const { WALK_SPEED_H } = await import("./space-seats");
     const stepOfHeight = WALK_SPEED_H * (WALK_CYCLE_S / 2); // 한 걸음 = 키의 몇 배
-    const legSpread = (40 * (Math.sin((20 * Math.PI) / 180) + Math.sin((18 * Math.PI) / 180))) / 150; // 옆모습 다리 벌림(앞 20° + 뒤 18°, 그림 단위 → 키 비율)
+    const legSpread = (40 * (Math.sin((28 * Math.PI) / 180) + Math.sin((24 * Math.PI) / 180))) / 150; // 옆모습 다리 벌림(앞 28° + 뒤 24°, 그림 단위 → 키 비율)
     expect(Math.abs(stepOfHeight - legSpread)).toBeLessThan(0.03);
   });
 });

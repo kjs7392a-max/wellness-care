@@ -114,11 +114,11 @@ export function figureHeight(rect: Rect, s: number): number {
 
 /**
  * 걸어서 가는 시간(ms) — 2026-11-20 "스르르 움직이지 말고 걷는 것처럼": 발이 미끄러져 보이지 않게
- * 빠르기를 **캐릭터 키에 맞춘다**(키 0.33배/초 · 그림 속 걸음 주기 1.1초와 맞물림 → 한 걸음 ≈ 키의 0.18).
+ * 빠르기를 **캐릭터 키에 맞춘다**(키 0.5배/초 · 그림 속 걸음 주기 1초와 맞물림 → 한 걸음 ≈ 키의 0.25).
  * 같은 날 "너무 빨리 움직여 · 천천히 자연스럽게" → 0.9배/초에서 늦춤. 첫 구간은 천천히 출발, 마지막 구간은 천천히 멈춘다(SpaceTogether).
  * figH = 걷는 모습의 키(px, 출발·도착 평균) · 아주 짧은 구간은 0(바로).
  */
-export const WALK_SPEED_H = 0.33;
+export const WALK_SPEED_H = 0.5;
 export function walkMs(a: { x: number; y: number }, b: { x: number; y: number }, figH: number): number {
   const d = Math.hypot(b.x - a.x, b.y - a.y);
   if (d < 0.5) return 0;
