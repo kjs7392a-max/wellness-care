@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { completeMindCard, emptyMindCard, MIND_IMAGES, mindSolution, type DailyAnswer, type MindCardAnswer } from "./mind-card";
 import { mindNarrative } from "./mind-reflection";
-import { completeRainStory, emptyRainStory, rainStoryNarrative } from "./rain-story";
 
 const done = (changes: Partial<MindCardAnswer> = {}) => completeMindCard({ ...emptyMindCard(() => 0.99999), images: MIND_IMAGES.map((_,i) => i < 4 ? 0 : null), mood: 4, stress: 4, energy: 2, ...changes }, new Date("2026-11-17T06:00:00Z"));
 
@@ -9,7 +8,6 @@ describe("한 글로 읽는 마음풀이", () => {
   it("미완료 답변에는 풀이를 만들지 않는다", () => {
     expect(mindNarrative(emptyMindCard())).toBe("");
     expect(mindNarrative({...done(),images:[null]})).toBe("");
-    expect(rainStoryNarrative(emptyRainStory())).toBe("");
   });
   it("좋았던 기분과 부담, 남은 힘을 한 글에 함께 반영한다", () => {
     const reading = mindNarrative(done());
@@ -57,11 +55,5 @@ describe("한 글로 읽는 마음풀이", () => {
       expect(reading.length).toBeGreaterThan(180);
       expect(reading).not.toMatch(/\n|\d+점|등급|위험군|우울증|당신은.*유형|무의식.*뜻|오늘의 마음을 함께 읽어보면|이 제안을 고른 이유/);
     }
-  });
-  it("빗속의 나는 별도의 그림 조합 해설을 사용하며 점수를 드러내지 않는다", () => {
-    const a=completeRainStory({...emptyRainStory(),rain:"heavy",exposure:"soaked",protection:"none"},new Date());
-    const text=rainStoryNarrative(a);
-    expect(text).toContain("부담");expect(text).toContain("도움");
-    expect(text).not.toMatch(/\d+점|등급|우울증/);
   });
 });

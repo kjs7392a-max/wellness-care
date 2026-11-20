@@ -3,7 +3,7 @@
 import base from "./MindCard.module.css";
 import styles from "./MindCardMenu.module.css";
 
-// 2026-11-20 사용자 지시 「빗속의 나」 섹션 삭제 — 그림 테스트 하나만 남김(빗속의 나 화면·기록 코드 RainStory 는 그대로 둠, 들어가는 길만 없앰)
+// 2026-11-20 사용자 지시 「빗속의 나」 전부 삭제(화면·기록·그림까지) — 마음카드는 그림 테스트 하나만
 export function MindCardMenu({ pictureDone, onPicture, onClose }: {
   pictureDone: boolean;
   onPicture: () => void;

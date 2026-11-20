@@ -8,8 +8,6 @@ import { SpaceSheet } from "./SpaceSheet";
 import { CHARACTERS, CHARACTER_DISPLAY_NAME, characterOf, charactersInDisplayOrder, DEFAULT_CHARACTER, type CharacterId } from "./characters";
 import { MindCard } from "./MindCard";
 import { MindCardMenu } from "./MindCardMenu";
-import { RainStory } from "./RainStory";
-import { emptyRainStory, type RainStoryAnswer } from "./rain-story";
 import { emptyMindCard, type MindCardAnswer } from "./mind-card";
 import { todoFor } from "./todo";
 import { EMPTY_SAM, quadrantOf, samAnswered, samDone, samWeight, type SamAnswer, type SamScore } from "./sam";
@@ -102,7 +100,7 @@ interface State {
    * 홈 · 데일리케어(신체·마음 카드) · my(월간 기록). 홈의 「기록 보기」 버튼도 같은 화면을 시트로 연다(주간 시트는 2026-09-17 삭제).
    */
   tab: "home" | "care" | "healing" | "my";
-  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "picture-test" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing" | "space" | "rain";
+  sheet: null | "library" | "content" | "mind" | "talk" | "picture" | "picture-test" | "condition" | "month" | "settings" | "persona" | "personaPick" | "personaResult" | "directing" | "space";
   /**
    * 마음 성향 — 답(40) · 지금 보는 문항 · 결과(기기 메모리). 유형은 「내 성향」 정보 카드·결과 시트에만 쓴다 — 2026-10-24: 오늘의 추천(해볼 것·마음카드 피드백)은 성향이 아니라 상태로 정한다.
    * 2026-09-19: 결과는 테스트(lean 있음) 또는 **직접 선택**(lean null · `personaPick` 시트) — 사용자 "직접 선택하게 하고 테스트는 모르면".
@@ -115,7 +113,6 @@ interface State {
   sam: SamAnswer;
   /** Image associations remain expressive; daily answers guide session-only suggestions. */
   mindCard: MindCardAnswer;
-  rainStory: RainStoryAnswer;
   minutes: number;
   remaining: number;
   running: boolean;
@@ -209,7 +206,7 @@ export default function WellnessApp() {
     parq: {}, parq2: {}, delay: {}, pick: null, persona: {}, personaIdx: 0, personaDone: null, personaPage: 1, parqOnly: false, recheck: null, onboardSavedAt: null, skipParq: false, perms: {}, area: "all", program: null,
     musicKey: "kpop", musicGroup: null, musicItem: 0,
     authed: false, guest: true, loginId: "", loginPw: "", ob: 0, tab: "home", sheet: null,
-    sam: EMPTY_SAM, mindCard: emptyMindCard(), rainStory: emptyRainStory(), minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
+    sam: EMPTY_SAM, mindCard: emptyMindCard(), minutes: 1, remaining: 60, running: false, notifOff: false, wiped: false,
     role: null, consent: [false, false], sessions: [], pickedToday: false,
     chat: [{ role: "bot" as const, text: characterOf(DEFAULT_CHARACTER).intro, at: stampAt(0, new Date(0)) }],
     beat: 0, typing: false, input: "", consultOpen: false, live: null, recTab: "body", recMonth: ymOf(new Date()), riskShown: false,
@@ -641,7 +638,6 @@ export default function WellnessApp() {
 
           {s.sheet === "picture" && renderPicture()}
           {s.sheet === "picture-test" && renderPictureTest()}
-          {s.sheet === "rain" && renderRainStory()}
           {s.sheet === "content" && renderContent()}
           {s.sheet === "library" && renderLibrary()}
           {s.sheet === "mind" && renderMind()}
@@ -2142,13 +2138,13 @@ export default function WellnessApp() {
         <div style={sx("display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:#fff; border:1px solid #c9d6dc")}>
           <div style={sx("font-size:14px; font-weight:700; color:#2d5c6e")}>전체 데이터 즉시 파기</div>
           <div style={sx("font-size:13px; color:#6b8c9a; line-height:1.55; text-wrap:pretty")}>이 기기에 저장된 모든 기록을 지웁니다. 복구할 수 없고, 지운 사실도 남지 않습니다.</div>
-          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); storage()?.removeItem(ONBOARD_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ rainStory: emptyRainStory(), input: "" }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
+          <div onClick={() => { try { storage()?.removeItem(PROFILE_STORE_KEY); storage()?.removeItem(PERSONA_STORE_KEY); storage()?.removeItem(ONBOARD_STORE_KEY); } catch { /* 위와 같다 */ } writeChatStore(clearAllChats()); patch({ wiped: true }); patch({ input: "" }); patch({ dirProfile: null, dirDraft: { gender: null, ageBand: null }, makeupAns: {}, personaDone: null, dirTab: "persona" }); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#f6fafb; font-size:14px; font-weight:700; color:#2d5c6e")}>{s.wiped ? "모두 지웠어요" : "전체 파기하기"}</div>
           <div onClick={() => { writeChatStore(clearAllChats()); patchFn((st) => ({ chat: [{ role: "bot", text: characterOf(st.character).intro, at: stampAt(0, st.now) }], riskShown: false, beat: 0 })); }} style={sx("cursor:pointer; text-align:center; padding:14px; border-radius:13px; border:1.5px solid #c9d6dc; background:#fff; font-size:14px; font-weight:700; color:#2d5c6e")}>이 기기 대화 전부 지우기</div>
         </div>
 
         <div style={sx("display:flex; gap:10px; padding:4px 0 8px")}>
           <div onClick={() => patch({ ob: 0, skipParq: false })} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>온보딩 다시 보기</div>
-          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, skipParq: false, tab: "home", sheet: null, rainStory: emptyRainStory(), input: "" }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
+          <div onClick={() => { writeChatStore(clearAllChats()); patch({ authed: false, guest: true, loginId: "", loginPw: "", ob: 0, recheck: null, parqOnly: false, skipParq: false, tab: "home", sheet: null, input: "" }); }} style={sx("flex:1; cursor:pointer; text-align:center; min-height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:#fff; border:1px solid #c9d6dc; font-size:13px; font-weight:600; color:#8ba8b3")}>로그아웃</div>
         </div>
       </div>
       </div>
@@ -2192,7 +2188,7 @@ export default function WellnessApp() {
   }
 
   function renderPicture() {
-    // 2026-11-20 「빗속의 나」 섹션 삭제 — 그림 테스트만
+    // 2026-11-20 「빗속의 나」 전부 삭제(사용자 지시) — 마음카드는 그림 테스트만
     return <MindCardMenu pictureDone={!!s.mindCard.completedAt}
       onPicture={() => { stopMic(""); patch({ sheet: "picture-test", mindCard: s.mindCard.completedAt ? emptyMindCard() : s.mindCard }); }}
       onClose={() => patch({ sheet: null })}/>;
@@ -2210,14 +2206,6 @@ export default function WellnessApp() {
           ? { ...EMPTY_SAM, valence: mindCard.mood, arousal: mindCard.stress }
           : { ...EMPTY_SAM },
       })}
-      onClose={() => patch({ sheet: "picture" })}
-      />
-  }
-
-  function renderRainStory() {
-    return <RainStory value={s.rainStory}
-      onChange={(rainStory) => patch({ rainStory })}
-      onComplete={(rainStory) => patch({ rainStory, pickedToday: true })}
       onClose={() => patch({ sheet: "picture" })}
       />
   }
