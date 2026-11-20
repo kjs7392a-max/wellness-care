@@ -22,7 +22,12 @@ export type SeatFace = "forward" | "center";
  *   pew   = 장의자(교회·성당): 의자에 앉아 등받이에 아랫몸이 가려 **윗몸만** 보인다.
  */
 export type SitOn = "floor" | "pew";
-export interface RoomLayout { seats: readonly SeatPoint[]; door: SeatPoint; face: SeatFace; sitOn: SitOn }
+/**
+ * 통로(2026-11-20 사용자 "귀신도 아니고 … 걷는 것처럼") — 장의자 사이로 곧장 가로지르지 않게.
+ *   x = 통로 가운데 · left/right = 왼쪽·오른쪽 장의자가 끝나는 곳(여기서부터 줄 안 — 아랫몸이 등받이에 가린다).
+ */
+export interface Aisle { x: number; left: number; right: number }
+export interface RoomLayout { seats: readonly SeatPoint[]; door: SeatPoint; face: SeatFace; sitOn: SitOn; aisle?: Aisle }
 
 export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
   meditation: {
@@ -54,6 +59,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
     door: { x: 0.61, y: 1.04, s: 1.25 },
     face: "forward",
     sitOn: "pew",
+    aisle: { x: 0.6, left: 0.47, right: 0.74 },
   },
   cathedral: {
     seats: [
@@ -65,6 +71,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
     door: { x: 0.49, y: 1.04, s: 1.25 },
     face: "forward",
     sitOn: "pew",
+    aisle: { x: 0.46, left: 0.34, right: 0.58 },
   },
 };
 
@@ -105,11 +112,17 @@ export function figureHeight(rect: Rect, s: number): number {
   return Math.round(rect.height * 0.085 * s);
 }
 
-/** 걸어서 가는 시간(ms) — 화면 거리 / 걸음 빠르기 · 너무 짧거나 길지 않게 */
-export const WALK_PX_PER_S = 80;
-export function walkMs(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  const d = Math.hypot(a.x - b.x, a.y - b.y);
-  return Math.round(Math.min(3200, Math.max(900, (d / WALK_PX_PER_S) * 1000)));
+/**
+ * 걸어서 가는 시간(ms) — 2026-11-20 "스르르 움직이지 말고 걷는 것처럼": 발이 미끄러져 보이지 않게
+ * 빠르기를 **캐릭터 키에 맞춘다**(키 0.9배/초 · 그림 속 걸음 주기 0.52초와 맞물림 → 한 걸음 ≈ 키의 0.23).
+ * figH = 걷는 모습의 키(px, 출발·도착 평균) · 아주 짧은 구간은 0(바로).
+ */
+export const WALK_SPEED_H = 0.9;
+export function walkMs(a: { x: number; y: number }, b: { x: number; y: number }, figH: number): number {
+  const d = Math.hypot(b.x - a.x, b.y - a.y);
+  if (d < 0.5) return 0;
+  const v = WALK_SPEED_H * Math.max(20, figH);
+  return Math.round(Math.min(12000, Math.max(220, (d / v) * 1000)));
 }
 
 /** 말풍선 — 짧게 · 오래 두지 않는다 */
@@ -145,4 +158,45 @@ export function walkHeading(from: { x: number; y: number }, to: { x: number; y: 
   const dx = to.x - from.x, dy = to.y - from.y;
   if (Math.abs(dx) >= Math.abs(dy) * 0.8) return { face: "side", flip: dx < 0 };
   return { face: dy < 0 ? "back" : "front", flip: false };
+}
+
+// ── 걷는 길(2026-11-20) ───────────────────────────────────────────────
+/** 장면 속 한 점 — 영상 비율 좌표 · s 멀고 가까움 · sink = 발을 앉은 키의 그만큼 아래로(장의자 줄 바닥) · door = 화면 밖 입구 */
+export interface ScenePt { x: number; y: number; s: number; sink?: number; door?: boolean }
+/** 한 구간 — to 까지 걷는다 · clip = 그동안 아랫몸이 장의자 등받이에 가린다 */
+export interface Way { to: ScenePt; clip: boolean }
+/** 장의자 줄에 서 있을 때 발 높이(등받이 윗선 아래로 앉은 키의 0.28) */
+export const PEW_SINK = 0.28;
+
+export const doorPoint = (L: RoomLayout): ScenePt => ({ ...L.door, door: true });
+export const sitPoint = (L: RoomLayout, i: number): ScenePt => ({ ...L.seats[i] });
+
+/** 입구 → 자리(마지막 점에서 앉는다). 통로가 있으면 통로로 올라가 줄 끝에서 옆으로 들어간다. */
+export function routeIn(L: RoomLayout, i: number): Way[] {
+  const seat = L.seats[i];
+  if (!L.aisle || !seat) return seat ? [{ to: sitPoint(L, i), clip: false }] : [];
+  const sink = L.sitOn === "pew" ? PEW_SINK : 0;
+  const row = (x: number): ScenePt => ({ x, y: seat.y, s: seat.s, sink });
+  const edge = seat.x < L.aisle.x ? L.aisle.left : L.aisle.right;
+  return [
+    { to: row(L.aisle.x), clip: false },
+    { to: row(edge), clip: false },
+    { to: row(seat.x), clip: sink > 0 },
+  ];
+}
+
+/** 자리 → 입구 — 그 자리에서 일어선 모습(stand) 다음, 들어온 길을 거꾸로 */
+export function routeOut(L: RoomLayout, i: number): { stand: Way; ways: Way[] } {
+  const inn = routeIn(L, i);
+  const last = inn[inn.length - 1] ?? { to: sitPoint(L, i), clip: false };
+  const ways: Way[] = [];
+  for (let k = inn.length - 2; k >= 0; k--) ways.push({ to: inn[k].to, clip: inn[k + 1].clip });
+  ways.push({ to: doorPoint(L), clip: inn[0]?.clip ?? false });
+  return { stand: last, ways };
+}
+
+/** 자리 → 다른 자리(먼저 온 사람에게 밀렸을 때) — 나가는 길(입구 빼고) + 들어가는 길 */
+export function routeMove(L: RoomLayout, from: number, to: number): { stand: Way; ways: Way[] } {
+  const out = routeOut(L, from);
+  return { stand: out.stand, ways: [...out.ways.slice(0, -1), ...routeIn(L, to)] };
 }

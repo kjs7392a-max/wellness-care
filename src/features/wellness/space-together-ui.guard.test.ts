@@ -79,10 +79,17 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(ui).toMatch(/scenePeople = useMemo\(\(\) => people\.filter\(\(p\) => !blocked\.has\(p\.uid\)\)/);
     expect(ui).toMatch(/peopleShown = people\.filter\(\(p\) => p\.uid !== me && !blocked\.has\(p\.uid\)\)/);
   });
-  it("들어오면 문에서 걸어 들어오고, 나가면 문으로 걸어 나가며 사라진다", () => {
-    expect(scene).toMatch(/loc: walkIn \? \{ kind: "door" \}/);
-    expect(scene).toMatch(/loc: \{ kind: "door" \}, moving: ms > 0, ms, leaving: true/);
-    expect(scene).toMatch(/opacity: a\.leaving \? 0 : 1/);
+  it("들어오면 화면 밖 입구에서 길 따라 걸어 들어와 앉고, 나가면 일어나 들어온 길을 거꾸로 걸어 나간다", () => {
+    expect(scene).toMatch(/const ways = routeIn\(layout, seat\), door = doorPoint\(layout\)/);
+    expect(scene).toMatch(/walk\(p\.uid, ways, \(\) => sitDown\(p\.uid, seat\)\)/);
+    expect(scene).toMatch(/const out = routeOut\(layout, a\.seat\)/);
+    expect(scene).toMatch(/walk\(uid, out\.ways, \(\) => drop\(uid\)\)/);
+    expect(scene).toMatch(/if \(p\.y >= 1\) y = Math\.max\(y, h \+ walkH\(p\.s\) \+ 8\)/); // 입구는 화면 밖
+  });
+  it("🚫 귀신처럼 흐려지며 사라지지 않는다 · 걸음 빠르기는 키에 맞춘다", () => {
+    expect(scene).not.toMatch(/opacity/);
+    expect(scene).toMatch(/walkMs\(from, to, \(walkH\(cur\.pos\.s\) \+ walkH\(w\.to\.s\)\) \/ 2\)/);
+    expect(scene).not.toMatch(/wcBob/); // 몸 오르내림은 그림 속 걸음과 같은 박자(space-avatars walkStyle)
   });
   it("움직임 줄이기 설정을 따른다", () => {
     expect(ui).toMatch(/matchMedia\("\(prefers-reduced-motion: reduce\)"\)/);
@@ -94,12 +101,9 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(ui).toMatch(/if \(tab === "room"\) showBubble\(me, m\.text, m\.id\)/);
     expect(ui).toMatch(/text: bubbleText\(text\)/);
   });
-  it("빈자리 원은 평소엔 없고 내 캐릭터를 눌렀을 때만 · 누르면 옮겨 앉고, 다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
-    expect(scene).toMatch(/\{picking && mySeated && layout\.seats\.map\(/);
-    expect(scene).not.toMatch(/\{mySeated && layout\.seats\.map\(/);
-    expect(scene).toMatch(/onClick=\{\(\) => \{ stopPicking\(\); onSeatTap\(i\); \}\}/);
-    expect(scene).toMatch(/onClick=\{a\.leaving \? undefined : mine \? \(a\.moving \? undefined : togglePicking\) : \(\) => onPersonTap\(a\.uid\)\}/);
-    expect(scene).toMatch(/setTimeout\(\(\) => setPicking\(false\), PICK_MS\)/);
+  it("🚫 자리 고르기·빈자리 원 없음(2026-11-20 사용자) · 다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
+    expect(ui).not.toMatch(/data-space-seat|onSeatTap|PICK_MS|togglePicking|옮겨 앉기/);
+    expect(scene).toMatch(/onClick=\{mine \|\| a\.leaving \? undefined : \(\) => onPersonTap\(a\.uid\)\}/);
     expect(ui).toMatch(/const openPeer = \(uid: string\) => \{ openSheet\(\); setPeerMenu\(uid\); \}/);
   });
 });
@@ -107,10 +111,10 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
 describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
   const scene = ui.slice(ui.indexOf("function SpaceScene"), ui.indexOf("function Notice"));
   it("앉으면 방에 맞는 방향, 걸을 땐 가는 쪽 · 왼쪽은 좌우 뒤집기", () => {
-    expect(scene).toMatch(/const heading = pose === "walk" \|\| a\.loc\.kind !== "seat" \? a\.head : seatHeading\(layout, a\.loc\.i\)/);
+    expect(scene).toMatch(/const heading = a\.walking \? a\.head : seatHeading\(layout, a\.seat\)/);
     expect(scene).toMatch(/figureSrc\(a\.avatar, pose, heading\.face\)/);
     expect(scene).toMatch(/transform: heading\.flip \? "scaleX\(-1\)" : undefined/);
-    expect(scene.match(/walkHeading\(/g)?.length).toBeGreaterThanOrEqual(3); // 들어오기·옮기기·나가기
+    expect(scene).toMatch(/head: ms > 0 \? walkHeading\(from, to\) : cur\.head/); // 구간마다 가는 쪽
   });
   it("이름표는 머리 위, 말풍선은 그 위", () => {
     const name = scene.slice(scene.indexOf("data-space-name"), scene.indexOf("data-space-name") + 400);
@@ -121,8 +125,9 @@ describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
 });
 
 describe("함께 머무는 사람 — 교회·성당 장의자(2026-11-20)", () => {
-  it("앉으면 방의 sitOn 대로(pew 면 윗몸만) · 장의자엔 바닥 그림자 없음", () => {
-    expect(ui).toMatch(/const pose = a\.moving \|\| a\.pendingSeat !== null \? "walk" : layout\.sitOn === "pew" \? "pew" : "sit"/);
-    expect(ui).toMatch(/\{pose !== "pew" && <div style=\{\{ \.\.\.sx\("position:absolute; left:15%; right:15%; bottom:-3px/);
+  it("앉으면 방의 sitOn 대로(pew 면 윗몸만) · 장의자·줄 안에선 바닥 그림자 없음 · 줄 안을 걸을 땐 아랫몸을 자른다", () => {
+    expect(ui).toMatch(/const pose: FigurePose = a\.walking \? "walk" : layout\.sitOn === "pew" \? "pew" : "sit"/);
+    expect(ui).toMatch(/\{!a\.clip && pose !== "pew" && <div style=\{\{ \.\.\.sx\("position:absolute; left:15%; right:15%; bottom:-3px/);
+    expect(ui).toMatch(/const cut = a\.clip \? \(\(a\.pos\.sink \?\? 0\) \* FIGURE_VIEW\.sit\.h\) \/ FIGURE_VIEW\[pose\]\.h : 0/);
   });
 });

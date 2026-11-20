@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bubbleText, figureHeight, resolveSeats, ROOM_LAYOUT, toScreen, walkMs } from "./space-seats";
+import { bubbleText, figureHeight, PEW_SINK, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, toScreen, walkMs } from "./space-seats";
 import { SPACE_ROOMS } from "./space";
 
 describe("공간마다 자리", () => {
@@ -57,11 +57,13 @@ describe("화면 계산", () => {
   it("영상 비율 → 화면 px", () => {
     expect(toScreen(rect, { x: 0.5, y: 0.5 })).toEqual({ x: 190, y: 410 });
   });
-  it("멀수록 작게 · 걸음 시간은 0.9~3.2초", () => {
+  it("멀수록 작게 · 걸음 시간은 캐릭터 키에 맞춘다(키 0.9배/초)", () => {
     expect(figureHeight(rect, 0.8)).toBeLessThan(figureHeight(rect, 1.1));
-    expect(walkMs({ x: 0, y: 0 }, { x: 10, y: 0 })).toBe(900);
-    expect(walkMs({ x: 0, y: 0 }, { x: 2000, y: 0 })).toBe(3200);
-    expect(walkMs({ x: 0, y: 0 }, { x: 160, y: 0 })).toBe(2000);
+    expect(walkMs({ x: 0, y: 0 }, { x: 90, y: 0 }, 100)).toBe(1000);
+    expect(walkMs({ x: 0, y: 0 }, { x: 90, y: 0 }, 50)).toBe(2000); // 멀리 있는(작은) 사람은 화면에서 천천히
+    expect(walkMs({ x: 0, y: 0 }, { x: 0.2, y: 0 }, 100)).toBe(0);
+    expect(walkMs({ x: 0, y: 0 }, { x: 5, y: 0 }, 100)).toBe(220);
+    expect(walkMs({ x: 0, y: 0 }, { x: 99999, y: 0 }, 100)).toBe(12000);
   });
   it("말풍선은 짧게", () => {
     expect(bubbleText("안녕하세요")).toBe("안녕하세요");
@@ -125,6 +127,7 @@ describe("바라보는 쪽(2026-11-20 — 불당·교회·성당은 앞, 명상�
       expect(eyes(figureSvg(a.id, pose, "back"))).toBe(0);
       expect(figureSvg(a.id, pose, "back")).not.toMatch(/#b5655a/); // 입도 없다
       expect(/@keyframes/.test(figureSvg(a.id, pose, "side"))).toBe(pose === "walk");
+      expect(/@keyframes/.test(figureSvg(a.id, pose, "back"))).toBe(pose === "walk");
     }
   });
 });
@@ -162,5 +165,72 @@ describe("교회·성당 자리 — 통로·영상 속 사람·화면 가장자�
       expect(s.x).toBeGreaterThanOrEqual(0.15); // 좁은 화면에선 영상 양옆이 잘린다
       expect(s.x).toBeLessThanOrEqual(0.88);
     }
+  });
+});
+
+describe("걷는 길(2026-11-20 — 장의자를 가로지르지 않는다)", () => {
+  it("교회·성당: 통로로 올라가 줄 끝에서 옆으로 들어간다 · 줄 안에선 아랫몸이 가린다", () => {
+    for (const room of ["church", "cathedral"] as const) {
+      const L = ROOM_LAYOUT[room];
+      expect(L.aisle).toBeTruthy();
+      L.seats.forEach((seat, i) => {
+        const w = routeIn(L, i);
+        expect(w).toHaveLength(3);
+        expect(w[0].to.x).toBe(L.aisle!.x); // 통로
+        expect(w[0].clip).toBe(false);
+        expect(w[1].to.x).toBe(seat.x < L.aisle!.x ? L.aisle!.left : L.aisle!.right); // 줄 끝
+        expect(w[1].clip).toBe(false);
+        expect(w[2].to.x).toBe(seat.x); // 자리
+        expect(w[2].clip).toBe(true);
+        for (const p of w) { expect(p.to.y).toBe(seat.y); expect(p.to.sink).toBe(PEW_SINK); }
+      });
+    }
+  });
+  it("명상룸·불당은 바닥이라 곧장 · 앉는 점은 자리 그대로", () => {
+    for (const room of ["meditation", "temple"] as const) {
+      const L = ROOM_LAYOUT[room];
+      L.seats.forEach((seat, i) => expect(routeIn(L, i)).toEqual([{ to: { ...seat }, clip: false }]));
+    }
+  });
+  it("나갈 땐 들어온 길을 거꾸로 · 마지막은 화면 밖 입구", () => {
+    const L = ROOM_LAYOUT.church;
+    const out = routeOut(L, 0);
+    expect(out.stand).toEqual(routeIn(L, 0)[2]);
+    expect(out.ways.map((w) => [w.to.x, w.clip])).toEqual([[L.aisle!.left, true], [L.aisle!.x, false], [L.door.x, false]]);
+    expect(out.ways[2].to.door).toBe(true);
+    const m = ROOM_LAYOUT.meditation, mo = routeOut(m, 1);
+    expect(mo.stand.to).toEqual({ ...m.seats[1] });
+    expect(mo.ways).toEqual([{ to: { ...m.door, door: true }, clip: false }]);
+  });
+  it("자리를 바꿀 땐 입구까지 안 가고 통로를 거쳐 새 자리로", () => {
+    const L = ROOM_LAYOUT.church;
+    const mv = routeMove(L, 0, 2);
+    expect(mv.ways.some((w) => w.to.door)).toBe(false);
+    expect(mv.ways[mv.ways.length - 1].to.x).toBe(L.seats[2].x);
+  });
+});
+
+describe("걷는 그림(2026-11-20 — 스르르가 아니라 걸음)", () => {
+  it("옆모습은 허벅지·정강이를 따로(무릎이 접힘) · 팔은 반대 박자 · 몸이 오르내림", async () => {
+    const { figureSvg, WALK_CYCLE_S } = await import("./space-avatars");
+    const side = figureSvg("bada", "walk", "side");
+    for (const k of ["@keyframes th", "@keyframes kn", "@keyframes ar", "@keyframes bob", 'class="tn"', 'class="sn"', 'class="tf"', 'class="sf"', 'class="an"', 'class="af"', 'class="w"']) expect(side).toContain(k);
+    expect(side).toContain(`animation-delay:-${WALK_CYCLE_S / 2}s`); // 반대쪽은 반 박자 늦게
+    expect(side).toMatch(/64%\{transform:rotate\(60deg\)\}/); // 차올릴 때 무릎을 크게 접는다
+  });
+  it("앞·뒷모습은 다리 길이로 내딛기/들기 · 몸이 디딘 발 쪽으로 실림 · 앞과 뒤는 원근이 반대", async () => {
+    const { figureSvg } = await import("./space-avatars");
+    const front = figureSvg("sol", "walk", "front"), back = figureSvg("sol", "walk", "back");
+    for (const svg of [front, back]) for (const k of ["@keyframes lg", "@keyframes sw", "@keyframes bob", 'class="ll"', 'class="lr"', 'class="al"', 'class="ar"', 'class="sw"']) expect(svg).toContain(k);
+    expect(front).toMatch(/@keyframes lg\{0%\{transform:scaleY\(1\.04\)\}/); // 다가올 땐 내딛는 발이 가까워 길다
+    expect(back).toMatch(/@keyframes lg\{0%\{transform:scaleY\(\.95\)\}/); // 멀어질 땐 내딛는 발이 멀어 짧다
+    expect(front).toMatch(/prefers-reduced-motion/);
+  });
+  it("화면 이동 빠르기 = 그림 속 걸음 폭 ÷ 걸음 시간(발이 미끄러지지 않게)", async () => {
+    const { WALK_CYCLE_S } = await import("./space-avatars");
+    const { WALK_SPEED_H } = await import("./space-seats");
+    const stepOfHeight = WALK_SPEED_H * (WALK_CYCLE_S / 2); // 한 걸음 = 키의 몇 배
+    const legSpread = (2 * 40 * Math.sin((24 * Math.PI) / 180)) / 150; // 옆모습 다리 벌림(그림 단위 → 키 비율)
+    expect(Math.abs(stepOfHeight - legSpread)).toBeLessThan(0.03);
   });
 });
