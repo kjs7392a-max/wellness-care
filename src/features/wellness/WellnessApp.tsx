@@ -2192,9 +2192,9 @@ export default function WellnessApp() {
   }
 
   function renderPicture() {
-    return <MindCardMenu pictureDone={!!s.mindCard.completedAt} rainDone={!!s.rainStory.completedAt}
+    // 2026-11-20 「빗속의 나」 섹션 삭제 — 그림 테스트만
+    return <MindCardMenu pictureDone={!!s.mindCard.completedAt}
       onPicture={() => { stopMic(""); patch({ sheet: "picture-test", mindCard: s.mindCard.completedAt ? emptyMindCard() : s.mindCard }); }}
-      onRain={() => { stopMic(""); patch({ sheet: "rain" }); }}
       onClose={() => patch({ sheet: null })}/>;
   }
 
