@@ -128,3 +128,24 @@ describe("바라보는 쪽(2026-11-20 — 불당·교회·성당은 앞, 명상�
     }
   });
 });
+
+describe("앉는 곳(2026-11-20 — 교회·성당은 장의자)", () => {
+  it("명상룸·불당은 바닥(책상다리), 교회·성당은 장의자", () => {
+    expect(ROOM_LAYOUT.meditation.sitOn).toBe("floor");
+    expect(ROOM_LAYOUT.temple.sitOn).toBe("floor");
+    expect(ROOM_LAYOUT.church.sitOn).toBe("pew");
+    expect(ROOM_LAYOUT.cathedral.sitOn).toBe("pew");
+  });
+  it("장의자 그림은 다리(바지) 없이 윗몸만 · 앞/옆/뒤 눈 2/1/0", async () => {
+    const { AVATARS, figureSvg, FIGURE_VIEW } = await import("./space-avatars");
+    const eyes = (svg: string) => (svg.match(/fill="#3a3340"/g) ?? []).length;
+    expect(FIGURE_VIEW.pew).toEqual(FIGURE_VIEW.sit);
+    for (const a of AVATARS) {
+      for (const f of ["front", "side", "back"] as const) expect(figureSvg(a.id, "pew", f)).not.toContain(`fill="${a.pants}"`);
+      expect(eyes(figureSvg(a.id, "pew", "front"))).toBe(2);
+      expect(eyes(figureSvg(a.id, "pew", "side"))).toBe(1);
+      expect(eyes(figureSvg(a.id, "pew", "back"))).toBe(0);
+      expect(figureSvg(a.id, "sit", "back")).toContain(`fill="${a.pants}"`); // 바닥(불당)은 그대로 책상다리
+    }
+  });
+});

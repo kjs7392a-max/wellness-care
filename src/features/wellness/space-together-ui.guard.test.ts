@@ -116,3 +116,10 @@ describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
     expect(scene).toMatch(/bottom: `calc\(100% - \$\{headGap\}px \+ 17px\)`/);
   });
 });
+
+describe("함께 머무는 사람 — 교회·성당 장의자(2026-11-20)", () => {
+  it("앉으면 방의 sitOn 대로(pew 면 윗몸만) · 장의자엔 바닥 그림자 없음", () => {
+    expect(ui).toMatch(/const pose = a\.moving \|\| a\.pendingSeat !== null \? "walk" : layout\.sitOn === "pew" \? "pew" : "sit"/);
+    expect(ui).toMatch(/\{pose !== "pew" && <div style=\{\{ \.\.\.sx\("position:absolute; left:15%; right:15%; bottom:-3px/);
+  });
+});

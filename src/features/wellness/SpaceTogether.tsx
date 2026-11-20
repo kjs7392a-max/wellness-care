@@ -459,7 +459,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
       {Object.values(actors).map((a) => {
         const p = a.loc.kind === "seat" ? layout.seats[a.loc.i] : layout.door;
         const pt = toScreen(rect, p);
-        const pose = a.moving || a.pendingSeat !== null ? "walk" : "sit";
+        // 걷기 · 앉으면 방석·좌복은 책상다리, 교회·성당 장의자는 윗몸만(등받이에 가림)
+        const pose = a.moving || a.pendingSeat !== null ? "walk" : layout.sitOn === "pew" ? "pew" : "sit";
         // 앉으면 방에 맞게(불당·교회·성당 = 앞을 봄 → 뒷모습 · 명상룸 = 마주 봄 → 옆모습), 걸을 땐 가는 쪽
         const heading = pose === "walk" || a.loc.kind !== "seat" ? a.head : seatHeading(layout, a.loc.i);
         const base = figureHeight(rect, p.s);
@@ -486,7 +487,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTa
                 {bubble.text}
               </div>
             )}
-            <div style={{ ...sx("position:absolute; left:15%; right:15%; bottom:-3px; height:7px; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))") }} />
+            {pose !== "pew" && <div style={{ ...sx("position:absolute; left:15%; right:15%; bottom:-3px; height:7px; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))") }} />}
             <div style={{ ...sx("width:100%; height:100%"), animation: pose === "walk" ? "wcBob 0.42s ease-in-out infinite" : "wcBreath 4.5s ease-in-out infinite", transformOrigin: "50% 100%" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={figureSrc(a.avatar, pose, heading.face)} alt="" draggable={false} data-space-facing={heading.face + (heading.flip ? "-left" : "")}

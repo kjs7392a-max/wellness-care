@@ -16,7 +16,13 @@ export interface SeatPoint { x: number; y: number; s: number }
  *   center  = 명상룸: 서로 **마주 본다** → 방 가운데(x .5)를 향한 옆모습.
  */
 export type SeatFace = "forward" | "center";
-export interface RoomLayout { seats: readonly SeatPoint[]; door: SeatPoint; face: SeatFace }
+/**
+ * 앉는 곳(2026-11-20 사용자 지시 "성당·교회는 좌식에 앉은 것처럼 보여") —
+ *   floor = 방석·좌복(명상룸·불당): 바닥에 책상다리.
+ *   pew   = 장의자(교회·성당): 의자에 앉아 등받이에 아랫몸이 가려 **윗몸만** 보인다.
+ */
+export type SitOn = "floor" | "pew";
+export interface RoomLayout { seats: readonly SeatPoint[]; door: SeatPoint; face: SeatFace; sitOn: SitOn }
 
 export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
   meditation: {
@@ -27,6 +33,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
     ],
     door: { x: -0.06, y: 0.68, s: 1.0 },
     face: "center",
+    sitOn: "floor",
   },
   temple: {
     seats: [
@@ -35,6 +42,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
     ],
     door: { x: 0.5, y: 1.04, s: 1.25 },
     face: "forward",
+    sitOn: "floor",
   },
   church: {
     seats: [
@@ -44,6 +52,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
     ],
     door: { x: 0.61, y: 1.04, s: 1.25 },
     face: "forward",
+    sitOn: "pew",
   },
   cathedral: {
     seats: [
@@ -53,6 +62,7 @@ export const ROOM_LAYOUT: Record<SpaceId, RoomLayout> = {
     ],
     door: { x: 0.49, y: 1.04, s: 1.25 },
     face: "forward",
+    sitOn: "pew",
   },
 };
 
