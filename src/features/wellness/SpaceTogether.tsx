@@ -339,7 +339,7 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
  *   그중 하나를 누르면 옮겨 앉는다. 다시 누르거나 시간이 지나면 사라진다.
  * - 다른 사람을 누르면 대화 시트(1:1·차단·신고).
  */
-const PICK_MS = 6000;
+const PICK_MS = 10000;
 function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onSeatTap, onPersonTap }: {
   layout: RoomLayout; rect: Rect; me: string; myJoin: number;
   people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, { text: string; id: string }>;
