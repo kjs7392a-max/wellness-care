@@ -57,7 +57,7 @@ export interface RoomSession {
   readonly uid: string;
   /** 내가 이 방에 들어온 시각(ms) */
   readonly since: number;
-  /** 앉고 싶은 자리를 알린다(presence) — 모두가 resolveSeats 로 같은 자리를 계산한다 */
+  /** 앉고 싶은 자리를 알린다(presence) — 모두가 resolveSeats 로 같은 자리를 계산한다. 처음 부르면 「고르는 중」이 끝난다. */
   moveTo(seat: number | null): void;
   sendRoom(text: string): ChatMessage | null;
   openDm(peer: string): void;
@@ -82,7 +82,10 @@ export async function joinRoom(who: SpaceWho, room: SpaceId, avatar: AvatarId, h
 
   const ch = sb.channel(roomTopic(room), { config: { private: true, presence: { key: uid, enabled: true }, broadcast: { self: false } } });
   let seat: number | null = null;
-  const presence = () => ({ uid, avatar, since, seat });
+  // 들어오면 먼저 자리를 고른다(2026-11-20) — 고르는 동안은 다른 사람 장면에 안 나온다
+  let picking = true;
+  let at: number | null = null;
+  const presence = () => ({ uid, avatar, since, seat, picking, at });
   ch.on("presence", { event: "sync" }, () => {
     if (left) return;
     h.onPeople(presenceList(ch.presenceState() as Record<string, unknown[]>));
@@ -125,8 +128,9 @@ export async function joinRoom(who: SpaceWho, room: SpaceId, avatar: AvatarId, h
     uid,
     since,
     moveTo(next) {
-      if (left || next === seat) return;
+      if (left || (next === seat && !picking)) return;
       seat = next;
+      if (picking) { picking = false; at = Date.now(); }
       void ch.track(presence());
     },
     sendRoom(text) {

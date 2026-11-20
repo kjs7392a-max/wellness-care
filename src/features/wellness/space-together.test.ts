@@ -105,3 +105,20 @@ describe("자리(seat) — presence 에 실린 원하는 자리", () => {
   });
 });
 
+
+describe("자리 고르는 중(2026-11-20)", () => {
+  it("presence 의 picking·at 을 읽는다 · 이상한 값은 버린다", async () => {
+    const { presenceList } = await import("./space-together");
+    const ps = presenceList({
+      a: [{ uid: "a", avatar: "sol", since: 1, seat: null, picking: true, at: null }],
+      b: [{ uid: "b", avatar: "bada", since: 2, seat: 3, picking: false, at: 500 }],
+      c: [{ uid: "c", avatar: "bada", since: 3, seat: 1, picking: "yes", at: "x" }],
+    });
+    expect(ps.find((p) => p.uid === "a")).toMatchObject({ picking: true, seat: null });
+    expect(ps.find((p) => p.uid === "a")?.at).toBeUndefined();
+    expect(ps.find((p) => p.uid === "b")).toMatchObject({ seat: 3, at: 500 });
+    expect(ps.find((p) => p.uid === "b")?.picking).toBeUndefined();
+    expect(ps.find((p) => p.uid === "c")?.picking).toBeUndefined();
+    expect(ps.find((p) => p.uid === "c")?.at).toBeUndefined();
+  });
+});

@@ -75,8 +75,8 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(sheet).toMatch(/<TogetherLayer [^\n]*rect=\{rect\}/);
   });
   it("자리는 모두(나·차단 포함)로 계산해 기기마다 같은 답 · 장면과 목록엔 차단한 사람이 없다", () => {
-    expect(ui).toMatch(/resolveSeats\(people, layout\.seats\.length\)/);
-    expect(ui).toMatch(/scenePeople = useMemo\(\(\) => people\.filter\(\(p\) => !blocked\.has\(p\.uid\)\)/);
+    expect(ui).toMatch(/resolveSeats\(seated, layout\.seats\.length\)/);
+    expect(ui).toMatch(/scenePeople = useMemo\(\(\) => seated\.filter\(\(p\) => !blocked\.has\(p\.uid\)\)/);
     expect(ui).toMatch(/peopleShown = people\.filter\(\(p\) => p\.uid !== me && !blocked\.has\(p\.uid\)\)/);
   });
   it("들어오면 화면 밖 입구에서 길 따라 걸어 들어와 앉고, 나가면 일어나 들어온 길을 거꾸로 걸어 나간다", () => {
@@ -88,7 +88,8 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(scene).toMatch(/if \(p\.y >= 1\) y = Math\.max\(y, h \+ walkH\(p\.s\) \+ 8\)/); // 입구는 화면 밖
   });
   it("🚫 귀신처럼 흐려지며 사라지지 않는다 · 걸음 빠르기는 키에 맞춘다", () => {
-    expect(scene).not.toMatch(/opacity/);
+    const actor = scene.slice(scene.indexOf("data-space-actor="), scene.indexOf("data-space-actor=") + 1200);
+    expect(actor).not.toMatch(/opacity/); // 캐릭터 자체를 흐리게 하지 않는다(원 깜빡임은 따로)
     expect(scene).toMatch(/walkMs\(from, to, \(walkH\(cur\.pos\.s\) \+ walkH\(w\.to\.s\)\) \/ 2\)/);
     // 천천히 출발 · 천천히 멈춤 · 일어서서/도착해서 잠깐 서 있기
     expect(scene).toMatch(/const ease = first && last \? EASE_BOTH : first \? EASE_START : last \? EASE_STOP : "linear"/);
@@ -106,8 +107,21 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(ui).toMatch(/if \(tab === "room"\) showBubble\(me, m\.text, m\.id\)/);
     expect(ui).toMatch(/text: bubbleText\(text\)/);
   });
-  it("🚫 자리 고르기·빈자리 원 없음(2026-11-20 사용자) · 다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
-    expect(ui).not.toMatch(/data-space-seat|onSeatTap|PICK_MS|togglePicking|옮겨 앉기/);
+  it("빈자리 원은 들어올 때 자리를 고르는 동안만 · 앉은 뒤엔 옮기기 없음 · 안 고르면 20초 뒤 자동 · 고르는 사람은 장면·자리 계산에서 빠짐", () => {
+    expect(scene).toMatch(/\{choices && choices\.length > 0 && \(/);
+    expect(scene).toMatch(/onClick=\{\(\) => onChoose\(i\)\}/);
+    expect(ui).toMatch(/choices=\{choosing \? freeSeats : null\}/);
+    expect(ui).toMatch(/const choosing = !!me && status === "live" && !!avatar && !seatChosen/);
+    expect(ui).toMatch(/if \(!s \|\| !me \|\| seatChosen\) return;/); // 한 번만
+    expect(ui).toMatch(/setTimeout\(\(\) => chooseSeat\(freeRef\.current\[0\] \?\? null\), CHOOSE_MS\)/);
+    expect(ui).toMatch(/const seated = useMemo\(\(\) => people\.filter\(\(p\) => !p\.picking\)/);
+    expect(ui).toMatch(/resolveSeats\(seated, layout\.seats\.length\)/);
+    expect(scene).toMatch(/\(p\.at \?\? p\.since\) > myJoin \+ 1500/); // 고른 때부터 걸어 들어온다
+    expect(ui).not.toMatch(/onSeatTap|PICK_MS|togglePicking|옮겨 앉기/);
+    expect(rt).toMatch(/let picking = true;/);
+    expect(rt).toMatch(/if \(picking\) \{ picking = false; at = Date\.now\(\); \}/);
+  });
+  it("다른 사람을 누르면 그 사람 메뉴(1:1·차단·신고)", () => {
     expect(scene).toMatch(/onClick=\{mine \|\| a\.leaving \? undefined : \(\) => onPersonTap\(a\.uid\)\}/);
     expect(ui).toMatch(/const openPeer = \(uid: string\) => \{ openSheet\(\); setPeerMenu\(uid\); \}/);
   });

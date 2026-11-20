@@ -85,6 +85,8 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
   const listRef = useRef<HTMLDivElement | null>(null);
   const [meUid, setMeUid] = useState("");
   const [myJoin, setMyJoin] = useState(0);
+  // 들어와서 자리를 골랐는지(2026-11-20 사용자 "처음 들어올 때 원을 줘야 자기가 고를 수 있겠네")
+  const [seatChosen, setSeatChosen] = useState(false);
   const trackedSeatRef = useRef<number | null | undefined>(undefined);
   const [bubbles, setBubbles] = useState<Record<string, { text: string; id: string }>>({});
   const bubbleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -125,6 +127,7 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
       session = s;
       sessionRef.current = s;
       trackedSeatRef.current = undefined;
+      setSeatChosen(false);
       setMeUid(s.uid);
       setMyJoin(s.since);
     }).catch(() => { if (!cancelled) setStatus("error"); });
@@ -144,10 +147,34 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
   // people = 이 방 사람 전부(나·차단 포함). 목록에 보이는 건 나·차단 뺀 사람.
   const peopleShown = people.filter((p) => p.uid !== me && !blocked.has(p.uid));
   const layout = ROOM_LAYOUT[room];
-  // 자리 — 모두가 같은 목록(차단한 사람 포함)으로 같은 답을 낸다
-  const seats = useMemo(() => resolveSeats(people, layout.seats.length), [people, layout]);
-  // 장면엔 차단한 사람을 그리지 않는다(자리는 위 계산대로 비워 둔다)
-  const scenePeople = useMemo(() => people.filter((p) => !blocked.has(p.uid)), [people, blocked]);
+  // 자리 — 자리를 고른 사람 모두(차단 포함)로 같은 답을 낸다 · 아직 고르는 중인 사람은 빠진다
+  const seated = useMemo(() => people.filter((p) => !p.picking), [people]);
+  const seats = useMemo(() => resolveSeats(seated, layout.seats.length), [seated, layout]);
+  // 장면엔 차단한 사람 · 고르는 중인 사람을 그리지 않는다(자리는 위 계산대로 비워 둔다)
+  const scenePeople = useMemo(() => seated.filter((p) => !blocked.has(p.uid)), [seated, blocked]);
+  // 들어오면 빈자리 원이 보이고, 하나를 누르면 그리로 걸어 들어가 앉는다 · 안 누르면 20초 뒤 앞쪽 빈자리로
+  const choosing = !!me && status === "live" && !!avatar && !seatChosen;
+  const freeSeats = useMemo(() => {
+    const taken = new Set([...seats.values()].filter((v): v is number => v !== null));
+    return layout.seats.map((_, i) => i).filter((i) => !taken.has(i));
+  }, [seats, layout]);
+  const chooseSeat = (i: number | null) => {
+    const s = sessionRef.current;
+    if (!s || !me || seatChosen) return;
+    trackedSeatRef.current = i;
+    setSeatChosen(true);
+    s.moveTo(i);
+    const now = Date.now();
+    setPeople((ps) => ps.map((p) => (p.uid === me ? { ...p, seat: i, picking: false, at: now } : p)));
+  };
+  const freeRef = useRef(freeSeats); freeRef.current = freeSeats;
+  useEffect(() => {
+    if (!choosing) return;
+    if (!freeRef.current.length) { chooseSeat(null); return; } // 자리가 다 찼다 — 목록에만
+    const t = setTimeout(() => chooseSeat(freeRef.current[0] ?? null), CHOOSE_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choosing]);
   // 내 자리가 정해지면 알린다(먼저 온 사람에게 밀렸을 때도) — 같은 값이면 다시 안 보낸다
   useEffect(() => {
     const s = sessionRef.current;
@@ -234,6 +261,7 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
       {avatar && status === "live" && rect.width > 0 && (
         <SpaceScene layout={layout} rect={rect} me={me} myJoin={myJoin}
           people={scenePeople} seats={seats} bubbles={bubbles}
+          choices={choosing ? freeSeats : null} onChoose={chooseSeat}
           onPersonTap={openPeer} />
       )}
       {pill}
@@ -319,7 +347,8 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
 
 // ── 장면 속 캐릭터(2026-11-20 사용자 지시 "들어오는 게 보이고 퇴장할 때는 나가는 것처럼") ──────────────
 // 같은 날 사용자: "자리를 옮기거나 할 필요는 없을 것 같아 · 원은 아예 안 보이게 · 귀신도 아니고 스르르 움직이지 말고 걷는 것처럼"
-//   → 🚫 자리 고르기·빈자리 원 없음 · 🚫 나갈 때 흐려지며 사라지기 없음(입구가 화면 밖이라 걸어서 나간다)
+//   → 🚫 앉은 뒤 자리 옮기기 없음 · 🚫 나갈 때 흐려지며 사라지기 없음(입구가 화면 밖이라 걸어서 나간다)
+// 이어서 사용자: "보통 처음 들어올 때 원형을 줘야지 자기가 고를 수 있겠네" → 들어올 때만 빈자리 원을 보여 주고 고르게 한다.
 //   → 길을 따라 걷는다(교회·성당은 통로 → 줄 끝 → 옆으로, 줄 안에선 아랫몸이 등받이에 가림) · 걸음 빠르기는 키에 맞춤.
 /** 장면 속 한 사람. pos = 지금 있는(걷는 중이면 가는) 곳 — CSS transition 이 ms 동안 그리로 옮긴다. */
 interface Actor {
@@ -339,6 +368,8 @@ interface Actor {
 const EASE_START = "cubic-bezier(.45,0,.75,.75)";
 const EASE_STOP = "cubic-bezier(.25,.25,.55,1)";
 const EASE_BOTH = "cubic-bezier(.42,0,.58,1)";
+/** 들어와서 자리를 안 고르면 이만큼 뒤 앞쪽 빈자리로 */
+const CHOOSE_MS = 20000;
 /** 일어선 뒤 걷기 전 · 도착해서 앉기 전 잠깐 서 있는 시간 */
 const STAND_PAUSE_MS = 600;
 const SIT_PAUSE_MS = 450;
@@ -349,12 +380,15 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
  * 영상 위에 캐릭터를 자리(space-seats)에 앉힌다.
  * - 나보다 늦게 들어온 사람(그리고 나 자신)은 화면 밖 입구에서 걸어 들어와 앉는다 · 먼저 있던 사람은 처음부터 앉아 있다.
  * - 나가면(presence 에서 사라지면) 일어나 들어온 길을 거꾸로 걸어 화면 밖으로 나간다.
- * - 자리는 자동(먼저 온 순) — 사람이 고르지 않는다. 겹쳐서 밀려나면 통로를 거쳐 새 자리로 걸어간다.
+ * - 자리는 들어올 때 한 번 고른다(빈자리 원 · 2026-11-20 사용자) — 앉은 뒤엔 옮기지 않는다. 안 고르면 20초 뒤 앞쪽 빈자리.
+ *   같은 자리를 동시에 고르면 먼저 온 사람이 앉고, 밀린 사람은 통로를 거쳐 다른 빈자리로 걸어간다.
  * - 다른 사람을 누르면 대화 시트(1:1·차단·신고).
  */
-function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onPersonTap }: {
+function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices, onChoose, onPersonTap }: {
   layout: RoomLayout; rect: Rect; me: string; myJoin: number;
   people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, { text: string; id: string }>;
+  /** 들어와서 자리를 고르는 동안만 — 빈자리 번호들(원으로 보인다) · 그 밖엔 null */
+  choices: number[] | null; onChoose: (i: number) => void;
   onPersonTap: (uid: string) => void;
 }) {
   const actorsRef = useRef<Record<string, Actor>>({});
@@ -430,7 +464,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onPerson
 
   const enter = (p: Presence, seat: number) => {
     clearTimeout(timers.current[p.uid]);
-    const walkIn = !still && (p.uid === me || p.since > myJoin + 1500);
+    const walkIn = !still && (p.uid === me || (p.at ?? p.since) > myJoin + 1500);
     if (!walkIn) {
       put({ uid: p.uid, avatar: p.avatar, pos: sitPoint(layout, seat), ms: 0, ease: "linear", head: seatHeading(layout, seat), clip: false, walking: false, seat, leaving: false });
       return;
@@ -491,7 +525,26 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, onPerson
 
   return (
     <div ref={boxRef} data-space-scene style={sx("position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden")}>
-      <style>{`@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@media (prefers-reduced-motion:reduce){[data-space-actor] *{animation:none!important}}`}</style>
+      <style>{`@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@keyframes wcSeat{0%,100%{opacity:.75}50%{opacity:1}}@media (prefers-reduced-motion:reduce){[data-space-actor] *,[data-space-seat]{animation:none!important}}`}</style>
+      {/* 들어와서 자리 고르기 — 빈자리 원(이때만 보인다) · 누르면 그리로 걸어 들어가 앉는다 */}
+      {choices && choices.length > 0 && (
+        <>
+          <div data-space-choose-hint style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:7px 14px; border-radius:999px; background:rgba(14,22,30,0.6); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; font-size:13px; font-weight:700; white-space:nowrap; pointer-events:none; animation:wFade 0.3s ease-out"), top: Math.max(150, Math.min(...choices.map((i) => toScreen(rect, layout.seats[i]).y)) - figureHeight(rect, 1) - 46) }}>
+            앉고 싶은 자리를 눌러 주세요
+          </div>
+          {choices.map((i) => {
+            const seat = layout.seats[i];
+            const pt = toScreen(rect, seat);
+            const h = figureHeight(rect, seat.s);
+            const w = Math.round(h * 0.82);
+            const ch = Math.max(14, Math.round(h * 0.3));
+            return (
+              <button key={`seat-${i}`} type="button" data-space-seat={i} aria-label={`${i + 1}번 자리에 앉기`} onClick={() => onChoose(i)}
+                style={{ ...sx("position:absolute; pointer-events:auto; cursor:pointer; padding:0; border-radius:50%; background:rgba(201,189,245,0.28); border:2px dashed rgba(255,255,255,0.85); box-shadow:0 0 10px rgba(201,189,245,0.6); animation:wcSeat 1.6s ease-in-out infinite"), left: pt.x - w / 2, top: pt.y - ch * 0.7, width: w, height: ch }} />
+            );
+          })}
+        </>
+      )}
       {Object.values(actorsRef.current).map((a) => {
         // 걷기 · 앉으면 방석·좌복은 책상다리, 교회·성당 장의자는 윗몸만(등받이에 가림)
         const pose: FigurePose = a.walking ? (a.ms > 0 ? "walk" : "stand") : layout.sitOn === "pew" ? "pew" : "sit";

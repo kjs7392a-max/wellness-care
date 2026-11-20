@@ -127,6 +127,10 @@ export interface Presence {
   since: number;
   /** 앉고 싶은 자리(장면 · space-seats) — 없으면 null */
   seat: number | null;
+  /** 들어와서 아직 자리를 고르는 중(2026-11-20) — 장면엔 아직 안 나오고, 자리 계산에서도 빠진다 */
+  picking?: boolean;
+  /** 자리를 골라 장면에 들어온 시각(ms) — 이때부터 걸어 들어온다(늦게 온 사람만 걸어 들어오는 기준) */
+  at?: number;
 }
 
 /** presence 상태(채널이 주는 모양) → 사람 목록 **전부**(나·차단한 사람 포함 — 자리 계산은 모두가 같은 목록으로). 모양이 틀린 것만 뺀다. 먼저 온 사람부터. */
@@ -141,7 +145,8 @@ export function presenceList(state: Record<string, unknown[]>): Presence[] {
       const seat = typeof p.seat === "number" && Number.isInteger(p.seat) && p.seat >= 0 && p.seat < 16 ? p.seat : null;
       const prev = out.get(p.uid);
       // 같은 사람이 탭 여럿이면 먼저 들어온 쪽 하나로
-      if (!prev || since < prev.since) out.set(p.uid, { uid: p.uid, avatar: p.avatar as AvatarId, since, seat });
+      const extra = { ...(p.picking === true ? { picking: true } : {}), ...(typeof p.at === "number" && Number.isFinite(p.at) ? { at: p.at } : {}) };
+      if (!prev || since < prev.since) out.set(p.uid, { uid: p.uid, avatar: p.avatar as AvatarId, since, seat, ...extra });
     }
   }
   return [...out.values()].sort((a, b) => a.since - b.since || a.uid.localeCompare(b.uid));
