@@ -160,3 +160,13 @@ describe("대화 단추(2026-11-20 — 말풍선만)", () => {
     expect(pill).toMatch(/unread > 0 &&/);
   });
 });
+
+describe("캐릭터 이름(2026-11-20 — 「나」 대신 이름)", () => {
+  it("장면 이름표는 나도 남도 캐릭터 이름(다른 사람에게 보이는 그대로) · 내 것만 보라색으로 구분", () => {
+    const name = ui.slice(ui.indexOf("data-space-name"), ui.indexOf("data-space-name") + 500);
+    expect(name).toMatch(/\{displayName\(a\.avatar, a\.uid\)\}/);
+    expect(name).not.toMatch(/mine \? "나"/);
+    expect(name).toMatch(/background: mine \?/);
+    expect(ui).toMatch(/data-space-my-name[^\n]*displayName\(avatar, me\)/);
+  });
+});

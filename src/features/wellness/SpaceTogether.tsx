@@ -267,7 +267,9 @@ export function TogetherLayer({ who, room, avatar, onPickAvatar, rect }: { who: 
           <div style={sx("flex:none; display:flex; gap:12px; overflow-x:auto; padding:2px 16px 10px")}>
             <div style={sx("flex:none; display:flex; flex-direction:column; align-items:center; gap:3px; width:56px")}>
               <AvatarImg id={avatar} size={40} ring="#7a6bc4" />
-              <span style={sx("font-size:11px; font-weight:800; color:#4a3f80")}>나</span>
+              {/* 내 캐릭터 이름(다른 사람에게 보이는 그대로) + (나) — 2026-11-20 사용자 "캐릭터 이름은 나오게" */}
+              <span data-space-my-name style={sx("font-size:11px; font-weight:800; color:#4a3f80; white-space:nowrap")}>{me ? displayName(avatar, me) : avatarOf(avatar)?.name}</span>
+              <span style={sx("font-size:10px; font-weight:700; color:#8a80b8; margin-top:-3px")}>나</span>
             </div>
             {peopleShown.map((p) => (
               <button key={p.uid} type="button" data-space-person onClick={() => setPeerMenu((m) => (m === p.uid ? null : p.uid))}
@@ -576,7 +578,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
               </div>
             </div>
             <div data-space-name style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:1px 6px; border-radius:999px; font-size:9.5px; font-weight:700; line-height:1.25; white-space:nowrap; color:#fff"), bottom: `calc(100% - ${headGap}px + 1px)`, background: mine ? "rgba(122,107,196,0.92)" : "rgba(14,22,30,0.55)" }}>
-              {mine ? "나" : displayName(a.avatar, a.uid)}
+              {displayName(a.avatar, a.uid)}
             </div>
           </div>
         );
