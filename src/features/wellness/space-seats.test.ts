@@ -37,14 +37,13 @@ describe("공간마다 자리", () => {
       expect(L.door.s, r.id).toBeGreaterThanOrEqual(Math.max(...L.seats.map((s) => s.s)) * 0.85);
     }
   });
-  it("명상룸·불당 — 책상다리 다리 폭(그림 74/126)이 방석·좌복 폭과 비슷하다(실측 폭 ±20%)", () => {
-    const vw = (s: number) => (s * 74 / 126) * (16 / 9); // 상자 높이 → 다리 폭(영상 폭 비율, 9:16 영상)
-    expect(vw(ROOM_LAYOUT.meditation.seats[0].s) / 0.225).toBeGreaterThan(0.8); // 왼쪽 가운데 방석 폭 .225
-    expect(vw(ROOM_LAYOUT.meditation.seats[0].s) / 0.225).toBeLessThan(1.2);
-    expect(vw(ROOM_LAYOUT.temple.seats[0].s) / 0.2).toBeGreaterThan(0.8); // 앞줄 좌복 폭 .20
-    expect(vw(ROOM_LAYOUT.temple.seats[0].s) / 0.2).toBeLessThan(1.2);
-    expect(vw(ROOM_LAYOUT.temple.seats[4].s) / 0.145).toBeGreaterThan(0.8); // 둘째 줄 .145
-    expect(vw(ROOM_LAYOUT.temple.seats[4].s) / 0.145).toBeLessThan(1.2);
+  it("명상룸·불당 — 책상다리 다리 폭이 방석·좌복 폭과 비슷하다(실측 폭 ±20% · 명상룸 옆모습 54/126 · 불당 뒷모습 74/126)", () => {
+    const vw = (s: number, legs: number) => (s * legs / 126) * (16 / 9); // 상자 높이 → 다리 폭(영상 폭 비율, 9:16 영상)
+    const near = (got: number, want: number) => { expect(got / want).toBeGreaterThan(0.8); expect(got / want).toBeLessThan(1.2); };
+    near(vw(ROOM_LAYOUT.meditation.seats[0].s, 54), 0.225); // 왼쪽 가운데 방석 폭 .225
+    near(vw(ROOM_LAYOUT.meditation.seats[5].s, 54), 0.222); // 오른쪽 가운데 .222
+    near(vw(ROOM_LAYOUT.temple.seats[0].s, 74), 0.2); // 앞줄 좌복 .20
+    near(vw(ROOM_LAYOUT.temple.seats[4].s, 74), 0.145); // 둘째 줄 .145
   });
   it("🚫 명상룸 자리는 자막 상자(y .773~)를 가리지 않는다 · 영상 속 인물(x .7~.82, y .45~.58) 자리도 비운다", () => {
     for (const s of ROOM_LAYOUT.meditation.seats) {
