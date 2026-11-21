@@ -591,15 +591,16 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
       {/* 들어와서 자리 고르기 — 빈자리 원(이때만 보인다) · 누르면 그리로 걸어 들어가 앉는다 */}
       {choices && choices.length > 0 && (
         <>
-          <div data-space-choose-hint style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:7px 14px; border-radius:999px; background:rgba(14,22,30,0.6); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; font-size:13px; font-weight:700; white-space:nowrap; pointer-events:none; animation:wFade 0.3s ease-out"), top: Math.max(150, Math.min(...choices.map((i) => toScreen(rect, layout.seats[i]).y)) - figureHeight(rect, 1) - 46) }}>
+          <div data-space-choose-hint style={{ ...sx("position:absolute; left:50%; transform:translateX(-50%); padding:7px 14px; border-radius:999px; background:rgba(14,22,30,0.6); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; font-size:13px; font-weight:700; white-space:nowrap; pointer-events:none; animation:wFade 0.3s ease-out"), top: Math.max(150, Math.min(...choices.map((i) => toScreen(rect, layout.seats[i]).y)) - figureHeight(rect, Math.max(...choices.map((i) => layout.seats[i].s))) - 46) }}>
             앉고 싶은 자리를 눌러 주세요
           </div>
           {choices.map((i) => {
             const seat = layout.seats[i];
             const pt = toScreen(rect, seat);
+            // 원 = 방석·좌복(장의자는 앉을 자리) 크기 — 실사 크기라 그림 상자 높이의 0.55배 폭(2026-11-21)
             const h = figureHeight(rect, seat.s);
-            const w = Math.round(h * 0.82);
-            const ch = Math.max(14, Math.round(h * 0.3));
+            const w = Math.round(h * 0.55);
+            const ch = Math.max(14, Math.round(h * 0.17));
             return (
               <button key={`seat-${i}`} type="button" data-space-seat={i} aria-label={`${i + 1}번 자리에 앉기`} onClick={() => onChoose(i)}
                 style={{ ...sx("position:absolute; pointer-events:auto; cursor:pointer; padding:0; border-radius:50%; background:rgba(201,189,245,0.28); border:2px dashed rgba(255,255,255,0.85); box-shadow:0 0 10px rgba(201,189,245,0.6); animation:wcSeat 1.6s ease-in-out infinite"), left: pt.x - w / 2, top: pt.y - ch * 0.7, width: w, height: ch }} />
@@ -624,6 +625,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
         const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
         // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
         const headGap = Math.round(h * (pose === "walk" || pose === "stand" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
+        // 발밑 그림자 — 캐릭터 크기에 맞춰(실사 크기라 커졌다)
+        const shadowH = Math.max(6, Math.round(w * 0.07));
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"} data-space-walking={a.walking ? "1" : "0"}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
@@ -639,7 +642,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
                 {bubble.text}
               </div>
             )}
-            {!a.clip && pose !== "pew" && <div style={{ ...sx("position:absolute; left:15%; right:15%; bottom:-3px; height:7px; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))") }} />}
+            {!a.clip && pose !== "pew" && <div style={{ ...sx("position:absolute; left:15%; right:15%; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))"), height: shadowH, bottom: -Math.round(shadowH / 2) }} />}
             <div data-space-clip style={{ ...sx("position:absolute; left:0; right:0; top:0; overflow:hidden"), height: `${(1 - cut) * 100}%` }}>
               <div style={{ ...sx("position:absolute; left:0; right:0; top:0"), height: `${100 / (1 - cut)}%`, animation: a.walking ? undefined : "wcBreath 4.5s ease-in-out infinite", transformOrigin: "50% 100%" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

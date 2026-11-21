@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bubbleText, figureHeight, PEW_SINK, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, toScreen, walkMs } from "./space-seats";
+import { bubbleText, figureHeight, PEW_SINK, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, SCENE_PERSON, SEATED_VISIBLE, toScreen, walkMs } from "./space-seats";
 import { SPACE_ROOMS } from "./space";
 
 describe("공간마다 자리", () => {
@@ -23,6 +23,28 @@ describe("공간마다 자리", () => {
         if (seats[i].y < seats[j].y - 0.02) expect(seats[i].s).toBeLessThanOrEqual(seats[j].s);
       }
     }
+  });
+  it("실사 크기(2026-11-21) — 영상 속 앉은 사람보다 가까운 자리는 그보다 크게, 먼 자리는 작게 · 지나치게 크지 않게", () => {
+    for (const r of SPACE_ROOMS) {
+      const L = ROOM_LAYOUT[r.id], ref = SCENE_PERSON[r.id], frac = SEATED_VISIBLE[L.sitOn];
+      for (const [i, s] of L.seats.entries()) {
+        const h = s.s * frac; // 보이는 앉은 키(영상 높이 비율)
+        if (s.y > ref.y + 0.005) expect(h, `${r.id} ${i} 가까운 자리`).toBeGreaterThanOrEqual(ref.h * 0.95);
+        if (s.y < ref.y - 0.005) expect(h, `${r.id} ${i} 먼 자리`).toBeLessThanOrEqual(ref.h * 1.05);
+        expect(h, `${r.id} ${i}`).toBeLessThan(ref.h * 2.6);
+      }
+      // 입구(화면 밖)에서 걸어 들어올 때도 자리보다 작지 않게 — 가까이 올수록 커 보인다
+      expect(L.door.s, r.id).toBeGreaterThanOrEqual(Math.max(...L.seats.map((s) => s.s)) * 0.85);
+    }
+  });
+  it("명상룸·불당 — 책상다리 다리 폭(그림 74/126)이 방석·좌복 폭과 비슷하다(실측 폭 ±20%)", () => {
+    const vw = (s: number) => (s * 74 / 126) * (16 / 9); // 상자 높이 → 다리 폭(영상 폭 비율, 9:16 영상)
+    expect(vw(ROOM_LAYOUT.meditation.seats[0].s) / 0.225).toBeGreaterThan(0.8); // 왼쪽 가운데 방석 폭 .225
+    expect(vw(ROOM_LAYOUT.meditation.seats[0].s) / 0.225).toBeLessThan(1.2);
+    expect(vw(ROOM_LAYOUT.temple.seats[0].s) / 0.2).toBeGreaterThan(0.8); // 앞줄 좌복 폭 .20
+    expect(vw(ROOM_LAYOUT.temple.seats[0].s) / 0.2).toBeLessThan(1.2);
+    expect(vw(ROOM_LAYOUT.temple.seats[4].s) / 0.145).toBeGreaterThan(0.8); // 둘째 줄 .145
+    expect(vw(ROOM_LAYOUT.temple.seats[4].s) / 0.145).toBeLessThan(1.2);
   });
   it("🚫 명상룸 자리는 자막 상자(y .773~)를 가리지 않는다 · 영상 속 인물(x .7~.82, y .45~.58) 자리도 비운다", () => {
     for (const s of ROOM_LAYOUT.meditation.seats) {
@@ -59,6 +81,7 @@ describe("화면 계산", () => {
   });
   it("멀수록 작게 · 걸음 시간은 캐릭터 키에 맞춘다(키 0.58배/초 — 천천히)", () => {
     expect(figureHeight(rect, 0.8)).toBeLessThan(figureHeight(rect, 1.1));
+    expect(figureHeight(rect, 0.2)).toBe(164); // s = 영상 높이에 대한 비율
     expect(walkMs({ x: 0, y: 0 }, { x: 58, y: 0 }, 100)).toBe(1000);
     expect(walkMs({ x: 0, y: 0 }, { x: 58, y: 0 }, 50)).toBe(2000); // 멀리 있는(작은) 사람은 화면에서 천천히
     expect(walkMs({ x: 0, y: 0 }, { x: 0.2, y: 0 }, 100)).toBe(0);
