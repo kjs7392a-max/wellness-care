@@ -26,6 +26,11 @@ describe("이름 — 실명 대신 캐릭터 이름 + 두 자리", () => {
   it("캐릭터 여덟 · 이름이 겹치지 않는다", () => {
     expect(AVATARS).toHaveLength(8);
     expect(new Set(AVATARS.map((a) => a.name)).size).toBe(8);
+    // 2026-11-21 "남녀 구분 · 20대에서 40대까지" — 여성 4 · 남성 4, 성별마다 20·20·30·40대
+    for (const g of ["f", "m"] as const) {
+      expect(AVATARS.filter((a) => a.gender === g).map((a) => a.age).sort()).toEqual([20, 20, 30, 40]);
+    }
+    for (const a of AVATARS) expect(a.hint).toBe(`${a.gender === "f" ? "여성" : "남성"} · ${a.age}대`);
   });
 });
 
@@ -148,5 +153,20 @@ describe("이름 짓기 규칙(checkNickname)", () => {
     const { presenceList } = await import("./space-together");
     const [p] = presenceList({ a: [{ uid: "a", avatar: "sol", since: 1, seat: null, pv: 1700 }] });
     expect(p.pv).toBe(1700);
+  });
+});
+
+describe("🚫 캐릭터 id 는 서버가 받는 8개 그대로(2026-11-21 다시 그려도 id 는 안 바꾼다)", () => {
+  it("space_profiles 의 avatar 검사와 같다 · 60대·뽀글 파마·올림머리 그림은 없다", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const sql = readFileSync(join(process.cwd(), "docs/space-profiles-setup.sql"), "utf8");
+    const m = sql.match(/avatar in \(([^)]*)\)/);
+    expect(m).toBeTruthy();
+    const ids = [...(m?.[1] ?? "").matchAll(/'([a-z]+)'/g)].map((x) => x[1]).sort();
+    expect(AVATARS.map((a) => a.id).sort()).toEqual(ids);
+    const src = readFileSync(join(process.cwd(), "src/features/wellness/space-avatars.ts"), "utf8");
+    expect(src).not.toMatch(/dotsSvg/); // 뽀글 파마를 그리던 점 머리
+    expect(Math.max(...AVATARS.map((a) => a.age))).toBeLessThanOrEqual(40);
   });
 });
