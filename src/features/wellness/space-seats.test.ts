@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bubbleText, figureHeight, PEW_SINK, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, SCENE_PERSON, SEATED_VISIBLE, toScreen, walkMs } from "./space-seats";
+import { bubbleText, CHAR_SCALE, figureHeight, PEW_SINK, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, SCENE_PERSON, SEATED_VISIBLE, toScreen, walkMs } from "./space-seats";
 import { SPACE_ROOMS } from "./space";
 
 describe("공간마다 자리", () => {
@@ -36,6 +36,10 @@ describe("공간마다 자리", () => {
       // 입구(화면 밖)에서 걸어 들어올 때도 자리보다 작지 않게 — 가까이 올수록 커 보인다
       expect(L.door.s, r.id).toBeGreaterThanOrEqual(Math.max(...L.seats.map((s) => s.s)) * 0.85);
     }
+  });
+  it("화면에선 실사 크기보다 조금 작게(0.8~0.95배 · 2026-11-21 사용자)", () => {
+    expect(CHAR_SCALE).toBeGreaterThanOrEqual(0.8);
+    expect(CHAR_SCALE).toBeLessThan(0.95);
   });
   it("명상룸·불당 — 책상다리 다리 폭이 방석·좌복 폭과 비슷하다(실측 폭 ±20% · 명상룸 옆모습 54/126 · 불당 뒷모습 74/126)", () => {
     const vw = (s: number, legs: number) => (s * legs / 126) * (16 / 9); // 상자 높이 → 다리 폭(영상 폭 비율, 9:16 영상)
@@ -80,7 +84,7 @@ describe("화면 계산", () => {
   });
   it("멀수록 작게 · 걸음 시간은 캐릭터 키에 맞춘다(키 0.58배/초 — 천천히)", () => {
     expect(figureHeight(rect, 0.8)).toBeLessThan(figureHeight(rect, 1.1));
-    expect(figureHeight(rect, 0.2)).toBe(164); // s = 영상 높이에 대한 비율
+    expect(figureHeight(rect, 0.2)).toBe(139); // s = 영상 높이에 대한 비율(실사) × 0.85(사용자 "조금 작게")
     expect(walkMs({ x: 0, y: 0 }, { x: 58, y: 0 }, 100)).toBe(1000);
     expect(walkMs({ x: 0, y: 0 }, { x: 58, y: 0 }, 50)).toBe(2000); // 멀리 있는(작은) 사람은 화면에서 천천히
     expect(walkMs({ x: 0, y: 0 }, { x: 0.2, y: 0 }, 100)).toBe(0);

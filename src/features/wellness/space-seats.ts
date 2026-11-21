@@ -135,9 +135,14 @@ export function toScreen(rect: Rect, p: { x: number; y: number }): { x: number; 
   return { x: rect.left + p.x * rect.width, y: rect.top + p.y * rect.height };
 }
 
-/** 앉은 그림 상자의 높이(px) — s 는 영상 높이에 대한 비율(실사 크기, ROOM_LAYOUT 위 설명) */
+/**
+ * 캐릭터를 실사 크기보다 조금 작게(2026-11-21 사용자 "크기는 조금 작으면 좋겠고") — 자리마다의 s(실사 크기)에 곱한다.
+ * 원근(가까운 자리는 크게, 먼 자리는 작게)은 그대로 · 자리 고르기 원은 방석 크기 그대로(실사).
+ */
+export const CHAR_SCALE = 0.85;
+/** 앉은 그림 상자의 높이(px) — s 는 영상 높이에 대한 비율(실사 크기, ROOM_LAYOUT 위 설명) × CHAR_SCALE */
 export function figureHeight(rect: Rect, s: number): number {
-  return Math.round(rect.height * s);
+  return Math.round(rect.height * s * CHAR_SCALE);
 }
 
 /**
