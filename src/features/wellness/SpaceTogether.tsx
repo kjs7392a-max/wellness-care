@@ -462,6 +462,7 @@ function SpaceScene({ room, layout, rect, me, myJoin, people, seats, bubbles, ch
   const still = useMemo(() => reducedMotion(), []);
   // 3D 캐릭터(2026-11-21 시안) — 미리보기 주소·?3d=1 에서만 · WebGL 이 안 되면 2D 그림 그대로
   const [three, setThree] = useState(false);
+  const threeRef = useRef(false); threeRef.current = three;
   useEffect(() => { setThree(space3dEnabled()); }, []);
   useEffect(() => () => { for (const t of Object.values(timers.current)) clearTimeout(t); }, []);
   // 장면 크기 — 입구를 화면 밖으로 밀고, 가장자리 말풍선을 안쪽으로 민다
@@ -489,7 +490,8 @@ function SpaceScene({ room, layout, rect, me, myJoin, people, seats, bubbles, ch
     if (p.door) {
       const { w, h } = boxSize.current;
       const half = (base * FIGURE_VIEW.sit.w) / FIGURE_VIEW.sit.h / 2;
-      if (p.y >= 1) y = Math.max(y, h + walkH(p.s) + 8);
+      // 3D 는 서면 상자보다 크다(172/150) · 이름표까지 숨게 조금 더 아래로
+      if (p.y >= 1) y = Math.max(y, h + walkH(p.s) * (threeRef.current ? 1.2 : 1) + (threeRef.current ? 30 : 8));
       if (p.x <= 0) x = Math.min(x, -half - 8);
       if (p.x >= 1) x = Math.max(x, w + half + 8);
     }

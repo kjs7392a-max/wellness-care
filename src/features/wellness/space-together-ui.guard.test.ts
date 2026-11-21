@@ -86,7 +86,7 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
     expect(scene).toMatch(/const out = routeOut\(layout, a\.seat\)/);
     expect(scene).toMatch(/walk\(uid, out\.ways, \(\) => drop\(uid\), STAND_PAUSE_MS\)/);
     expect(scene).toMatch(/walk\(uid, \[\.\.\.backToAisle\(a\), \{ to: doorPoint\(layout\), clip: false \}\]/); // 걷던 중에 나가도 통로로
-    expect(scene).toMatch(/if \(p\.y >= 1\) y = Math\.max\(y, h \+ walkH\(p\.s\) \+ 8\)/); // 입구는 화면 밖
+    expect(scene).toMatch(/if \(p\.y >= 1\) y = Math\.max\(y, h \+ walkH\(p\.s\) \* \(threeRef\.current \? 1\.2 : 1\) \+ \(threeRef\.current \? 30 : 8\)\)/); // 입구는 화면 밖(3D 는 키·이름표까지)
   });
   it("🚫 귀신처럼 흐려지며 사라지지 않는다 · 걸음 빠르기는 키에 맞춘다", () => {
     const actor = scene.slice(scene.indexOf("data-space-actor="), scene.indexOf("data-space-actor=") + 1200);
