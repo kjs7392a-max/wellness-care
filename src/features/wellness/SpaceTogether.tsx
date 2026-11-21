@@ -12,6 +12,8 @@ import { CHAT_NOTICE, checkNickname, checkOutgoing, createRateLimiter, displayNa
 import { fetchProfiles, joinRoom, saveMyProfile, type RoomSession, type RoomStatus, type SpaceProfile, type SpaceWho } from "./space-realtime";
 import { RISK_REPLY } from "./risk";
 import type { SpaceId } from "./space";
+import { space3dEnabled } from "./space-3d";
+import { Space3DLayer } from "./Space3DLayer";
 
 // ---- 내 이름·캐릭터(2026-11-20 "계속 고유 캐릭터와 아이디를") — 진짜는 서버(space_profiles) · 기기엔 빨리 보여 줄 사본만 ----
 // 계정 = 기기에 아이디별로 · 둘러보기 = 그 기기(브라우저)에 하나. 🚫 메시지는 저장하지 않는다(이 사본만 쓴다).
@@ -317,7 +319,7 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
   return (
     <>
       {avatar && status === "live" && rect.width > 0 && (
-        <SpaceScene layout={layout} rect={rect} me={me} myJoin={myJoin}
+        <SpaceScene room={room} layout={layout} rect={rect} me={me} myJoin={myJoin}
           people={scenePeople} seats={seats} bubbles={bubbles}
           choices={choosing ? freeSeats : null} onChoose={chooseSeat} label={label}
           onPersonTap={openPeer} />
@@ -444,8 +446,8 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
  *   같은 자리를 동시에 고르면 먼저 온 사람이 앉고, 밀린 사람은 통로를 거쳐 다른 빈자리로 걸어간다.
  * - 다른 사람을 누르면 대화 시트(1:1·차단·신고).
  */
-function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices, onChoose, label, onPersonTap }: {
-  layout: RoomLayout; rect: Rect; me: string; myJoin: number;
+function SpaceScene({ room, layout, rect, me, myJoin, people, seats, bubbles, choices, onChoose, label, onPersonTap }: {
+  room: SpaceId; layout: RoomLayout; rect: Rect; me: string; myJoin: number;
   people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, { text: string; id: string }>;
   /** 들어와서 자리를 고르는 동안만 — 빈자리 번호들(원으로 보인다) · 그 밖엔 null */
   choices: number[] | null; onChoose: (i: number) => void;
@@ -458,6 +460,9 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rectRef = useRef(rect); rectRef.current = rect;
   const still = useMemo(() => reducedMotion(), []);
+  // 3D 캐릭터(2026-11-21 시안) — 미리보기 주소·?3d=1 에서만 · WebGL 이 안 되면 2D 그림 그대로
+  const [three, setThree] = useState(false);
+  useEffect(() => { setThree(space3dEnabled()); }, []);
   useEffect(() => () => { for (const t of Object.values(timers.current)) clearTimeout(t); }, []);
   // 장면 크기 — 입구를 화면 밖으로 밀고, 가장자리 말풍선을 안쪽으로 민다
   const boxRef = useRef<HTMLDivElement | null>(null);
@@ -587,6 +592,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
 
   return (
     <div ref={boxRef} data-space-scene style={sx("position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden")}>
+      {three && <Space3DLayer boxRef={boxRef} room={room} onFail={() => setThree(false)} />}
       <style>{`@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@keyframes wcSeat{0%,100%{opacity:.75}50%{opacity:1}}@media (prefers-reduced-motion:reduce){[data-space-actor] *,[data-space-seat]{animation:none!important}}`}</style>
       {/* 들어와서 자리 고르기 — 빈자리 원(이때만 보인다) · 누르면 그리로 걸어 들어가 앉는다 */}
       {choices && choices.length > 0 && (
@@ -624,11 +630,14 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
         const bubble = bubbles[a.uid];
         const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
         // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
-        const headGap = Math.round(h * (pose === "walk" || pose === "stand" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
+        // 3D 는 서고 걸을 때 사람 비율이라 키가 상자(150)보다 크다(172) → 이름표를 그만큼 위로
+        const headGap = Math.round(h * (pose === "walk" || pose === "stand" ? (three ? -0.16 : 0.12) : pose === "pew" ? 0.17 : 0.14));
         // 발밑 그림자 — 캐릭터 크기에 맞춰(실사 크기라 커졌다)
         const shadowH = Math.max(6, Math.round(w * 0.07));
         return (
           <div key={a.uid} data-space-actor={mine ? "me" : "other"} data-space-walking={a.walking ? "1" : "0"}
+            // 3D 층이 읽는 것 — 누구·어떤 캐릭터·자세·바라보는 쪽·아래를 자를 몫
+            data-uid={a.uid} data-avatar={a.avatar} data-pose={pose} data-face={heading.face} data-flip={heading.flip ? "1" : "0"} data-cut={cut}
             onClick={mine || a.leaving ? undefined : () => onPersonTap(a.uid)}
             role={mine ? undefined : "button"} aria-label={mine ? undefined : `${label(a.uid, a.avatar)} 님 메뉴`}
             style={{
@@ -642,8 +651,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
                 {bubble.text}
               </div>
             )}
-            {!a.clip && pose !== "pew" && <div style={{ ...sx("position:absolute; left:15%; right:15%; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))"), height: shadowH, bottom: -Math.round(shadowH / 2) }} />}
-            <div data-space-clip style={{ ...sx("position:absolute; left:0; right:0; top:0; overflow:hidden"), height: `${(1 - cut) * 100}%` }}>
+            {!three && !a.clip && pose !== "pew" && <div style={{ ...sx("position:absolute; left:15%; right:15%; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))"), height: shadowH, bottom: -Math.round(shadowH / 2) }} />}
+            <div data-space-clip style={{ ...sx("position:absolute; left:0; right:0; top:0; overflow:hidden"), height: `${(1 - cut) * 100}%`, visibility: three ? "hidden" : undefined }}>
               <div style={{ ...sx("position:absolute; left:0; right:0; top:0"), height: `${100 / (1 - cut)}%`, animation: a.walking ? undefined : "wcBreath 4.5s ease-in-out infinite", transformOrigin: "50% 100%" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={figureSrc(a.avatar, pose, heading.face)} alt="" draggable={false} data-space-facing={heading.face + (heading.flip ? "-left" : "")}

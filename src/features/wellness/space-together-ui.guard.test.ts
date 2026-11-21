@@ -147,7 +147,7 @@ describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
 describe("함께 머무는 사람 — 교회·성당 장의자(2026-11-20)", () => {
   it("앉으면 방의 sitOn 대로(pew 면 윗몸만) · 장의자·줄 안에선 바닥 그림자 없음 · 줄 안을 걸을 땐 아랫몸을 자른다", () => {
     expect(ui).toMatch(/const pose: FigurePose = a\.walking \? \(a\.ms > 0 \? "walk" : "stand"\) : layout\.sitOn === "pew" \? "pew" : "sit"/);
-    expect(ui).toMatch(/\{!a\.clip && pose !== "pew" && <div style=\{\{ \.\.\.sx\("position:absolute; left:15%; right:15%;[^"]*"\), height: shadowH/);
+    expect(ui).toMatch(/\{!three && !a\.clip && pose !== "pew" && <div style=\{\{ \.\.\.sx\("position:absolute; left:15%; right:15%;[^"]*"\), height: shadowH/);
     expect(ui).toMatch(/const cut = a\.clip \? \(\(a\.pos\.sink \?\? 0\) \* FIGURE_VIEW\.sit\.h\) \/ FIGURE_VIEW\[pose\]\.h : 0/);
   });
 });
