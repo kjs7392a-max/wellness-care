@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { sx } from "./sx";
-import { AVATARS, avatarOf, avatarSrc, figureSrc, FIGURE_VIEW, type AvatarId, type FigurePose } from "./space-avatars";
+import { AVATARS, avatarOf, avatarSrc, avatarSvgSrc, figureSrc, FIGURE_VIEW, type AvatarId, type FigurePose } from "./space-avatars";
 import { BUBBLE_MS, bubbleShift, bubbleText, doorPoint, figureHeight, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, seatHeading, sitPoint, toScreen, walkHeading, walkMs, type Heading, type Rect, type RoomLayout, type ScenePt, type Way } from "./space-seats";
 import { CHAT_NOTICE, checkNickname, checkOutgoing, createRateLimiter, displayName, MAX_MESSAGE, NICK_MAX, NICK_MIN, NICK_PROBLEM_TEXT, REPORT_REASONS, type ChatMessage, type Presence, type ReportReason } from "./space-together";
 import { fetchProfiles, joinRoom, saveMyProfile, type RoomSession, type RoomStatus, type SpaceProfile, type SpaceWho } from "./space-realtime";
@@ -35,19 +35,21 @@ export function saveProfileLocal(who: SpaceWho, p: SpaceProfile | null) {
 
 export function AvatarImg({ id, size, ring }: { id: AvatarId; size: number; ring?: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={avatarSrc(id)} alt="" width={size} height={size} style={{ ...sx("flex:none; display:block; border-radius:50%"), width: size, height: size, boxShadow: ring ? `0 0 0 2px ${ring}` : undefined }} />;
+  // 마음의 대화 캐릭터 그림 — 못 읽으면 그린 얼굴로
+  return <img src={avatarSrc(id)} alt="" width={size} height={size} onError={(e) => { const el = e.currentTarget; if (!el.src.startsWith("data:")) el.src = avatarSvgSrc(id); }}
+    style={{ ...sx("flex:none; display:block; border-radius:50%; object-fit:cover"), width: size, height: size, boxShadow: ring ? `0 0 0 2px ${ring}` : undefined }} />;
 }
 
-/** 캐릭터 고르기 — 4×2 */
+/** 캐릭터 고르기 — 3×2(윗줄 여성 · 아랫줄 남성 · 마음의 대화 캐릭터 6명) */
 export function AvatarPicker({ value, onPick }: { value: AvatarId | null; onPick: (id: AvatarId) => void }) {
   return (
-    <div data-space-avatar-picker style={sx("display:grid; grid-template-columns:repeat(4, 1fr); gap:10px 6px")}>
+    <div data-space-avatar-picker style={sx("display:grid; grid-template-columns:repeat(3, 1fr); gap:10px 6px")}>
       {AVATARS.map((a) => {
         const on = a.id === value;
         return (
           <button key={a.id} type="button" onClick={() => onPick(a.id)} aria-pressed={on} aria-label={`${a.name} · ${a.hint}`}
             style={{ ...sx("cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 2px; border-radius:14px; background:transparent; border:1.5px solid transparent"), borderColor: on ? "#7a6bc4" : "transparent", background: on ? "#f2edfa" : "transparent" }}>
-            <AvatarImg id={a.id} size={52} />
+            <AvatarImg id={a.id} size={58} />
             <span style={sx("font-size:12.5px; font-weight:800; color:#4a3f80")}>{a.name}</span>
             <span style={sx("font-size:10px; color:#8ba8b3; white-space:nowrap")}>{a.hint}</span>
           </button>

@@ -23,13 +23,12 @@ describe("이름 — 실명 대신 캐릭터 이름 + 두 자리", () => {
     expect(shortTag("abc")).toMatch(/^\d\d$/);
     expect(displayName("haneul", "abc")).toBe(`하늘 ${shortTag("abc")}`);
   });
-  it("캐릭터 여덟 · 이름이 겹치지 않는다", () => {
-    expect(AVATARS).toHaveLength(8);
-    expect(new Set(AVATARS.map((a) => a.name)).size).toBe(8);
-    // 2026-11-21 "남녀 구분 · 20대에서 40대까지" — 여성 4 · 남성 4, 성별마다 20·20·30·40대
-    for (const g of ["f", "m"] as const) {
-      expect(AVATARS.filter((a) => a.gender === g).map((a) => a.age).sort()).toEqual([20, 20, 30, 40]);
-    }
+  it("캐릭터 여섯(마음의 대화와 같은 사람) · 이름이 겹치지 않는다 · 윗줄 여성 아랫줄 남성", () => {
+    expect(AVATARS).toHaveLength(6);
+    expect(new Set(AVATARS.map((a) => a.name)).size).toBe(6);
+    expect(new Set(AVATARS.map((a) => a.look)).size).toBe(6);
+    expect(AVATARS.slice(0, 3).every((a) => a.gender === "f")).toBe(true);
+    expect(AVATARS.slice(3).every((a) => a.gender === "m")).toBe(true);
     for (const a of AVATARS) expect(a.hint).toBe(`${a.gender === "f" ? "여성" : "남성"} · ${a.age}대`);
   });
 });
@@ -156,17 +155,33 @@ describe("이름 짓기 규칙(checkNickname)", () => {
   });
 });
 
-describe("🚫 캐릭터 id 는 서버가 받는 8개 그대로(2026-11-21 다시 그려도 id 는 안 바꾼다)", () => {
-  it("space_profiles 의 avatar 검사와 같다 · 60대·뽀글 파마·올림머리 그림은 없다", async () => {
+describe("🚫 캐릭터 id 는 서버가 받는 8개 안에서(2026-11-21 다시 그려도 id 는 안 바꾼다)", () => {
+  it("space_profiles 의 avatar 검사 안 · 예전에 고른 이슬·별도 그려진다(하늘·바다 모습)", async () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const sql = readFileSync(join(process.cwd(), "docs/space-profiles-setup.sql"), "utf8");
     const m = sql.match(/avatar in \(([^)]*)\)/);
     expect(m).toBeTruthy();
-    const ids = [...(m?.[1] ?? "").matchAll(/'([a-z]+)'/g)].map((x) => x[1]).sort();
-    expect(AVATARS.map((a) => a.id).sort()).toEqual(ids);
+    const ids = [...(m?.[1] ?? "").matchAll(/'([a-z]+)'/g)].map((x) => x[1]);
+    for (const a of AVATARS) expect(ids).toContain(a.id);
+    const { avatarOf } = await import("./space-avatars");
+    for (const id of ids) expect(avatarOf(id), id).toBeTruthy();
+    expect(avatarOf("iseul")?.id).toBe("haneul");
+    expect(avatarOf("byeol")?.id).toBe("bada");
     const src = readFileSync(join(process.cwd(), "src/features/wellness/space-avatars.ts"), "utf8");
     expect(src).not.toMatch(/dotsSvg/); // 뽀글 파마를 그리던 점 머리
-    expect(Math.max(...AVATARS.map((a) => a.age))).toBeLessThanOrEqual(40);
+  });
+  it("마음의 대화 캐릭터(characters.ts)와 같은 사람 — 성별·나이대가 같고 얼굴 그림 파일이 있다", async () => {
+    const { existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { CHARACTERS } = await import("./characters");
+    const { avatarSrc } = await import("./space-avatars");
+    for (const a of AVATARS) {
+      const c = CHARACTERS.find((x) => x.id === a.look);
+      expect(c, a.look).toBeTruthy();
+      expect(c!.gender === "female" ? "f" : "m", a.id).toBe(a.gender);
+      expect(Math.floor(c!.age / 10) * 10, a.id).toBe(a.age);
+      expect(existsSync(join(process.cwd(), "public", avatarSrc(a.id))), a.id).toBe(true);
+    }
   });
 });
