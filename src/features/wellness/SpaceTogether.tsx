@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { sx } from "./sx";
 import { AVATARS, avatarOf, avatarSrc, avatarSvgSrc, figureSrc, FIGURE_VIEW, type AvatarId, type FigurePose } from "./space-avatars";
-import { BUBBLE_MS, bubbleShift, bubbleText, doorPoint, figureHeight, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, seatHeading, sitPoint, toScreen, walkHeading, walkMs, type Heading, type Rect, type RoomLayout, type ScenePt, type Way } from "./space-seats";
+import { bubbleBox, bubbleMs, bubbleShift, bubbleText, doorPoint, stackBubbles, figureHeight, resolveSeats, ROOM_LAYOUT, routeIn, routeMove, routeOut, seatHeading, sitPoint, toScreen, walkHeading, walkMs, type BubbleSpot, type Heading, type Rect, type RoomLayout, type ScenePt, type Way } from "./space-seats";
 import { CHAT_NOTICE, checkNickname, checkOutgoing, createRateLimiter, displayName, MAX_MESSAGE, NICK_MAX, NICK_MIN, NICK_PROBLEM_TEXT, REPORT_REASONS, type ChatMessage, type Presence, type ReportReason } from "./space-together";
 import { fetchProfiles, joinRoom, saveMyProfile, type RoomSession, type RoomStatus, type SpaceProfile, type SpaceWho } from "./space-realtime";
 import { RISK_REPLY } from "./risk";
@@ -125,7 +125,11 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
   const [reporting, setReporting] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<ReadonlySet<string>>(new Set());
   const [input, setInput] = useState("");
-  const [notice, setNotice] = useState<null | "risk" | "masked" | "rate" | "too-long" | "reported" | "report-failed">(null);
+  const [notice, setNotice] = useState<NoticeKind | null>(null);
+  // 장면 아래 「말풍선으로 한마디」 칸(2026-11-22 사용자 "채팅은 말풍선으로 바로 머리 위에서") — 창을 안 열고 모두에게
+  const [say, setSay] = useState("");
+  const [sayNotice, setSayNotice] = useState<NoticeKind | null>(null);
+  const sayRulesShown = useRef(false);
   const sessionRef = useRef<RoomSession | null>(null);
   const limiter = useMemo(() => createRateLimiter(), []);
   const openRef = useRef(open); openRef.current = open;
@@ -136,13 +140,18 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
   // 들어와서 자리를 골랐는지(2026-11-20 사용자 "처음 들어올 때 원을 줘야 자기가 고를 수 있겠네")
   const [seatChosen, setSeatChosen] = useState(false);
   const trackedSeatRef = useRef<number | null | undefined>(undefined);
-  const [bubbles, setBubbles] = useState<Record<string, { text: string; id: string }>>({});
+  const [bubbles, setBubbles] = useState<Record<string, Bubble>>({});
   const bubbleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const bubbleSeq = useRef(0);
+  // 말풍선 — 길수록 오래(bubbleMs) · seq = 뜬 차례(겹치면 나중 것을 위로)
   const showBubble = (uid: string, text: string, id: string) => {
-    setBubbles((b) => ({ ...b, [uid]: { text: bubbleText(text), id } }));
+    const seq = ++bubbleSeq.current;
+    setBubbles((b) => ({ ...b, [uid]: { text: bubbleText(text), id, seq } }));
     clearTimeout(bubbleTimers.current[uid]);
-    bubbleTimers.current[uid] = setTimeout(() => setBubbles((b) => { if (b[uid]?.id !== id) return b; const n = { ...b }; delete n[uid]; return n; }), BUBBLE_MS);
+    bubbleTimers.current[uid] = setTimeout(() => setBubbles((b) => { if (b[uid]?.id !== id) return b; const n = { ...b }; delete n[uid]; return n; }), bubbleMs(text));
   };
+  // 장면에 보이는 사람 — 이 사람들 말은 머리 위 말풍선으로 보이니 새 메시지 숫자에 세지 않는다
+  const shownRef = useRef<ReadonlySet<string>>(new Set());
   useEffect(() => () => { for (const t of Object.values(bubbleTimers.current)) clearTimeout(t); }, []);
 
   useEffect(() => {
@@ -156,7 +165,7 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
         if (cancelled) return;
         setRoomMsgs((l) => [...l, m].slice(-100));
         if (!m.hidden) showBubble(m.from, m.text, m.id);
-        if (!(openRef.current && tabRef.current === "room")) setRoomUnread((n) => n + 1);
+        if (!(openRef.current && tabRef.current === "room") && !(shownRef.current.has(m.from) && !m.hidden)) setRoomUnread((n) => n + 1);
       },
       onDmMessage: (peer, m) => {
         if (cancelled) return;
@@ -222,6 +231,7 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
   const seats = useMemo(() => resolveSeats(seated, layout.seats.length), [seated, layout]);
   // 장면엔 차단한 사람 · 고르는 중인 사람을 그리지 않는다(자리는 위 계산대로 비워 둔다)
   const scenePeople = useMemo(() => seated.filter((p) => !blocked.has(p.uid)), [seated, blocked]);
+  shownRef.current = new Set(scenePeople.filter((p) => (seats.get(p.uid) ?? null) !== null).map((p) => p.uid));
   // 들어오면 빈자리 원이 보이고, 하나를 누르면 그리로 걸어 들어가 앉는다 · 안 누르면 20초 뒤 앞쪽 빈자리로
   const choosing = !!me && status === "live" && !!avatar && !seatChosen;
   const freeSeats = useMemo(() => {
@@ -282,25 +292,39 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
     setNotice(ok ? "reported" : "report-failed");
     if (ok) block(peer);
   };
-  const send = () => {
+  /**
+   * 보내기 — to = "room"(모두 · 머리 위 말풍선) 또는 1:1 상대. 대화 창 칸과 장면 아래 「한마디」 칸이 같이 쓴다.
+   * ★위험한 말은 안 보내고 상담 안내 · 연락처는 가려서 · 너무 빠르면 잠깐 멈춤.
+   */
+  const deliver = (to: "room" | string, raw: string, note: (k: NoticeKind | null) => void, clear: () => void) => {
     const s = sessionRef.current;
     if (!s) return;
-    const c = checkOutgoing(input);
+    const c = checkOutgoing(raw);
     if (!c.ok) {
       if (c.reason === "empty") return;
-      setNotice(c.reason === "risk" ? "risk" : c.reason === "too-long" ? "too-long" : "rate");
-      if (c.reason === "risk") setInput("");
+      note(c.reason === "risk" ? "risk" : c.reason === "too-long" ? "too-long" : "rate");
+      if (c.reason === "risk") clear();
       return;
     }
-    if (!limiter.take()) { setNotice("rate"); return; }
-    const m = tab === "room" ? s.sendRoom(c.text) : s.sendDm(tab, c.text);
+    if (!limiter.take()) { note("rate"); return; }
+    const m = to === "room" ? s.sendRoom(c.text) : s.sendDm(to, c.text);
     if (!m) return;
-    if (tab === "room") showBubble(me, m.text, m.id);
-    if (tab === "room") setRoomMsgs((l) => [...l, m].slice(-100));
-    else setThreads((t) => ({ ...t, [tab]: { ...(t[tab] ?? { avatar: avatarFor(tab), messages: [], unread: 0 }), messages: [...(t[tab]?.messages ?? []), m].slice(-100) } }));
-    setInput("");
-    setNotice(c.masked ? "masked" : null);
+    if (to === "room") showBubble(me, m.text, m.id);
+    if (to === "room") setRoomMsgs((l) => [...l, m].slice(-100));
+    else setThreads((t) => ({ ...t, [to]: { ...(t[to] ?? { avatar: avatarFor(to), messages: [], unread: 0 }), messages: [...(t[to]?.messages ?? []), m].slice(-100) } }));
+    clear();
+    note(c.masked ? "masked" : null);
   };
+  const send = () => deliver(tab, input, setNotice, () => setInput(""));
+  /** 장면 아래 칸 — 늘 모두에게(머리 위 말풍선) */
+  const sayNow = () => deliver("room", say, setSayNotice, () => setSay(""));
+  // 한마디 칸 안내는 잠깐만(위험 안내는 닫을 때까지)
+  useEffect(() => {
+    if (!sayNotice || sayNotice === "risk") return;
+    const t = setTimeout(() => setSayNotice(null), 4500);
+    return () => clearTimeout(t);
+  }, [sayNotice]);
+  const sayOn = !!avatar && status === "live" && seatChosen && !open && !picking;
 
   const msgs = tab === "room" ? roomMsgs : threads[tab]?.messages ?? [];
   const dmPeers = Object.keys(threads).filter((p) => !blocked.has(p));
@@ -325,6 +349,23 @@ export function TogetherLayer({ who, room, profile, onProfile, rect }: { who: Sp
           onPersonTap={openPeer} />
       )}
       {pill}
+      {sayOn && (
+        <>
+          {sayNotice && <div data-space-say-notice style={sx("position:absolute; left:0; right:0; bottom:70px; z-index:4")}><Notice kind={sayNotice} onClose={() => setSayNotice(null)} /></div>}
+          <div data-space-say style={sx("position:absolute; left:14px; right:14px; bottom:18px; z-index:4; display:flex; gap:8px; align-items:center")}>
+            <style>{`[data-space-say] input::placeholder{color:rgba(255,255,255,0.72)}`}</style>
+            <input value={say} maxLength={MAX_MESSAGE + 20} enterKeyHint="send" aria-label="말풍선으로 한마디" placeholder="말풍선으로 한마디"
+              onChange={(e) => setSay(e.target.value)}
+              onFocus={() => { if (!sayRulesShown.current) { sayRulesShown.current = true; setSayNotice("rules"); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); sayNow(); } }}
+              style={sx("flex:1; min-width:0; box-sizing:border-box; height:42px; padding:0 16px; border-radius:999px; border:1px solid rgba(255,255,255,0.45); background:rgba(14,22,30,0.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; font-size:16px; outline:none")} />
+            <button type="button" onClick={sayNow} disabled={!say.trim()} aria-label="말풍선 보내기"
+              style={{ ...sx("flex:none; cursor:pointer; width:42px; height:42px; padding:0; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center"), background: say.trim() ? "#7a6bc4" : "rgba(14,22,30,0.5)" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5 19.5 5l-4.6 15-3.4-6.1L4 12.5Z" fill="#fff" /></svg>
+            </button>
+          </div>
+        </>
+      )}
       {picking && (
         <Sheet onClose={() => setPicking(false)} title="함께 머물 캐릭터">
           <div style={sx("padding:4px 18px 8px; font-size:12.5px; color:#6b8c9a; line-height:1.6")}>같은 공간에 있는 사람들끼리 캐릭터가 보이고 대화할 수 있어요. 실명 대신 캐릭터 이름만 보여요.</div>
@@ -448,7 +489,7 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
  */
 function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices, onChoose, label, onPersonTap }: {
   layout: RoomLayout; rect: Rect; me: string; myJoin: number;
-  people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, { text: string; id: string }>;
+  people: Presence[]; seats: Map<string, number | null>; bubbles: Record<string, Bubble>;
   /** 들어와서 자리를 고르는 동안만 — 빈자리 번호들(원으로 보인다) · 그 밖엔 null */
   choices: number[] | null; onChoose: (i: number) => void;
   /** 보이는 이름(내가 지은 이름) */
@@ -589,7 +630,7 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
 
   return (
     <div ref={boxRef} data-space-scene style={sx("position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden")}>
-      <style>{`@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@keyframes wcSeat{0%,100%{opacity:.75}50%{opacity:1}}@media (prefers-reduced-motion:reduce){[data-space-actor] *,[data-space-seat]{animation:none!important}}`}</style>
+      <style>{`@keyframes wcBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}@keyframes wcSeat{0%,100%{opacity:.75}50%{opacity:1}}@keyframes wcPop{from{opacity:0;scale:.85}}@media (prefers-reduced-motion:reduce){[data-space-actor] *,[data-space-seat]{animation:none!important}}`}</style>
       {/* 들어와서 자리 고르기 — 빈자리 원(이때만 보인다) · 누르면 그리로 걸어 들어가 앉는다 */}
       {choices && choices.length > 0 && (
         <>
@@ -610,23 +651,43 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
           })}
         </>
       )}
-      {Object.values(actorsRef.current).map((a) => {
-        // 걷기 · 앉으면 방석·좌복은 책상다리, 교회·성당 장의자는 윗몸만(등받이에 가림)
-        const pose: FigurePose = a.walking ? (a.ms > 0 ? "walk" : "stand") : layout.sitOn === "pew" ? "pew" : "sit";
+      {(() => {
+        const actors = Object.values(actorsRef.current);
+        /** 한 사람의 그림 상자 — 자세·화면 위치·크기·머리 위 빈칸 */
+        const boxOf = (a: Actor) => {
+          // 걷기 · 앉으면 방석·좌복은 책상다리, 교회·성당 장의자는 윗몸만(등받이에 가림)
+          const pose: FigurePose = a.walking ? (a.ms > 0 ? "walk" : "stand") : layout.sitOn === "pew" ? "pew" : "sit";
+          const pt = screenOf(a.pos);
+          const base = figureHeight(rect, a.pos.s);
+          const h = Math.round((base * FIGURE_VIEW[pose].h) / FIGURE_VIEW.sit.h);
+          const w = Math.round((base * FIGURE_VIEW.sit.w) / FIGURE_VIEW.sit.h);
+          // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
+          const headGap = Math.round(h * (pose === "walk" || pose === "stand" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
+          return { pose, pt, base, h, w, headGap };
+        };
+        // 말풍선 — 화면 끝에서 안쪽으로 밀고(shift), 옆사람 것과 겹치면 나중 것을 위로(lift) · 2026-11-22
+        const spots: (BubbleSpot & { seq: number })[] = [];
+        const shiftOf: Record<string, number> = {};
+        for (const a of actors) {
+          const b = bubbles[a.uid];
+          if (!b || a.leaving) continue;
+          const { pt, h, headGap } = boxOf(a);
+          shiftOf[a.uid] = bubbleShift(pt.x, b.text, boxW);
+          const sz = bubbleBox(b.text);
+          spots.push({ key: a.uid, x: pt.x + shiftOf[a.uid], y: pt.y - h + headGap - 17, w: sz.w, h: sz.h + 6, seq: b.seq });
+        }
+        const lifts = stackBubbles(spots.sort((p, q) => p.seq - q.seq));
+        return actors.map((a) => {
+        const { pose, pt, h, w, headGap } = boxOf(a);
         // 앉으면 방에 맞게(불당·교회·성당 = 앞을 봄 → 뒷모습 · 명상룸 = 마주 봄 → 옆모습), 걸을 땐 가는 쪽
         const heading = a.walking ? a.head : seatHeading(layout, a.seat);
-        const pt = screenOf(a.pos);
-        const base = figureHeight(rect, a.pos.s);
-        const h = Math.round((base * FIGURE_VIEW[pose].h) / FIGURE_VIEW.sit.h);
-        const w = Math.round((base * FIGURE_VIEW.sit.w) / FIGURE_VIEW.sit.h);
         const t = a.ms > 0 ? `${a.ms}ms ${a.ease}` : "0s";
         // 장의자 줄 안에선 sink 만큼(발~정강이) 잘라 등받이에 가린 것처럼
         const cut = a.clip ? ((a.pos.sink ?? 0) * FIGURE_VIEW.sit.h) / FIGURE_VIEW[pose].h : 0;
         const mine = a.uid === me;
         const bubble = bubbles[a.uid];
-        const shift = bubble ? bubbleShift(pt.x, bubble.text, boxW) : 0;
-        // 이름은 머리 바로 위(그림 위쪽 빈칸만큼 내림) · 말풍선은 그 위
-        const headGap = Math.round(h * (pose === "walk" || pose === "stand" ? 0.12 : pose === "pew" ? 0.17 : 0.14));
+        const shift = shiftOf[a.uid] ?? 0;
+        const lift = lifts[a.uid] ?? 0;
         // 발밑 그림자 — 캐릭터 크기에 맞춰(실사 크기라 커졌다)
         const shadowH = Math.max(6, Math.round(w * 0.07));
         return (
@@ -640,8 +701,11 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
               pointerEvents: mine || a.leaving ? "none" : "auto", cursor: mine ? "default" : "pointer",
             }}>
             {bubble && !a.leaving && (
-              <div data-space-bubble style={{ ...sx("position:absolute; left:50%; max-width:150px; width:max-content; padding:5px 9px; border-radius:12px; background:rgba(255,255,255,0.95); color:#3a4a72; font-size:11.5px; font-weight:600; line-height:1.4; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; text-align:center"), bottom: `calc(100% - ${headGap}px + 17px)`, transform: `translateX(calc(-50% + ${shift}px))` }}>
+              <div data-space-bubble role="status" aria-label={`${label(a.uid, a.avatar)}: ${bubble.text}`} key={bubble.id}
+                style={{ ...sx("position:absolute; left:50%; max-width:180px; width:max-content; padding:5px 9px; border-radius:12px; color:#3a4a72; font-size:12px; font-weight:600; line-height:17px; box-shadow:0 3px 10px rgba(0,0,0,0.25); word-break:keep-all; overflow-wrap:anywhere; text-align:center; animation:wcPop 0.18s ease-out"), background: mine ? "rgba(236,231,252,0.97)" : "rgba(255,255,255,0.95)", bottom: `calc(100% - ${headGap}px + ${17 + lift}px)`, transform: `translateX(calc(-50% + ${shift}px))`, zIndex: 1 }}>
                 {bubble.text}
+                {/* 꼬리 — 말한 사람 머리를 가리킨다(위로 올린 말풍선은 꼬리 없이) */}
+                {lift === 0 && <span aria-hidden style={{ ...sx("position:absolute; bottom:-4px; width:9px; height:9px; transform:translateX(-50%) rotate(45deg)"), left: `calc(50% - ${shift}px)`, background: mine ? "rgba(236,231,252,0.97)" : "rgba(255,255,255,0.95)" }} />}
               </div>
             )}
             {!a.clip && pose !== "pew" && <div style={{ ...sx("position:absolute; left:15%; right:15%; border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))"), height: shadowH, bottom: -Math.round(shadowH / 2) }} />}
@@ -657,7 +721,8 @@ function SpaceScene({ layout, rect, me, myJoin, people, seats, bubbles, choices,
             </div>
           </div>
         );
-      })}
+        });
+      })()}
     </div>
   );
 }
@@ -672,7 +737,11 @@ function ChatBubbleIcon() {
   );
 }
 
-function Notice({ kind, onClose }: { kind: "risk" | "masked" | "rate" | "too-long" | "reported" | "report-failed"; onClose: () => void }) {
+type NoticeKind = "risk" | "masked" | "rate" | "too-long" | "reported" | "report-failed" | "rules";
+/** 말풍선 하나 — seq = 뜬 차례 */
+interface Bubble { text: string; id: string; seq: number }
+
+function Notice({ kind, onClose }: { kind: NoticeKind; onClose: () => void }) {
   if (kind === "risk") {
     // 위험한 표현 — 다른 사람에게 보내지 않았다. 앱의 「오늘, 어떤 하루였나요?」와 같은 안내.
     return (
@@ -687,6 +756,7 @@ function Notice({ kind, onClose }: { kind: "risk" | "masked" | "rate" | "too-lon
     : kind === "rate" ? "조금만 천천히 보내 주세요."
     : kind === "too-long" ? `한 번에 ${MAX_MESSAGE}자까지 보낼 수 있어요.`
     : kind === "reported" ? "신고했어요. 운영자가 확인할게요. 그분은 차단했어요."
+    : kind === "rules" ? `쓴 말은 내 머리 위 말풍선으로 모두에게 보여요. ${CHAT_NOTICE}`
     : "신고를 보내지 못했어요. 잠시 뒤 다시 해 주세요.";
   return (
     <div role="status" onClick={onClose} style={sx("flex:none; cursor:pointer; margin:0 14px; padding:8px 12px; border-radius:12px; background:#f4fafb; border:1px solid #d9e6ea; font-size:12px; color:#4d7c8c")}>{text}</div>

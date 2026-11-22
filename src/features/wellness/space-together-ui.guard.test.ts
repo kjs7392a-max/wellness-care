@@ -39,14 +39,16 @@ describe("함께 머무는 사람 — 연결", () => {
 
 describe("함께 머무는 사람 — 안전", () => {
   it("보내기 전 checkOutgoing · 연속 전송 제한 · 받은 건 acceptIncoming", () => {
-    expect(ui).toMatch(/const c = checkOutgoing\(input\)/);
+    expect(ui).toMatch(/const c = checkOutgoing\(raw\)/);
+    expect(ui).toMatch(/const send = \(\) => deliver\(tab, input, setNotice/);
+    expect(ui).toMatch(/const sayNow = \(\) => deliver\("room", say, setSayNotice/); // 장면 아래 칸도 같은 검사를 거친다
     expect(ui).toMatch(/limiter\.take\(\)/);
     expect(rt.match(/acceptIncoming\(payload\)/g)?.length).toBeGreaterThanOrEqual(2);
   });
   it("★위험한 말은 안 보내고 상담 안내(RISK_REPLY)를 보여 준다", () => {
-    const send = ui.slice(ui.indexOf("const send = () =>"), ui.indexOf("const msgs ="));
+    const send = ui.slice(ui.indexOf("const deliver = ("), ui.indexOf("const msgs ="));
     expect(send).toMatch(/c\.reason === "risk" \? "risk"/);
-    expect(send.indexOf('setNotice(c.reason === "risk"')).toBeLessThan(send.indexOf("s.sendRoom("));
+    expect(send.indexOf('note(c.reason === "risk"')).toBeLessThan(send.indexOf("s.sendRoom("));
     expect(ui).toMatch(/RISK_REPLY\.slice\(0, 2\)/);
   });
   it("가려진 메시지는 글을 보여 주지 않는다", () => {
@@ -105,7 +107,7 @@ describe("함께 머무는 사람 — 장면 속 움직임(2026-11-20)", () => {
   it("말풍선은 단체 대화만 · 가려진 메시지는 말풍선도 없다 · 짧게 자른다", () => {
     expect(ui.match(/showBubble\(/g)).toHaveLength(2);
     expect(ui).toMatch(/if \(!m\.hidden\) showBubble\(m\.from, m\.text, m\.id\)/);
-    expect(ui).toMatch(/if \(tab === "room"\) showBubble\(me, m\.text, m\.id\)/);
+    expect(ui).toMatch(/if \(to === "room"\) showBubble\(me, m\.text, m\.id\)/);
     expect(ui).toMatch(/text: bubbleText\(text\)/);
   });
   it("빈자리 원은 들어올 때 자리를 고르는 동안만 · 앉은 뒤엔 옮기기 없음 · 안 고르면 20초 뒤 자동 · 고르는 사람은 장면·자리 계산에서 빠짐", () => {
@@ -140,7 +142,7 @@ describe("함께 머무는 사람 — 방향·이름표(2026-11-20)", () => {
     const name = scene.slice(scene.indexOf("data-space-name"), scene.indexOf("data-space-name") + 400);
     expect(name).toMatch(/bottom: `calc\(100% - \$\{headGap\}px \+ 1px\)`/);
     expect(name).not.toMatch(/top:100%/);
-    expect(scene).toMatch(/bottom: `calc\(100% - \$\{headGap\}px \+ 17px\)`/);
+    expect(scene).toMatch(/bottom: `calc\(100% - \$\{headGap\}px \+ \$\{17 \+ lift\}px\)`/);
   });
 });
 
@@ -197,5 +199,32 @@ describe("내가 지은 이름(2026-11-20 — 고유한 이름 · 다음에도 �
     expect(ui).toMatch(/const avatar = profile\?\.avatar \?\? null;/);
     expect(ui).toMatch(/<ProfileEditor who=\{who\} initial=\{profile\}/);
     expect(sheet).toMatch(/loadMyProfile\(who\)/);
+  });
+});
+
+describe("머리 위 말풍선으로 바로 대화(2026-11-22 — \"채팅은 말풍선으로 바로 머리 위에서\")", () => {
+  it("자리에 앉으면 장면 아래 「말풍선으로 한마디」 칸 — 대화 창을 안 열어도 모두에게 · 창이 열리면 숨긴다", () => {
+    expect(ui).toMatch(/const sayOn = !!avatar && status === "live" && seatChosen && !open && !picking/);
+    expect(ui).toMatch(/\{sayOn && \(/);
+    expect(ui).toMatch(/aria-label="말풍선으로 한마디"/);
+    expect(ui).toMatch(/font-size:16px/); // 폰에서 누를 때 화면이 확대되지 않게
+    expect(ui).toMatch(/e\.key === "Enter" && !e\.nativeEvent\.isComposing\) \{ e\.preventDefault\(\); sayNow\(\);/); // 한글 조합 중 Enter 는 무시
+  });
+  it("처음 칸을 누르면 안내(모두에게 보임 · 실명·연락처 금지) · 위험 안내 말고는 잠깐만", () => {
+    expect(ui).toMatch(/if \(!sayRulesShown\.current\) \{ sayRulesShown\.current = true; setSayNotice\("rules"\); \}/);
+    expect(ui).toMatch(/kind === "rules" \? `쓴 말은 내 머리 위 말풍선으로 모두에게 보여요\. \$\{CHAT_NOTICE\}`/);
+    expect(ui).toMatch(/if \(!sayNotice \|\| sayNotice === "risk"\) return;/);
+  });
+  it("말풍선은 길수록 오래 · 겹치면 위로 쌓기 · 꼬리 · 보이는 사람의 말은 새 메시지 숫자에 안 센다", () => {
+    expect(ui).toMatch(/bubbleMs\(text\)\)/);
+    expect(ui).toMatch(/const lifts = stackBubbles\(spots\.sort\(\(p, q\) => p\.seq - q\.seq\)\)/);
+    expect(ui).toMatch(/\{lift === 0 && <span aria-hidden/);
+    expect(ui).toMatch(/!\(shownRef\.current\.has\(m\.from\) && !m\.hidden\)\) setRoomUnread/);
+  });
+  it("음악 줄은 한마디 칸 위로", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const sheet = readFileSync(join(process.cwd(), "src/features/wellness/SpaceSheet.tsx"), "utf8");
+    expect(sheet).toMatch(/bottom: together\?\.profile \? 70 : 18/);
   });
 });

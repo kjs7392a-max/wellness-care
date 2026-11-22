@@ -93,7 +93,7 @@ describe("화면 계산", () => {
   });
   it("말풍선은 짧게", () => {
     expect(bubbleText("안녕하세요")).toBe("안녕하세요");
-    expect([...bubbleText("가".repeat(40))].length).toBe(27);
+    expect([...bubbleText("가".repeat(70))].length).toBe(61);
   });
 });
 
@@ -120,7 +120,34 @@ describe("말풍선 가장자리 밀기(bubbleShift)", () => {
     expect(bubbleShift(10, "같이 명상해요 🙂", 400)).toBeGreaterThan(0);
     expect(bubbleShift(390, "안녕", 0)).toBe(0); // 폭을 아직 모르면 안 민다
     const t = "가".repeat(30), sh = bubbleShift(395, t, 400);
-    expect(395 + sh + 75).toBeLessThanOrEqual(394); // 최대 폭 150 — 오른쪽 6px 안쪽
+    expect(395 + sh + 90).toBeLessThanOrEqual(394); // 최대 폭 180 — 오른쪽 6px 안쪽
+  });
+});
+
+describe("머리 위 말풍선 대화(2026-11-22 — 창을 안 열고 바로)", () => {
+  it("60자까지 보이고 길수록 오래(4.5~12초) · 길면 줄바꿈해 키가 커진다", async () => {
+    const { bubbleText, bubbleMs, bubbleBox, BUBBLE_MAX_W } = await import("./space-seats");
+    expect(bubbleText("가".repeat(60))).toBe("가".repeat(60));
+    expect([...bubbleText("가".repeat(80))].length).toBe(61);
+    expect(bubbleMs("안녕")).toBe(4500);
+    expect(bubbleMs("가".repeat(40))).toBe(9500);
+    expect(bubbleMs("가".repeat(120))).toBe(12000);
+    expect(bubbleBox("안녕").w).toBeLessThan(60);
+    expect(bubbleBox("가".repeat(60)).w).toBe(BUBBLE_MAX_W);
+    expect(bubbleBox("가".repeat(60)).h).toBeGreaterThan(bubbleBox("가".repeat(10)).h);
+  });
+  it("옆자리 말풍선이 겹치면 나중 것을 위로 · 멀리 떨어져 있으면 그대로", async () => {
+    const { stackBubbles } = await import("./space-seats");
+    const lifts = stackBubbles([
+      { key: "a", x: 100, y: 300, w: 120, h: 28 },
+      { key: "b", x: 150, y: 302, w: 120, h: 28 }, // a 와 겹침 → 위로
+      { key: "c", x: 330, y: 300, w: 80, h: 28 }, // 떨어져 있음
+      { key: "d", x: 120, y: 300, w: 100, h: 28 }, // a·b 둘 다와 겹침 → 더 위로
+    ]);
+    expect(lifts.a).toBe(0);
+    expect(lifts.b).toBeGreaterThanOrEqual(30);
+    expect(lifts.c).toBe(0);
+    expect(lifts.d).toBeGreaterThan(lifts.b);
   });
 });
 

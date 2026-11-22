@@ -159,20 +159,62 @@ export function walkMs(a: { x: number; y: number }, b: { x: number; y: number },
   return Math.round(Math.min(24000, Math.max(300, (d / v) * 1000)));
 }
 
-/** 말풍선 — 짧게 · 오래 두지 않는다 */
+/**
+ * 말풍선(2026-11-22 사용자 "채팅은 말풍선으로 바로 머리 위에서 이뤄질 수 없나?") — 대화 창을 안 열어도
+ * 장면 아래 칸에 쓰면 내 머리 위에, 남이 쓰면 그 사람 머리 위에 뜬다. 읽을 수 있게 60자까지 · 길수록 오래.
+ */
 export const BUBBLE_MS = 4500;
-export function bubbleText(text: string, max = 26): string {
+export const BUBBLE_MAX_CHARS = 60;
+/** 말풍선 최대 폭(px) · 글자 하나 어림 폭 · 한 줄 높이 */
+export const BUBBLE_MAX_W = 180;
+const BUBBLE_CHAR_W = 12;
+const BUBBLE_LINE_H = 17;
+export function bubbleText(text: string, max = BUBBLE_MAX_CHARS): string {
   const chars = [...text];
   return chars.length > max ? `${chars.slice(0, max).join("")}…` : text;
 }
+/** 떠 있는 시간 — 짧은 말 4.5초, 길면 한 글자에 0.15초씩 더(최대 12초) */
+export function bubbleMs(text: string): number {
+  const n = [...text].length;
+  return Math.round(Math.min(12000, Math.max(BUBBLE_MS, 3500 + n * 150)));
+}
+/** 말풍선 크기 어림(px) — 폭은 글자 수로, 넘치면 줄바꿈 */
+export function bubbleBox(text: string): { w: number; h: number } {
+  const textW = [...text].length * BUBBLE_CHAR_W;
+  const w = Math.min(BUBBLE_MAX_W, 18 + textW);
+  const lines = Math.max(1, Math.ceil(textW / (BUBBLE_MAX_W - 18)));
+  return { w, h: lines * BUBBLE_LINE_H + 11 };
+}
 
-/** 말풍선이 화면 밖으로 나가지 않게 가로로 밀 거리(px) — 폭은 글자 수로 어림 */
+/** 말풍선이 화면 밖으로 나가지 않게 가로로 밀 거리(px) */
 export function bubbleShift(centerX: number, text: string, boxW: number, pad = 6): number {
   if (!(boxW > 0)) return 0;
-  const half = Math.min(150, 18 + [...text].length * 11.5) / 2;
+  const half = bubbleBox(text).w / 2;
   if (centerX + half > boxW - pad) return Math.round(boxW - pad - half - centerX);
   if (centerX - half < pad) return Math.round(pad + half - centerX);
   return 0;
+}
+
+/**
+ * 말풍선이 서로 겹치면 나중 것을 위로 올린다(2026-11-22 — 옆자리끼리 동시에 말할 때).
+ * items = 먼저 뜬 것부터 · x = 가운데 · y = 말풍선 아래 끝(머리 위) · 돌려주는 값 = 위로 올릴 px.
+ */
+export interface BubbleSpot { key: string; x: number; y: number; w: number; h: number }
+export function stackBubbles(items: readonly BubbleSpot[], gap = 4): Record<string, number> {
+  const placed: { x: number; w: number; top: number; bottom: number }[] = [];
+  const out: Record<string, number> = {};
+  for (const b of items) {
+    let lift = 0;
+    for (let k = 0; k <= placed.length; k++) {
+      const bottom = b.y - lift, top = bottom - b.h;
+      const hit = placed.find((p) => Math.abs(p.x - b.x) < (p.w + b.w) / 2 && top < p.bottom && bottom > p.top);
+      if (!hit) break;
+      lift = b.y - hit.top + gap;
+    }
+    out[b.key] = Math.round(lift);
+    placed.push({ x: b.x, w: b.w, top: b.y - lift - b.h, bottom: b.y - lift });
+  }
+  return out;
 }
 
 // ── 바라보는 쪽(2026-11-20 사용자 지시 "불당·교회·성당은 앞을 보고, 명상룸은 마주 보고") ──────────────

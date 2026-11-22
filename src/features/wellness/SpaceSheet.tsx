@@ -491,7 +491,8 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
           </div>
         )}
       </div>
-      {track && <div style={sx("position:absolute; left:16px; right:16px; bottom:18px; color:#fff; font-size:11px; line-height:1.5; text-shadow:0 1px 4px #000")}>
+      {/* 음악 줄 — 함께하기 중이면 장면 아래 「말풍선으로 한마디」 칸(SpaceTogether) 위로 올린다(2026-11-22) */}
+      {track && <div data-space-track style={{ ...sx("position:absolute; left:16px; right:16px; color:#fff; font-size:11px; line-height:1.5; text-shadow:0 1px 4px #000"), bottom: together?.profile ? 70 : 18 }}>
         {audioFailed && <div role="alert" style={sx("padding:8px 10px; margin-bottom:8px; border-radius:10px; background:rgba(0,0,0,0.6)")}>소리를 불러오지 못했어요. 소리 듣기를 다시 눌러 주세요.</div>}
         {tracks && tracks.length > 1 && <div style={sx("display:flex; align-items:center; gap:10px; padding:7px 9px; margin-bottom:5px; border-radius:10px; background:rgba(0,0,0,0.48)")}>
           <span aria-live="polite" style={sx("flex:1")}>{trackIndex + 1} / {tracks.length} · {track.title}</span>
