@@ -58,12 +58,15 @@ export const SPACE_DIR = "/wellness/space";
  * 출처·지은이·허락 조건은 「음원 출처」에 곡마다 보인다(CC BY 계열은 출처 표시가 조건).
  * 한글 찬송가 제목은 새찬송가와 가락이 같다고 확인한 곡만 붙였다(예: 165장 주님께 영광 · 369장 죄짐 맡은 우리 구주) — 나머지는 영어 제목.
  * 2026-11-23 브라우저에서 40곡 모두 실제로 불러와지는 것 확인(파일 이름 → 저장 폴더 md5 도 테스트로 묶음).
+ * 같은 날 사용자 "더 긴 녹음으로 바꿔야" → 30초 남짓 발췌 4곡을 바꿈(Amazing Grace 군악대 3분 54초 · 참 반가운 신도여 연주 ·
+ * 브람스 오르간 5분 50초 · Abide with Me 는 긴 녹음이 없어 Hyfrydol 오르간 즉흥으로) — 🚫 1분 30초 안 되는 곡은 넣지 않는다(테스트는 주소만 본다).
+ * 🚫 군악대 녹음이어도 바깥 편곡자의 편곡(예: Claude T. Smith 의 Eternal Father)은 아직 저작권이 있을 수 있어 뺐다.
  */
 const LIC = {
+  PD: { label: "퍼블릭 도메인", url: "https://creativecommons.org/publicdomain/mark/1.0/" },
   CC0: { label: "CC0", url: "https://creativecommons.org/publicdomain/zero/1.0/" },
   BY_25: { label: "CC BY 2.5", url: "https://creativecommons.org/licenses/by/2.5/" },
   BY_3: { label: "CC BY 3.0", url: "https://creativecommons.org/licenses/by/3.0/" },
-  BY_SA_25: { label: "CC BY-SA 2.5", url: "https://creativecommons.org/licenses/by-sa/2.5/" },
   BY_SA_3: { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" },
   BY_SA_4: { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" },
 } as const;
@@ -81,9 +84,9 @@ export const SPACE_ROOMS: readonly SpaceRoom[] = [
     safe: { x0: 0.24, x1: 0.64, y0: 0.33, y1: 0.6 }, thumbPos: "50% 45%" },
   { id: "church", name: "교회", hint: "찬송가 20곡 · 차례로 듣기", src: `${SPACE_DIR}/church.mp4`, poster: `${SPACE_DIR}/church.jpg`, w: 1080, h: 1920, sound: false,
     audio: [
-      commons("6/6a", "Amazing_Grace_-_Choir.ogg", "찬송가 · 나 같은 죄인 살리신 (Amazing Grace · 영어 합창 발췌)", "Choir / Sain (Recordiau) Cyf.", LIC.BY_SA_3),
+      commons("2/21", "Amazing_Grace_US_Marine_Band.ogg", "찬송가 · 나 같은 죄인 살리신 (Amazing Grace · 군악대·독창)", "United States Marine Band (편곡 Ryan J. Nowlin · 미국 정부 저작물)", LIC.PD),
       commons("b/b8", "HWW_What_A_Friend_We_Have_In_Jesus.ogg", "찬송가 · 죄짐 맡은 우리 구주 (What a Friend We Have in Jesus · 연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
-      commons("6/61", "Abide_With_Me_-_Llanelli_Male_Voice_Choir.ogg", "찬송가 · Abide with Me (합창 발췌)", "Llanelli Male Voice Choir / Sain (Recordiau) Cyf.", LIC.BY_SA_3),
+      commons("7/72", "HyfrydolImprov.ogg", "찬송가 · Hyfrydol (오르간 즉흥 연주)", "W. Douglas Ludlum (St. Matthew's Lutheran Church, Charleston)", LIC.BY_SA_3),
       commons("5/56", "HWW_When_I_survey_the_wondrous_cross_%28Rockingham_LM%29.ogg", "찬송가 · When I Survey the Wondrous Cross (Rockingham · 연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
       commons("4/45", "Ein%27_Feste_Burg.ogg", "찬송가 · 내 주는 강한 성이요 (Ein feste Burg · 독창)", "Gareth Hughes", LIC.BY_SA_3),
       commons("1/1c", "HWW_The_Lords_My_Shepherd_Crimond.ogg", "찬송가 · 시편 23편 (The Lord's My Shepherd · Crimond · 연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
@@ -98,14 +101,14 @@ export const SPACE_ROOMS: readonly SpaceRoom[] = [
       commons("b/b1", "HWW_To_God_Be_The_Glory.ogg", "찬송가 · To God Be the Glory (연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
       commons("b/bb", "HWW_Just_as_I_am_Saffron_Walden.ogg", "찬송가 · Just as I Am (Saffron Walden · 연주)", "Arthur Henry Brown(곡) · Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
       commons("d/d2", "HWW_For_The_Beauty_Of_The_Earth.ogg", "찬송가 · For the Beauty of the Earth (연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
-      commons("6/61", "Adeste_Fideles_-_Llanelli_Male_Voice_Choir.ogg", "찬송가 · 참 반가운 신도여 (Adeste Fideles · 합창 발췌)", "Llanelli Male Voice Choir / Sain (Recordiau) Cyf.", LIC.BY_SA_3),
+      commons("6/6a", "HWW_Oh_Come_All_Ye_Faithful.ogg", "찬송가 · 참 반가운 신도여 (O Come, All Ye Faithful · 연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
       commons("2/25", "HWW_Silent_Night.ogg", "찬송가 · 고요한 밤 거룩한 밤 (Silent Night · 연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
       commons("3/3e", "HWW_Joy_To_The_World.ogg", "찬송가 · 기쁘다 구주 오셨네 (Joy to the World · 연주)", "Richard MS Irwin (hymnswithoutwords.com)", LIC.BY_SA_4),
     ],
     safe: { x0: 0.28, x1: 0.7, y0: 0.15, y1: 0.57 }, thumbPos: "50% 36%" },
   { id: "cathedral", name: "성당", hint: "오르간·성가 20곡 · 차례로 듣기", src: `${SPACE_DIR}/cathedral.mp4`, poster: `${SPACE_DIR}/cathedral.jpg`, w: 1080, h: 1920, sound: false,
     audio: [
-      commons("8/88", "Amazing_Grace-organ.ogg", "오르간 연주 · Amazing Grace", "The Uninvited Co., Inc.", LIC.BY_SA_25),
+      commons("a/a1", "Brahms_O_Gott%2C_du_frommer_Gott.ogg", "오르간 · 브람스 코랄 전주곡 「O Gott, du frommer Gott」", "Matthias Flierl (Johanniskirche Feuchtwangen)", LIC.BY_SA_3),
       commons("f/f8", "Rorate_Caeli_~_Gregorian_Chant.ogg", "그레고리오 성가 · Rorate Caeli (대림 성가)", "Inritter", LIC.BY_SA_4),
       commons("e/e1", "Missa_Papae_Marcelli_-_I._Kyrie.flac", "팔레스트리나 · 교황 마르첼루스 미사 — Kyrie", "European Archive / Musopen", LIC.CC0),
       commons("4/47", "Jesu_Du_zartes_L%C3%A4mblein_-_Peter_Nahon.ogg", "오르간 · Jesu, du zartes Lämblein", "Peter Nahon / Arrastramiente", LIC.BY_SA_4),

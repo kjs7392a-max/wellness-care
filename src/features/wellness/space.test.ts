@@ -44,6 +44,9 @@ describe("마음 쉼터 — 공간 넷과 파일", () => {
       expect(spaceRoom(id).hint).toContain("20곡");
     }
     expect(spaceRoom("church").audio!.every((track) => track.title.startsWith("찬송가 · "))).toBe(true);
+    // 2026-11-23 "더 긴 녹음으로" — 30초짜리 발췌(Sain 합창 · 오르간 Amazing Grace)는 다시 넣지 않는다
+    const all = [...spaceRoom("church").audio!, ...spaceRoom("cathedral").audio!];
+    expect(all.some((track) => /발췌|Sain \(Recordiau\)|Amazing_Grace-organ/.test(`${track.title} ${track.artist} ${track.src}`))).toBe(false);
     expect(spaceRoom("temple").audio).toHaveLength(1);
     expect(spaceRoom("meditation").audio).toBeUndefined();
   });
@@ -51,8 +54,8 @@ describe("마음 쉼터 — 공간 넷과 파일", () => {
   it("🚫 교회·성당 음악은 자유 이용 허락(퍼블릭 도메인·CC0·CC BY·CC BY-SA)만 · 비영리(NC)·변경금지(ND)·MIDI 연주 없음", () => {
     for (const id of ["church", "cathedral"] as const) {
       for (const track of spaceRoom(id).audio!) {
-        expect(track.license!.label, track.title).toMatch(/^(CC0|CC BY 2\.5|CC BY 3\.0|CC BY 4\.0|CC BY-SA (2\.5|3\.0|4\.0))$/);
-        expect(track.license!.url).toMatch(/^https:\/\/creativecommons\.org\/(publicdomain\/zero|licenses\/by(-sa)?)\/\d\.\d\/$/);
+        expect(track.license!.label, track.title).toMatch(/^(퍼블릭 도메인|CC0|CC BY 2\.5|CC BY 3\.0|CC BY 4\.0|CC BY-SA (2\.5|3\.0|4\.0))$/);
+        expect(track.license!.url).toMatch(/^https:\/\/creativecommons\.org\/(publicdomain\/(zero|mark)|licenses\/by(-sa)?)\/\d\.\d\/$/);
         expect(`${track.title} ${track.artist}`, track.title).not.toMatch(/MIDI|NC|ND\b/);
       }
     }
