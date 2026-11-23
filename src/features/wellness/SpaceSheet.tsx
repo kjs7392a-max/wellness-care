@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SOUND_PREF_KEY, SPACE_ROOMS, fitRoomVideo, parseSoundPref, setVolume, spaceRoom, toggleSound, type SoundPref, type SpaceId, type SpaceRoom } from "./space";
 import { sx } from "./sx";
-import { createRoomPlayback, createRoomPlaylist, type RoomPlayback, type RoomPlaylist } from "./room-playback";
+import { createRoomPlayback, createRoomPlaylist, playlistStart, type RoomPlayback, type RoomPlaylist } from "./room-playback";
 import { createMeditationGuide, pickKoreanVoice, type MeditationGuide } from "./meditation-voice";
 import { spaceRealtimeReady } from "./space-config";
 import type { SpaceWho } from "./space-realtime";
@@ -226,8 +226,10 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playbackRef = useRef<RoomPlayback | null>(null);
   const playlistRef = useRef<RoomPlaylist | null>(null);
-  const [trackIndex, setTrackIndex] = useState(0);
   const tracks = room.audio;
+  // 처음 곡 — 20곡이라 들어올 때마다 다른 곡부터(2026-11-23) · audio 의 처음 src 와 재생 목록 시작을 같게 한 번만 정한다
+  const [firstTrack] = useState(() => playlistStart(room.audio?.length ?? 0));
+  const [trackIndex, setTrackIndex] = useState(firstTrack);
   const track = tracks?.[trackIndex] ?? tracks?.[0];
   const gainRef = useRef<GainNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -307,7 +309,7 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
     playbackRef.current = playback;
     if (audioRef.current && tracks) {
       const sources = tracks.map((item) => item.src) as [string, ...string[]];
-      playlistRef.current = createRoomPlaylist(audioRef.current, sources, playback, setTrackIndex);
+      playlistRef.current = createRoomPlaylist(audioRef.current, sources, playback, setTrackIndex, firstTrack);
     }
     // 외부 독경 스트림은 CORS를 보장하지 않으므로 Web Audio에 연결하지 않는다.
     // 음량 변경이 불가능한 기기는 기기 자체 음량으로 조절한다.
@@ -381,6 +383,19 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
     });
   };
 
+  /** 곡을 못 불러왔을 때 — 듣는 중이면 다음 곡으로(연달아 3곡 안 되면 그때 멈추고 알림) */
+  const skipBroken = () => {
+    const playback = playbackRef.current;
+    const playlist = playlistRef.current;
+    const stop = () => { playlist?.pause(); setAudioFailed(true); setPref((p) => ({ ...p, on: false })); };
+    if (!playback?.active || !playlist) { stop(); return; }
+    const request = ++soundRequestRef.current;
+    void playlist.failed().then((ok) => {
+      if (!playback.active || request !== soundRequestRef.current || ok) return;
+      stop();
+    });
+  };
+
   const advanceTrack = (ended = false) => {
     const playback = playbackRef.current;
     const playlist = playlistRef.current;
@@ -440,9 +455,9 @@ function RoomView({ room, onBack, together }: { room: SpaceRoom; onBack: () => v
         onTimeUpdate={(e) => guideRef.current?.tick(e.currentTarget.currentTime)}
         style={{ ...sx("position:absolute; display:block; max-width:none"), left: rect.left, top: rect.top, width: rect.width, height: rect.height, visibility: size.w > 0 ? "visible" : "hidden" }}
       />
-      {tracks && <audio data-space-audio ref={audioRef} src={tracks[0].src} preload="none" loop={tracks.length === 1}
+      {tracks && <audio data-space-audio ref={audioRef} src={tracks[firstTrack].src} preload="none" loop={tracks.length === 1}
         onEnded={() => advanceTrack(true)}
-        onError={() => { playlistRef.current?.pause(); setAudioFailed(true); setPref((p) => ({ ...p, on: false })); }} />}
+        onError={skipBroken} />}
       {/* 머리줄 — 공간 이름과 소리 조절. */}
       <div style={sx("position:absolute; left:0; right:0; top:0; padding:48px 16px 30px; display:flex; align-items:center; gap:11px; background:linear-gradient(180deg, rgba(8,14,20,0.62) 0%, rgba(8,14,20,0.30) 62%, rgba(8,14,20,0) 100%)")}>
         <div onClick={leave} aria-label="공간 고르기로 돌아가기" style={sx("cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; width:40px; height:40px; margin:-8px 0 -8px -12px; font-size:34px; line-height:1; font-weight:800; -webkit-text-stroke:1.2px #fff; color:#fff")}>‹</div>

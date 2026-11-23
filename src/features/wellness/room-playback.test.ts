@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRoomPlayback, createRoomPlaylist } from "./room-playback";
+import { createRoomPlayback, createRoomPlaylist, MAX_SKIPS, playlistStart } from "./room-playback";
 const media = () => ({ play: vi.fn(async () => {}), pause: vi.fn(), currentTime: 12 });
 
 describe("공간 미디어의 재생 수명", () => {
@@ -118,5 +118,44 @@ describe("공간 재생 목록", () => {
     complete();
     expect(await pending).toBe(false);
     expect(audio.pause.mock.calls.length).toBeGreaterThan(calls);
+  });
+});
+
+describe("공간 재생 목록 — 20곡(2026-11-23)", () => {
+  const five = ["a.mp3", "b.mp3", "c.mp3", "d.mp3", "e.mp3"] as const;
+  const media = () => ({ play: vi.fn(() => Promise.resolve()), pause: vi.fn(), currentTime: 0, src: "" });
+  it("처음 곡을 정할 수 있다 — 그 다음부터 차례로", async () => {
+    const audio = { ...media(), src: five[3] as string };
+    const onTrack = vi.fn();
+    const list = createRoomPlaylist(audio, five, createRoomPlayback(), onTrack, 3);
+    expect(list.index).toBe(3);
+    await list.play();
+    await list.ended();
+    expect(audio.src).toBe("e.mp3");
+    await list.ended();
+    expect(audio.src).toBe("a.mp3");
+    expect(createRoomPlaylist(audio, five, createRoomPlayback(), onTrack, 99).index).toBe(0); // 엉뚱한 값이면 첫 곡
+  });
+  it("들어올 때 처음 곡은 아무 곡(3곡 이하면 첫 곡)", () => {
+    expect(playlistStart(20, 0)).toBe(0);
+    expect(playlistStart(20, 0.999)).toBe(19);
+    expect(playlistStart(20, 0.5)).toBe(10);
+    expect(playlistStart(3, 0.9)).toBe(0);
+    expect(playlistStart(0, 0.5)).toBe(0);
+  });
+  it("곡을 못 불러오면 다음 곡으로 — 연달아 MAX_SKIPS 곡이 안 되면 그만 · 한 곡을 끝까지 들으면 다시 센다", async () => {
+    const audio = { ...media(), src: five[0] as string };
+    const list = createRoomPlaylist(audio, five, createRoomPlayback(), vi.fn());
+    expect(await list.failed()).toBe(true); // 듣기 전엔 아무것도 안 한다
+    expect(audio.src).toBe("a.mp3");
+    await list.play();
+    for (let k = 1; k < MAX_SKIPS; k++) expect(await list.failed()).toBe(true);
+    expect(audio.src).toBe(five[MAX_SKIPS - 1]);
+    expect(await list.failed()).toBe(false);
+    const again = createRoomPlaylist({ ...media(), src: five[0] as string }, five, createRoomPlayback(), vi.fn());
+    await again.play();
+    await again.failed();
+    await again.ended(); // 끝까지 들음 → 다시 센다
+    for (let k = 1; k < MAX_SKIPS; k++) expect(await again.failed()).toBe(true);
   });
 });

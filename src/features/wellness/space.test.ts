@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -24,7 +25,7 @@ describe("마음 쉼터 — 공간 넷과 파일", () => {
     expect(spaceRoom("cathedral").audio?.[0].title).toContain("오르간");
     expect(spaceRoom("temple").audio?.[0].title).toContain("반야심경");
     expect(spaceRoom("temple").audio?.[0].title).toContain("한국어");
-    expect(new Set(SPACE_ROOMS.flatMap((r) => r.audio?.map((track) => track.src) ?? [])).size).toBe(7);
+    expect(new Set(SPACE_ROOMS.flatMap((r) => r.audio?.map((track) => track.src) ?? [])).size).toBe(41);
     for (const room of SPACE_ROOMS.filter((r) => r.audio)) {
       for (const track of room.audio ?? []) {
         expect(track.src).toMatch(/^https:\/\//);
@@ -33,15 +34,41 @@ describe("마음 쉼터 — 공간 넷과 파일", () => {
     }
   });
 
-  it("교회·성당은 서로 다른 세 곡, 불당은 기존 독경 한 편이다", () => {
+  it("교회·성당은 서로 다른 20곡씩(2026-11-23 사용자 \"20곡 정도\"), 불당은 기존 독경 한 편이다", () => {
     for (const id of ["church", "cathedral"] as const) {
       const tracks = spaceRoom(id).audio!;
-      expect(tracks).toHaveLength(3);
-      expect(new Set(tracks.map((track) => track.src)).size).toBe(3);
+      expect(tracks).toHaveLength(20);
+      expect(new Set(tracks.map((track) => track.src)).size).toBe(20);
+      expect(new Set(tracks.map((track) => track.title)).size).toBe(20);
       expect(tracks.every((track) => track.license && track.artist)).toBe(true);
+      expect(spaceRoom(id).hint).toContain("20곡");
     }
+    expect(spaceRoom("church").audio!.every((track) => track.title.startsWith("찬송가 · "))).toBe(true);
     expect(spaceRoom("temple").audio).toHaveLength(1);
     expect(spaceRoom("meditation").audio).toBeUndefined();
+  });
+
+  it("🚫 교회·성당 음악은 자유 이용 허락(퍼블릭 도메인·CC0·CC BY·CC BY-SA)만 · 비영리(NC)·변경금지(ND)·MIDI 연주 없음", () => {
+    for (const id of ["church", "cathedral"] as const) {
+      for (const track of spaceRoom(id).audio!) {
+        expect(track.license!.label, track.title).toMatch(/^(CC0|CC BY 2\.5|CC BY 3\.0|CC BY 4\.0|CC BY-SA (2\.5|3\.0|4\.0))$/);
+        expect(track.license!.url).toMatch(/^https:\/\/creativecommons\.org\/(publicdomain\/zero|licenses\/by(-sa)?)\/\d\.\d\/$/);
+        expect(`${track.title} ${track.artist}`, track.title).not.toMatch(/MIDI|NC|ND\b/);
+      }
+    }
+  });
+
+  it("공용 mp3 주소는 파일 이름의 md5 저장 폴더와 맞고, 출처 쪽은 같은 파일 설명 페이지다(오타 막기)", () => {
+    for (const id of ["church", "cathedral"] as const) {
+      for (const track of spaceRoom(id).audio!) {
+        const m = track.src.match(/^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/transcoded\/([0-9a-f])\/([0-9a-f]{2})\/([^/]+)\/\3\.mp3$/);
+        expect(m, track.src).toBeTruthy();
+        const [, a, ab, file] = m!;
+        const md5 = createHash("md5").update(decodeURIComponent(file)).digest("hex");
+        expect(`${a}/${ab}`, file).toBe(`${md5[0]}/${md5.slice(0, 2)}`);
+        expect(track.sourceUrl).toBe(`https://commons.wikimedia.org/wiki/File:${file}`);
+      }
+    }
   });
 
   it("영상·포스터 파일이 실제로 있고, 영상은 H.264(avc1)다 — HEVC 10비트 원본을 그대로 넣으면 안드로이드·크롬에서 안 나온다", () => {
